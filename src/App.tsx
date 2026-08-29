@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Route, Routes } from 'react-router-dom'
 import { BreakEvenScreen } from './components/breakeven/BreakEvenScreen'
 import { BuildingCalculatorScreen } from './components/building/BuildingCalculatorScreen'
 import { Dashboard } from './components/dashboard/Dashboard'
@@ -34,7 +34,7 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Dashboard />} />
@@ -53,7 +53,7 @@ function App() {
           <Route path="/lender-view" element={<LenderViewScreen />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   )
 }
 
