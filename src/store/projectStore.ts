@@ -15,8 +15,8 @@ import type {
   PropertyRecord,
 } from '../engine/types'
 import { generateId } from '../lib/id'
-import { indexedDbRepository } from '../persistence/indexedDbRepository'
 import type { ProjectRepository } from '../persistence/repository'
+import { getPersistenceMode, safeRepository, type PersistenceMode } from '../persistence/safeRepository'
 import { createDefaultProject } from './defaultProject'
 
 export interface ProjectListEntry {
@@ -33,6 +33,7 @@ interface ProjectStoreState {
   isLoaded: boolean
   isSaving: boolean
   lastSavedAt: string | null
+  persistenceMode: PersistenceMode
 
   init: () => Promise<void>
   newProject: (name?: string) => Promise<void>
@@ -108,6 +109,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         isSaving: false,
         lastSavedAt: new Date().toISOString(),
         projects: projects.map(({ id, name, updatedAt }) => ({ id, name, updatedAt })),
+        persistenceMode: getPersistenceMode(),
       })
     }, 500)
   }
@@ -121,13 +123,14 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
   }
 
   return {
-    repository: indexedDbRepository,
+    repository: safeRepository,
     projects: [],
     activeProject: null,
     calculation: null,
     isLoaded: false,
     isSaving: false,
     lastSavedAt: null,
+    persistenceMode: 'indexeddb',
 
     init: async () => {
       const { repository } = get()
@@ -140,6 +143,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
           calculation: recompute(seeded),
           projects: [{ id: seeded.id, name: seeded.name, updatedAt: seeded.updatedAt }],
           isLoaded: true,
+          persistenceMode: getPersistenceMode(),
         })
         return
       }
@@ -149,6 +153,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         calculation: recompute(active),
         projects: projects.map(({ id, name, updatedAt }) => ({ id, name, updatedAt })),
         isLoaded: true,
+        persistenceMode: getPersistenceMode(),
       })
     },
 

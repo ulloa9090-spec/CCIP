@@ -13,19 +13,27 @@ class StudioDatabase extends Dexie {
   }
 }
 
-const db = new StudioDatabase()
+// Constructed lazily, inside the async methods below, so that a synchronous
+// throw from Dexie/IndexedDB (blocked storage, a sandboxed preview context,
+// private browsing) becomes a normal rejected promise instead of crashing
+// module evaluation itself — safeRepository can then catch it and fall back.
+let db: StudioDatabase | null = null
+const getDb = (): StudioDatabase => {
+  if (!db) db = new StudioDatabase()
+  return db
+}
 
 export const indexedDbRepository: ProjectRepository = {
   async list() {
-    return db.projects.orderBy('updatedAt').reverse().toArray()
+    return getDb().projects.orderBy('updatedAt').reverse().toArray()
   },
   async get(id) {
-    return db.projects.get(id)
+    return getDb().projects.get(id)
   },
   async save(project) {
-    await db.projects.put(project)
+    await getDb().projects.put(project)
   },
   async remove(id) {
-    await db.projects.delete(id)
+    await getDb().projects.delete(id)
   },
 }

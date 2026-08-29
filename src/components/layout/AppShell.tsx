@@ -72,6 +72,7 @@ export const AppShell = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const activeProject = useProjectStore((s) => s.activeProject)
   const isSaving = useProjectStore((s) => s.isSaving)
+  const persistenceMode = useProjectStore((s) => s.persistenceMode)
 
   return (
     <div className="flex min-h-svh flex-col bg-slate-50 dark:bg-slate-950 md:flex-row">
@@ -106,7 +107,9 @@ export const AppShell = () => {
               Scenario: {activeProject.scenarios.find((s) => s.id === activeProject.activeScenarioId)?.name}
             </div>
           )}
-          <div className="mt-1 text-[11px] text-slate-400">{isSaving ? 'Saving…' : 'Saved'}</div>
+          <div className={`mt-1 text-[11px] ${persistenceMode === 'memory' ? 'text-amber-500' : 'text-slate-400'}`}>
+            {isSaving ? 'Saving…' : persistenceMode === 'memory' ? 'Not saved — browser storage unavailable, this session only' : 'Saved'}
+          </div>
         </div>
         <NavLinks />
       </aside>
