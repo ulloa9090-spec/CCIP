@@ -156,6 +156,19 @@ export const createDefaultProject = (name = 'New Childcare Center'): Project => 
     financingType: 'CUSTOM',
     financingTranches: [],
     requiredEquityPct: 0.1,
+    // Modest, clearly-editable inflation/growth assumptions for the 5-Year Projection (spec §55) —
+    // not asserted as forecasts, just a reasonable starting point.
+    projectionAssumptions: { tuitionGrowthPct: 0.03, expenseInflationPct: 0.03, wageGrowthPct: 0.03 },
+    // Left at zero rather than invented — enter real lease terms on the Reports screen to compare
+    // against purchasing (spec §37).
+    leaseTerms: {
+      baseRentMonthly: 0 as never,
+      nnnMonthly: 0 as never,
+      annualEscalationPct: 0,
+      termYears: 5,
+      securityDepositMonths: 2,
+      tenantImprovementAllowance: 0 as never,
+    },
     properties: [],
     selectedPropertyId: null,
     createdAt: now,

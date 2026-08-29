@@ -7,9 +7,11 @@ import type {
   ExpenseItem,
   FinancingTranche,
   FinancingType,
+  LeaseTerms,
   PayrollLineItem,
   Project,
   ProjectCostLineItem,
+  ProjectionAssumptions,
   PropertyRecord,
 } from '../engine/types'
 import { generateId } from '../lib/id'
@@ -82,6 +84,9 @@ interface ProjectStoreState {
   selectScenario: (id: string) => void
   renameScenario: (id: string, name: string) => void
   deleteScenario: (id: string) => void
+
+  updateProjectionAssumptions: (patch: Partial<ProjectionAssumptions>) => void
+  updateLeaseTerms: (patch: Partial<LeaseTerms>) => void
 }
 
 const recompute = (project: Project): ProjectCalculation => computeProject(project)
@@ -409,6 +414,9 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         const next = remaining[0]
         return applyScenarioData({ ...p, scenarios: remaining, activeScenarioId: next.id }, next.data)
       }),
+
+    updateProjectionAssumptions: (patch) => mutate((p) => ({ ...p, projectionAssumptions: { ...p.projectionAssumptions, ...patch } })),
+    updateLeaseTerms: (patch) => mutate((p) => ({ ...p, leaseTerms: { ...p.leaseTerms, ...patch } })),
   }
 })
 

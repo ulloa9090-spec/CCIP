@@ -2,14 +2,15 @@ import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { BreakEvenScreen } from './components/breakeven/BreakEvenScreen'
 import { BuildingCalculatorScreen } from './components/building/BuildingCalculatorScreen'
-import { ComingSoon } from './components/common/ComingSoon'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { EnrollmentScreen } from './components/enrollment/EnrollmentScreen'
 import { ExpensesScreen } from './components/expenses/ExpensesScreen'
 import { FinancingScreen } from './components/financing/FinancingScreen'
 import { AppShell } from './components/layout/AppShell'
+import { LenderViewScreen } from './components/lenderview/LenderViewScreen'
 import { PayrollScreen } from './components/payroll/PayrollScreen'
 import { PropertiesScreen } from './components/properties/PropertiesScreen'
+import { ReportsScreen } from './components/reports/ReportsScreen'
 import { ScenariosScreen } from './components/scenarios/ScenariosScreen'
 import { SettingsScreen } from './components/settings/SettingsScreen'
 import { StaffingScreen } from './components/staffing/StaffingScreen'
@@ -48,7 +49,8 @@ function App() {
           <Route path="/properties" element={<PropertiesScreen />} />
           <Route path="/financing" element={<FinancingScreen />} />
           <Route path="/scenarios" element={<ScenariosScreen />} />
-          <Route path="/reports" element={<ComingSoon title="Reports" phase={6} />} />
+          <Route path="/reports" element={<ReportsScreen />} />
+          <Route path="/lender-view" element={<LenderViewScreen />} />
         </Route>
       </Routes>
     </BrowserRouter>

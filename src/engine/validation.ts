@@ -113,6 +113,24 @@ export const validateFinancingAssumptions = (project: Project): ValidationIssue[
   if (project.requiredEquityPct < 0 || project.requiredEquityPct > 1) {
     issues.push({ severity: 'ERROR', field: 'requiredEquityPct', message: 'Required equity must be between 0% and 100%.' })
   }
+  if (project.projectionAssumptions.tuitionGrowthPct < -1) {
+    issues.push({ severity: 'ERROR', field: 'projectionAssumptions.tuitionGrowthPct', message: 'Tuition growth cannot be less than -100%.' })
+  }
+  if (project.projectionAssumptions.expenseInflationPct < -1) {
+    issues.push({ severity: 'ERROR', field: 'projectionAssumptions.expenseInflationPct', message: 'Expense inflation cannot be less than -100%.' })
+  }
+  if (project.projectionAssumptions.wageGrowthPct < -1) {
+    issues.push({ severity: 'ERROR', field: 'projectionAssumptions.wageGrowthPct', message: 'Wage growth cannot be less than -100%.' })
+  }
+  if (project.leaseTerms.baseRentMonthly < 0 || project.leaseTerms.nnnMonthly < 0 || project.leaseTerms.tenantImprovementAllowance < 0) {
+    issues.push({ severity: 'ERROR', field: 'leaseTerms', message: 'Lease amounts cannot be negative.' })
+  }
+  if (project.leaseTerms.annualEscalationPct < 0 || project.leaseTerms.annualEscalationPct > 1) {
+    issues.push({ severity: 'ERROR', field: 'leaseTerms.annualEscalationPct', message: 'Lease escalation must be between 0% and 100%.' })
+  }
+  if (project.leaseTerms.termYears < 0 || project.leaseTerms.securityDepositMonths < 0) {
+    issues.push({ severity: 'ERROR', field: 'leaseTerms', message: 'Lease term and deposit cannot be negative.' })
+  }
 
   return issues
 }

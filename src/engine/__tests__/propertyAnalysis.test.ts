@@ -44,6 +44,8 @@ const makeProject = (overrides: Partial<Project> = {}): Project => ({
   selectedPropertyId: null,
   scenarios: [],
   activeScenarioId: 'base',
+  projectionAssumptions: { tuitionGrowthPct: 0.03, expenseInflationPct: 0.03, wageGrowthPct: 0.03 },
+  leaseTerms: { baseRentMonthly: 0 as never, nnnMonthly: 0 as never, annualEscalationPct: 0.03, termYears: 5, securityDepositMonths: 2, tenantImprovementAllowance: 0 as never },
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,

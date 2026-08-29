@@ -2,11 +2,14 @@ import { computeAlerts, type Alert } from './alerts'
 import { computeBreakEven, type BreakEvenResult } from './breakEven'
 import { computeBuildingAffordability, type BuildingAffordabilityResult } from './buildingAffordability'
 import { computeClassroomEconomics, type ClassroomEconomics } from './classroomEconomics'
+import { computeDecision, type DecisionResult } from './decisionEngine'
 import { computeExpenseSummary, type ExpenseSummary } from './expenses'
 import { computeFinancialSummary, type FinancialSummary } from './financials'
 import { computeFinancingStructure, computeSourcesAndUses, type FinancingStructureResult, type SourcesUsesResult } from './financing'
+import { computeLeaseVsPurchase, type LeaseVsPurchaseResult } from './leaseComparison'
 import { addMoney } from './money'
 import { computePayrollSummary, type PayrollSummary } from './payroll'
+import { computeAnnualProjection, type AnnualProjection } from './projection'
 import { computePropertyAffordability, type PropertyAffordabilityResult } from './propertyAnalysis'
 import { computeRevenueSummary, type RevenueSummary } from './revenue'
 import { computeReverseCalculation, type ReverseCalculationResult } from './reverseCalculation'
@@ -31,6 +34,9 @@ export interface ProjectCalculation {
   sourcesUses: SourcesUsesResult
   propertyAffordability: PropertyAffordabilityResult | null
   reverseCalculation: ReverseCalculationResult
+  annualProjection: AnnualProjection
+  leaseVsPurchase: LeaseVsPurchaseResult
+  decision: DecisionResult
   alerts: Alert[]
 }
 
@@ -72,6 +78,9 @@ export const computeProject = (project: Project): ProjectCalculation => {
   )
   const propertyAffordability = selectedProperty ? computePropertyAffordability(selectedProperty, project, financials, building) : null
   const reverseCalculation = computeReverseCalculation(selectedProperty, project, building.projectCost)
+  const annualProjection = computeAnnualProjection(project, financials)
+  const leaseVsPurchase = computeLeaseVsPurchase(project, building, selectedProperty)
+  const decision = computeDecision(financials, breakEven, building, staffing, propertyAffordability, project.ageGroups)
 
   const alerts = computeAlerts(
     revenue,
@@ -101,6 +110,9 @@ export const computeProject = (project: Project): ProjectCalculation => {
     sourcesUses,
     propertyAffordability,
     reverseCalculation,
+    annualProjection,
+    leaseVsPurchase,
+    decision,
     alerts,
   }
 }

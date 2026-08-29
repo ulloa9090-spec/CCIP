@@ -18,6 +18,8 @@ export const extractScenarioData = (project: Project): ScenarioData => ({
   financingType: project.financingType,
   financingTranches: project.financingTranches,
   requiredEquityPct: project.requiredEquityPct,
+  projectionAssumptions: project.projectionAssumptions,
+  leaseTerms: project.leaseTerms,
 })
 
 /** Merges a scenario's data onto a Project, leaving identity/metadata/properties untouched. */

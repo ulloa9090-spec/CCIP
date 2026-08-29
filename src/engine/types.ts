@@ -98,6 +98,23 @@ export interface PropertyRecord {
   notes: string
 }
 
+/** Annual growth assumptions for the 5-Year Projection (spec §55) — editable, never asserted as fact. */
+export interface ProjectionAssumptions {
+  tuitionGrowthPct: number
+  expenseInflationPct: number
+  wageGrowthPct: number
+}
+
+/** Lease terms for the Purchase vs. Lease comparison (spec §37). */
+export interface LeaseTerms {
+  baseRentMonthly: Money
+  nnnMonthly: Money
+  annualEscalationPct: number
+  termYears: number
+  securityDepositMonths: number
+  tenantImprovementAllowance: Money
+}
+
 /**
  * Everything a Scenario (Conservative/Base/Optimistic/Custom, spec §38) can
  * vary independently: enrollment, tuition, wages, staffing, expenses,
@@ -122,6 +139,8 @@ export interface ScenarioData {
   financingType: FinancingType
   financingTranches: FinancingTranche[]
   requiredEquityPct: number
+  projectionAssumptions: ProjectionAssumptions
+  leaseTerms: LeaseTerms
 }
 
 export interface Scenario {
@@ -168,6 +187,9 @@ export interface Project {
   financingTranches: FinancingTranche[]
   /** Lender-required minimum equity as a % of total project cost. */
   requiredEquityPct: number
+
+  projectionAssumptions: ProjectionAssumptions
+  leaseTerms: LeaseTerms
 
   properties: PropertyRecord[]
   selectedPropertyId: string | null

@@ -13,16 +13,24 @@ const navSections: { label: string; items: { to: string; label: string; phase?: 
       { to: '/payroll', label: 'Payroll' },
       { to: '/expenses', label: 'Expenses' },
       { to: '/break-even', label: 'Break-Even' },
-      { to: '/building-calculator', label: 'Building Calculator' },
-      { to: '/properties', label: 'Properties' },
-      { to: '/financing', label: 'Financing' },
-      { to: '/scenarios', label: 'Scenarios' },
-      { to: '/settings', label: 'Settings & Projects' },
     ],
   },
   {
-    label: 'Coming in later phases',
-    items: [{ to: '/reports', label: 'Reports', phase: 6 }],
+    label: 'Building & Financing',
+    items: [
+      { to: '/building-calculator', label: 'Building Calculator' },
+      { to: '/properties', label: 'Properties' },
+      { to: '/financing', label: 'Financing' },
+    ],
+  },
+  {
+    label: 'Planning',
+    items: [
+      { to: '/scenarios', label: 'Scenarios' },
+      { to: '/reports', label: 'Reports' },
+      { to: '/lender-view', label: 'Lender View' },
+      { to: '/settings', label: 'Settings & Projects' },
+    ],
   },
 ]
 
