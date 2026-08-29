@@ -9,16 +9,16 @@ const navSections: { label: string; items: { to: string; label: string; phase?: 
       { to: '/', label: 'Dashboard' },
       { to: '/enrollment', label: 'Enrollment' },
       { to: '/tuition', label: 'Tuition' },
+      { to: '/staffing', label: 'Staffing' },
       { to: '/payroll', label: 'Payroll' },
       { to: '/expenses', label: 'Expenses' },
+      { to: '/break-even', label: 'Break-Even' },
       { to: '/settings', label: 'Settings & Projects' },
     ],
   },
   {
     label: 'Coming in later phases',
     items: [
-      { to: '/staffing', label: 'Staffing', phase: 2 },
-      { to: '/break-even', label: 'Break-Even', phase: 2 },
       { to: '/building-calculator', label: 'Building Calculator', phase: 3 },
       { to: '/properties', label: 'Properties', phase: 4 },
       { to: '/financing', label: 'Financing', phase: 4 },

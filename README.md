@@ -8,14 +8,17 @@ price, to determine how much a center can responsibly borrow and spend on a buil
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full system architecture, data
 model, calculation dependency map, formula dictionary, screen map, and phased build plan.
 
-## Status: Phase 1 — Financial Core
+## Status: Phases 1–2 — Financial Core, Staffing & Break-Even
 
 Live: editable licensed capacity, add/remove age groups, enrollment validation, tuition
-engine (correct weekly→monthly conversion), private-pay/subsidized revenue split, payroll
-(flat entry per position), operating expenses (fixed / per-child / % of revenue), EBITDA,
-monthly cash flow, and an executive Dashboard. Multi-project save/duplicate/rename/delete via
-IndexedDB. Staffing ratios & cliffs, break-even, building affordability, financing, scenarios,
-and reports arrive in Phases 2–6.
+engine (correct weekly→monthly conversion), private-pay/subsidized revenue split, operating
+expenses (fixed / per-child / % of revenue), EBITDA, monthly cash flow, and an executive
+Dashboard. Classroom staffing driven by child:staff ratios that render as UNKNOWN / NEEDS
+VERIFICATION rather than being assumed, staffing-cliff detection, support/admin payroll, a
+Break-Even engine that simulates enrollment child-by-child (not a linear formula, since
+staffing cliffs make cost non-linear), margin-tier targets, and per-classroom contribution
+economics. Multi-project save/duplicate/rename/delete via IndexedDB. Building affordability,
+financing, scenarios, and reports arrive in Phases 3–6.
 
 ## Development
 

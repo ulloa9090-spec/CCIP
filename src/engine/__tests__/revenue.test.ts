@@ -17,6 +17,8 @@ const makeGroup = (overrides: Partial<AgeGroup> = {}): AgeGroup => ({
   subsidyWeeklyRate: fromDollars(300),
   registrationFeeAnnual: fromDollars(100),
   discountPct: 0,
+  plannedStaffCount: 2,
+  staffMonthlyCostPerEmployee: fromDollars(2800),
   ...overrides,
 })
 

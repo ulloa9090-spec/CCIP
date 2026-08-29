@@ -30,6 +30,7 @@ interface ProjectStoreState {
   deleteProject: (id: string) => Promise<void>
 
   setLicensedCapacity: (capacity: number) => void
+  setStaffCoverageBufferPct: (pct: number) => void
   addAgeGroup: () => void
   removeAgeGroup: (id: string) => void
   updateAgeGroup: (id: string, patch: Partial<AgeGroup>) => void
@@ -184,6 +185,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
     },
 
     setLicensedCapacity: (capacity) => mutate((p) => ({ ...p, licensedCapacity: Math.max(0, Math.round(capacity)) })),
+    setStaffCoverageBufferPct: (pct) => mutate((p) => ({ ...p, staffCoverageBufferPct: Math.max(0, pct) })),
 
     addAgeGroup: () =>
       mutate((p) => ({
@@ -204,6 +206,8 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
             subsidyWeeklyRate: 0 as never,
             registrationFeeAnnual: 0 as never,
             discountPct: 0,
+            plannedStaffCount: 0,
+            staffMonthlyCostPerEmployee: 0 as never,
           },
         ],
       })),

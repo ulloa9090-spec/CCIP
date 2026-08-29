@@ -10,7 +10,7 @@ export const Dashboard = () => {
 
   if (!project || !calc) return null
 
-  const { revenue, financials, alerts } = calc
+  const { revenue, financials, alerts, breakEven } = calc
   const overallStatus = financials.ebitdaMonthly >= 0 ? (financials.ebitdaMargin >= 0.1 ? 'Healthy' : 'Marginal') : 'Loss-making'
   const statusTone: StatTone = financials.ebitdaMonthly >= 0 ? (financials.ebitdaMargin >= 0.1 ? 'good' : 'warning') : 'critical'
 
@@ -41,7 +41,18 @@ export const Dashboard = () => {
           sublabel="Before debt/rent — added in Phase 3"
           tone={financials.cashFlowMonthly >= 0 ? 'good' : 'critical'}
         />
-        <StatTile label="Break-Even" value="Phase 2" sublabel="Staffing & Break-Even engine" />
+        <StatTile
+          label="Break-Even"
+          value={
+            !breakEven.hasCapacity
+              ? '—'
+              : breakEven.breakEvenExceedsCapacity
+                ? 'Exceeds capacity'
+                : `${breakEven.breakEvenChildren} children`
+          }
+          sublabel={breakEven.hasUnknownRatios ? 'Preliminary — ratio unverified' : breakEven.hasCapacity ? formatPercent(breakEven.breakEvenOccupancy ?? 0) + ' occupancy' : undefined}
+          tone={breakEven.breakEvenExceedsCapacity ? 'critical' : 'neutral'}
+        />
         <StatTile label="Max Property Price" value="Phase 3" sublabel="Building Affordability engine" />
         <StatTile label="Overall Financial Status" value={overallStatus} tone={statusTone} />
       </div>

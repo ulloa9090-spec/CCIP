@@ -25,6 +25,21 @@ export interface AgeGroup {
   registrationFeeAnnual: Money
   /** Combined sibling/employee/other discount applied to gross tuition revenue, 0-1. */
   discountPct: number
+
+  /**
+   * Maximum children per staff member for this classroom, per spec §11: this
+   * must never be invented. `undefined` renders as UNKNOWN / NEEDS
+   * VERIFICATION in the UI rather than being treated as "no requirement."
+   */
+  ratioMaxChildrenPerStaff?: number
+  ratioJurisdiction?: string
+  ratioSource?: string
+  ratioVerifiedDate?: string
+
+  /** Actual classroom staff the operator plans to schedule for this group. */
+  plannedStaffCount: number
+  /** Fully-loaded monthly cost per classroom staff member in this group. */
+  staffMonthlyCostPerEmployee: Money
 }
 
 export type ExpenseClassification = 'FIXED' | 'PER_CHILD' | 'PCT_REVENUE'
@@ -54,8 +69,15 @@ export interface Project {
   name: string
   licensedCapacity: number
   ageGroups: AgeGroup[]
+  /** Support/admin positions not tied to a specific classroom (Director, Cook, etc.). */
   payrollLineItems: PayrollLineItem[]
   expenseItems: ExpenseItem[]
+  /**
+   * Extra classroom staffing above the regulatory minimum to cover breaks,
+   * PTO, opening/closing, training, and floaters (spec §13). This is a
+   * financing-style assumption, not a regulation — editable, defaulted low.
+   */
+  staffCoverageBufferPct: number
   createdAt: string
   updatedAt: string
 }

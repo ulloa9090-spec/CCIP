@@ -17,6 +17,8 @@ const baseGroup = (overrides: Partial<AgeGroup> = {}): AgeGroup => ({
   subsidyWeeklyRate: fromDollars(300),
   registrationFeeAnnual: fromDollars(100),
   discountPct: 0,
+  plannedStaffCount: 2,
+  staffMonthlyCostPerEmployee: fromDollars(2800),
   ...overrides,
 })
 
@@ -27,6 +29,7 @@ const baseProject = (overrides: Partial<Project> = {}): Project => ({
   ageGroups: [baseGroup()],
   payrollLineItems: [{ id: 'director', title: 'Director', headcount: 1, monthlyCostPerEmployee: fromDollars(4500) }],
   expenseItems: [{ id: 'food', category: 'Food', label: 'Food', classification: 'FIXED', monthlyAmount: fromDollars(800), perChildMonthlyAmount: 0 as never, pctOfRevenue: 0 }],
+  staffCoverageBufferPct: 0.15,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,
@@ -37,8 +40,11 @@ describe('computeProject (full dependency chain)', () => {
     const result = computeProject(baseProject())
     expect(result.validationIssues).toHaveLength(0)
     expect(result.revenue.totalMonthlyRevenue).toBeGreaterThan(0)
+    expect(result.financials.totalMonthlyPayroll).toBe(
+      result.payroll.totalMonthlyPayroll + result.staffing.totalClassroomMonthlyPayroll,
+    )
     expect(result.financials.ebitdaMonthly).toBe(
-      result.revenue.totalMonthlyRevenue - result.payroll.totalMonthlyPayroll - result.expenses.totalMonthlyOpex,
+      result.revenue.totalMonthlyRevenue - result.financials.totalMonthlyPayroll - result.expenses.totalMonthlyOpex,
     )
   })
 

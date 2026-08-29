@@ -6,6 +6,11 @@ import type { AgeGroup, ExpenseItem, PayrollLineItem, Project } from '../engine/
  * Demonstration base case: a 60-child center (spec §2, §69). This is a
  * starting point only — licensedCapacity and every age group below are
  * fully editable and no formula in the engine depends on this number.
+ *
+ * Child:staff ratios are intentionally left unset (UNKNOWN) rather than
+ * invented (spec §11) — enter your jurisdiction's verified ratios on the
+ * Staffing screen. plannedStaffCount/staffMonthlyCostPerEmployee are the
+ * operator's own planned classroom staffing, not a regulatory figure.
  */
 const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
   {
@@ -21,6 +26,8 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(300),
     registrationFeeAnnual: fromDollars(100),
     discountPct: 0,
+    plannedStaffCount: 2,
+    staffMonthlyCostPerEmployee: fromDollars(2900),
   },
   {
     name: 'Young Toddlers',
@@ -35,6 +42,8 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(280),
     registrationFeeAnnual: fromDollars(100),
     discountPct: 0,
+    plannedStaffCount: 2,
+    staffMonthlyCostPerEmployee: fromDollars(2850),
   },
   {
     name: 'Older Toddlers',
@@ -49,6 +58,8 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(260),
     registrationFeeAnnual: fromDollars(100),
     discountPct: 0,
+    plannedStaffCount: 2,
+    staffMonthlyCostPerEmployee: fromDollars(2800),
   },
   {
     name: 'Preschool',
@@ -63,6 +74,8 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(235),
     registrationFeeAnnual: fromDollars(75),
     discountPct: 0,
+    plannedStaffCount: 2,
+    staffMonthlyCostPerEmployee: fromDollars(2750),
   },
   {
     name: 'Pre-K',
@@ -77,6 +90,8 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(225),
     registrationFeeAnnual: fromDollars(75),
     discountPct: 0,
+    plannedStaffCount: 2,
+    staffMonthlyCostPerEmployee: fromDollars(2750),
   },
   {
     name: 'School Age',
@@ -91,14 +106,14 @@ const demoAgeGroups: Omit<AgeGroup, 'id'>[] = [
     subsidyWeeklyRate: fromDollars(135),
     registrationFeeAnnual: fromDollars(50),
     discountPct: 0,
+    plannedStaffCount: 1,
+    staffMonthlyCostPerEmployee: fromDollars(2600),
   },
 ]
 
 const demoPayroll: Omit<PayrollLineItem, 'id'>[] = [
   { title: 'Director', headcount: 1, monthlyCostPerEmployee: fromDollars(5000) },
   { title: 'Assistant Director', headcount: 1, monthlyCostPerEmployee: fromDollars(3800) },
-  { title: 'Lead Teacher', headcount: 6, monthlyCostPerEmployee: fromDollars(3100) },
-  { title: 'Assistant Teacher', headcount: 5, monthlyCostPerEmployee: fromDollars(2400) },
   { title: 'Cook', headcount: 1, monthlyCostPerEmployee: fromDollars(2600) },
   { title: 'Administrative Staff', headcount: 1, monthlyCostPerEmployee: fromDollars(2800) },
 ]
@@ -123,6 +138,7 @@ export const createDefaultProject = (name = 'New Childcare Center'): Project => 
     ageGroups: demoAgeGroups.map((g) => ({ ...g, id: generateId('age') })),
     payrollLineItems: demoPayroll.map((p) => ({ ...p, id: generateId('pay') })),
     expenseItems: demoExpenses.map((e) => ({ ...e, id: generateId('exp') })),
+    staffCoverageBufferPct: 0.15,
     createdAt: now,
     updatedAt: now,
   }

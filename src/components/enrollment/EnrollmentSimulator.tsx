@@ -1,22 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Card } from '../common/Card'
+import { scaleAgeGroupsToOccupancy } from '../../engine/enrollmentScaling'
 import { computeRevenueSummary } from '../../engine/revenue'
 import { formatMoney, formatPercent, subMoney } from '../../engine/money'
 import { useProjectStore } from '../../store/projectStore'
-import type { AgeGroup } from '../../engine/types'
 
 const presets = [0.5, 0.6, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
-
-/** Scales enrollment to a target occupancy %, keeping each group's current private/subsidized mix. */
-const scaleGroupToOccupancy = (group: AgeGroup, occupancyPct: number): AgeGroup => {
-  const enrolled = Math.min(group.capacity, Math.round(group.capacity * occupancyPct))
-  if (group.enrolled === 0) {
-    return { ...group, enrolled, privatePay: enrolled, subsidized: 0 }
-  }
-  const privateRatio = group.privatePay / group.enrolled
-  const privatePay = Math.min(enrolled, Math.round(enrolled * privateRatio))
-  return { ...group, enrolled, privatePay, subsidized: enrolled - privatePay }
-}
 
 export const EnrollmentSimulator = () => {
   const project = useProjectStore((s) => s.activeProject)
@@ -25,8 +14,7 @@ export const EnrollmentSimulator = () => {
 
   const preview = useMemo(() => {
     if (!project || selected === null) return null
-    const scaled = project.ageGroups.map((g) => scaleGroupToOccupancy(g, selected))
-    return computeRevenueSummary(scaled)
+    return computeRevenueSummary(scaleAgeGroupsToOccupancy(project.ageGroups, selected))
   }, [project, selected])
 
   if (!project || !calc) return null
@@ -34,7 +22,7 @@ export const EnrollmentSimulator = () => {
   return (
     <Card
       title="Enrollment Simulator"
-      subtitle="Preview revenue at different occupancy levels (revenue only — staffing- and payroll-adjusted simulation arrives in Phase 2)."
+      subtitle="Preview revenue at different occupancy levels (revenue only — see Break-Even for the full staffing- and payroll-adjusted simulation)."
     >
       <div className="flex flex-wrap gap-2">
         {presets.map((p) => (

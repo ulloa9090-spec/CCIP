@@ -1,3 +1,4 @@
+import { regulatoryMinStaffFor } from './staffing'
 import type { AgeGroup, ExpenseItem, PayrollLineItem, Project } from './types'
 
 export type ValidationSeverity = 'ERROR' | 'WARNING' | 'CRITICAL'
@@ -40,6 +41,21 @@ export const validateAgeGroup = (group: AgeGroup): ValidationIssue[] => {
   }
   if (group.minAgeMonths > group.maxAgeMonths) {
     issues.push({ severity: 'WARNING', field: `${path}.minAgeMonths`, message: `${group.name}: minimum age is greater than maximum age.` })
+  }
+  if (group.ratioMaxChildrenPerStaff !== undefined && group.ratioMaxChildrenPerStaff <= 0) {
+    issues.push({ severity: 'ERROR', field: `${path}.ratioMaxChildrenPerStaff`, message: `${group.name}: child:staff ratio must be greater than zero.` })
+  }
+  if (group.plannedStaffCount < 0 || group.staffMonthlyCostPerEmployee < 0) {
+    issues.push({ severity: 'ERROR', field: `${path}.plannedStaffCount`, message: `${group.name}: staffing counts and costs cannot be negative.` })
+  }
+
+  const regulatoryMinStaff = regulatoryMinStaffFor(group.enrolled, group.ratioMaxChildrenPerStaff)
+  if (regulatoryMinStaff !== null && group.plannedStaffCount < regulatoryMinStaff) {
+    issues.push({
+      severity: 'CRITICAL',
+      field: `${path}.plannedStaffCount`,
+      message: `${group.name}: planned staff (${group.plannedStaffCount}) is below the regulatory minimum (${regulatoryMinStaff}) for ${group.enrolled} children at a 1:${group.ratioMaxChildrenPerStaff} ratio.`,
+    })
   }
 
   return issues

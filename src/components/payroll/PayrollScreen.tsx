@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Card } from '../common/Card'
 import { StatTile } from '../common/StatTile'
 import { MoneyInput, NumberField, TextField } from '../common/inputs'
@@ -13,30 +14,67 @@ export const PayrollScreen = () => {
 
   if (!project || !calc) return null
 
-  const { payroll, financials, revenue } = calc
-  const revenuePerEmployee = divMoney(financials.totalMonthlyRevenue, payroll.totalHeadcount)
-  const childrenPerEmployee = payroll.totalHeadcount > 0 ? revenue.totalEnrolled / payroll.totalHeadcount : 0
+  const { payroll, staffing, financials, revenue } = calc
+  const totalHeadcount = payroll.totalHeadcount + staffing.totalPlannedClassroomStaff
+  const revenuePerEmployee = divMoney(financials.totalMonthlyRevenue, totalHeadcount)
+  const childrenPerEmployee = totalHeadcount > 0 ? revenue.totalEnrolled / totalHeadcount : 0
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Payroll</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Phase 1 uses a fully-loaded monthly cost per employee, by position. The full Staffing Engine — ratios, staffing
-          cliffs, and regulatory-minimum vs. planned headcount — arrives in Phase 2 and will drive these headcounts
-          automatically.
+          Total payroll combines classroom staffing (set per age group on the{' '}
+          <Link to="/staffing" className="text-indigo-600 underline dark:text-indigo-400">
+            Staffing
+          </Link>{' '}
+          screen) with the support &amp; admin positions below.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Total Headcount" value={payroll.totalHeadcount.toString()} />
-        <StatTile label="Monthly Payroll" value={formatMoney(payroll.totalMonthlyPayroll)} sublabel={`${formatPercent(financials.payrollPctOfRevenue)} of revenue`} />
+        <StatTile label="Total Headcount" value={totalHeadcount.toString()} sublabel={`${staffing.totalPlannedClassroomStaff} classroom + ${payroll.totalHeadcount} support/admin`} />
+        <StatTile label="Total Monthly Payroll" value={formatMoney(financials.totalMonthlyPayroll)} sublabel={`${formatPercent(financials.payrollPctOfRevenue)} of revenue`} />
         <StatTile label="Revenue per Employee" value={formatMoney(revenuePerEmployee)} sublabel="per month" />
         <StatTile label="Children per Employee" value={childrenPerEmployee.toFixed(1)} />
       </div>
 
+      <Card title="Classroom Staffing" subtitle="Read-only summary — edit headcount, cost, and ratios per age group on the Staffing screen.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase text-slate-400">
+                <th className="whitespace-nowrap pb-2 pr-3 font-medium">Group</th>
+                <th className="whitespace-nowrap pb-2 pr-3 font-medium">Staff</th>
+                <th className="whitespace-nowrap pb-2 font-medium text-right">Monthly Cost</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {staffing.byGroup.map((s) => {
+                const group = project.ageGroups.find((g) => g.id === s.ageGroupId)
+                return (
+                  <tr key={s.ageGroupId}>
+                    <td className="whitespace-nowrap py-2 pr-3">{group?.name}</td>
+                    <td className="whitespace-nowrap py-2 pr-3 tabular-nums">{s.plannedStaff}</td>
+                    <td className="whitespace-nowrap py-2 text-right tabular-nums">{formatMoney(s.classroomMonthlyPayroll)}</td>
+                  </tr>
+                )
+              })}
+              {staffing.byGroup.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="py-2 text-slate-500 dark:text-slate-400">
+                    No age groups yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
       <Card
-        title="Positions"
+        title="Support & Admin Positions"
+        subtitle="Not tied to a classroom — Director, Cook, Administrative Staff, Maintenance, and similar roles."
         action={
           <button
             type="button"
