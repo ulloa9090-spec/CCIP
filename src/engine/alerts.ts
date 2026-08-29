@@ -2,6 +2,7 @@ import type { BreakEvenResult } from './breakEven'
 import type { BuildingAffordabilityResult } from './buildingAffordability'
 import type { FinancialSummary } from './financials'
 import { formatMoney, formatPercent } from './money'
+import { VERDICT_LABELS, type PropertyAffordabilityResult } from './propertyAnalysis'
 import type { RevenueSummary } from './revenue'
 import type { StaffingSummary } from './staffing'
 import type { StaffingCliff } from './staffingCliffs'
@@ -27,6 +28,7 @@ export const computeAlerts = (
   nextCliffs: StaffingCliff[],
   breakEven: BreakEvenResult,
   building: BuildingAffordabilityResult,
+  propertyAffordability: PropertyAffordabilityResult | null,
   ageGroups: AgeGroup[],
 ): Alert[] => {
   const alerts: Alert[] = []
@@ -117,6 +119,26 @@ export const computeAlerts = (
         message: `Maximum Property Price is a PRELIMINARY / LOW CONFIDENCE range — no renovation, closing, or other project costs have been entered yet on the Building Calculator.`,
       })
     }
+  }
+
+  if (propertyAffordability) {
+    if (propertyAffordability.sourcesUses.gap > 0) {
+      alerts.push({
+        level: 'critical',
+        message: `FUNDING GAP: ${formatMoney(propertyAffordability.sourcesUses.gap)} — proposed financing + equity do not cover total project cost.`,
+      })
+    }
+    if (propertyAffordability.equityCheck.isEquityShortfall) {
+      alerts.push({
+        level: 'critical',
+        message: `Owner equity is ${formatMoney(propertyAffordability.equityCheck.equityGap)} below the lender's required minimum.`,
+      })
+    }
+    const verdictLevel = propertyAffordability.verdict === 'AFFORDABLE' ? 'good' : propertyAffordability.verdict === 'NOT_AFFORDABLE' ? 'critical' : 'warning'
+    alerts.push({
+      level: verdictLevel,
+      message: `Property verdict: ${VERDICT_LABELS[propertyAffordability.verdict]} — ${propertyAffordability.reasons[0]}`,
+    })
   }
 
   return alerts

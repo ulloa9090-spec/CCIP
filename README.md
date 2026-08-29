@@ -8,7 +8,7 @@ price, to determine how much a center can responsibly borrow and spend on a buil
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full system architecture, data
 model, calculation dependency map, formula dictionary, screen map, and phased build plan.
 
-## Status: Phases 1–3 — Financial Core, Staffing/Break-Even, Building Affordability
+## Status: Phases 1–4 — Financial Core through Financing
 
 Live: editable licensed capacity, add/remove age groups, enrollment validation, tuition
 engine (correct weekly→monthly conversion), private-pay/subsidized revenue split, operating
@@ -22,8 +22,13 @@ center's own operating economy — DSCR and target-margin debt-capacity methods 
 conservative one always binding, standard loan amortization, editable non-property project
 costs, working capital (quick method), a negotiation buffer, and a LOW/MEDIUM confidence flag
 that keeps the result an honest "PRELIMINARY RANGE" until real project costs are entered.
-Multi-project save/duplicate/rename/delete via IndexedDB. Financing types (SBA 504/7(a)/
-seller), Property-First mode, scenarios, and reports arrive in Phases 4–6.
+Actual multi-tranche financing structures (SBA 504, SBA 7(a), conventional, seller/owner
+financing, or custom — no current market rate ever hard-coded), a Sources & Uses table that
+reports a FUNDING GAP rather than hiding it, saved Properties with Property-First affordability
+verdicts (AFFORDABLE / AFFORDABLE WITH CONDITIONS / RENEGOTIATE / HIGH RISK / NOT AFFORDABLE),
+and a Reverse Calculation panel answering "how many children do I need to afford this specific
+building?" Multi-project save/duplicate/rename/delete via IndexedDB. Scenarios, sensitivity
+analysis, Purchase vs. Lease, and reports arrive in Phases 5–6.
 
 ## Development
 

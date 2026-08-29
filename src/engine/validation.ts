@@ -1,5 +1,5 @@
 import { regulatoryMinStaffFor } from './staffing'
-import type { AgeGroup, ExpenseItem, PayrollLineItem, Project, ProjectCostLineItem } from './types'
+import type { AgeGroup, ExpenseItem, FinancingTranche, PayrollLineItem, Project, ProjectCostLineItem, PropertyRecord } from './types'
 
 export type ValidationSeverity = 'ERROR' | 'WARNING' | 'CRITICAL'
 
@@ -110,7 +110,30 @@ export const validateFinancingAssumptions = (project: Project): ValidationIssue[
   if (project.workingCapitalMonths < 0) {
     issues.push({ severity: 'ERROR', field: 'workingCapitalMonths', message: 'Working capital months cannot be negative.' })
   }
+  if (project.requiredEquityPct < 0 || project.requiredEquityPct > 1) {
+    issues.push({ severity: 'ERROR', field: 'requiredEquityPct', message: 'Required equity must be between 0% and 100%.' })
+  }
 
+  return issues
+}
+
+export const validateFinancingTranche = (tranche: FinancingTranche): ValidationIssue[] => {
+  const issues: ValidationIssue[] = []
+  const path = `tranche:${tranche.id}`
+  if (tranche.amount < 0) issues.push({ severity: 'ERROR', field: `${path}.amount`, message: `${tranche.label}: amount cannot be negative.` })
+  if (tranche.ratePct < 0) issues.push({ severity: 'ERROR', field: `${path}.ratePct`, message: `${tranche.label}: interest rate cannot be negative.` })
+  if (tranche.feesPct < 0 || tranche.feesPct > 1) issues.push({ severity: 'ERROR', field: `${path}.feesPct`, message: `${tranche.label}: fees must be between 0% and 100%.` })
+  if (tranche.amount > 0 && tranche.amortizationYears <= 0) {
+    issues.push({ severity: 'ERROR', field: `${path}.amortizationYears`, message: `${tranche.label}: amortization period must be greater than zero years.` })
+  }
+  return issues
+}
+
+export const validatePropertyRecord = (property: PropertyRecord): ValidationIssue[] => {
+  const issues: ValidationIssue[] = []
+  const path = `property:${property.id}`
+  if (property.askingPrice < 0) issues.push({ severity: 'ERROR', field: `${path}.askingPrice`, message: `${property.address || 'Property'}: asking price cannot be negative.` })
+  if (property.proposedOffer < 0) issues.push({ severity: 'ERROR', field: `${path}.proposedOffer`, message: `${property.address || 'Property'}: proposed offer cannot be negative.` })
   return issues
 }
 
@@ -134,6 +157,8 @@ export const validateProject = (project: Project): ValidationIssue[] => {
   project.payrollLineItems.forEach((p) => issues.push(...validatePayrollLineItem(p)))
   project.expenseItems.forEach((e) => issues.push(...validateExpenseItem(e)))
   project.projectCostLineItems.forEach((p) => issues.push(...validateProjectCostLineItem(p)))
+  project.financingTranches.forEach((t) => issues.push(...validateFinancingTranche(t)))
+  project.properties.forEach((p) => issues.push(...validatePropertyRecord(p)))
   issues.push(...validateFinancingAssumptions(project))
 
   return issues

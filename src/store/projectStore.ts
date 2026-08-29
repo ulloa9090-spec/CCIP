@@ -1,7 +1,16 @@
 import { create } from 'zustand'
 import { computeProject, type ProjectCalculation } from '../engine'
 import type { Money } from '../engine/money'
-import type { AgeGroup, ExpenseItem, PayrollLineItem, Project, ProjectCostLineItem } from '../engine/types'
+import type {
+  AgeGroup,
+  ExpenseItem,
+  FinancingTranche,
+  FinancingType,
+  PayrollLineItem,
+  Project,
+  ProjectCostLineItem,
+  PropertyRecord,
+} from '../engine/types'
 import { generateId } from '../lib/id'
 import { indexedDbRepository } from '../persistence/indexedDbRepository'
 import type { ProjectRepository } from '../persistence/repository'
@@ -55,6 +64,17 @@ interface ProjectStoreState {
   addProjectCostLineItem: () => void
   removeProjectCostLineItem: (id: string) => void
   updateProjectCostLineItem: (id: string, patch: Partial<ProjectCostLineItem>) => void
+
+  setFinancingType: (type: FinancingType) => void
+  setRequiredEquityPct: (value: number) => void
+  addFinancingTranche: () => void
+  removeFinancingTranche: (id: string) => void
+  updateFinancingTranche: (id: string, patch: Partial<FinancingTranche>) => void
+
+  addProperty: () => void
+  removeProperty: (id: string) => void
+  updateProperty: (id: string, patch: Partial<PropertyRecord>) => void
+  selectProperty: (id: string | null) => void
 }
 
 const recompute = (project: Project): ProjectCalculation => computeProject(project)
@@ -301,5 +321,62 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
         ...p,
         projectCostLineItems: p.projectCostLineItems.map((i) => (i.id === id ? { ...i, ...patch } : i)),
       })),
+
+    setFinancingType: (financingType) => mutate((p) => ({ ...p, financingType })),
+    setRequiredEquityPct: (value) => mutate((p) => ({ ...p, requiredEquityPct: Math.max(0, value) })),
+
+    addFinancingTranche: () =>
+      mutate((p) => {
+        const defaultLabel = nextTrancheLabel(p.financingType, p.financingTranches.length)
+        return {
+          ...p,
+          financingTranches: [
+            ...p.financingTranches,
+            { id: generateId('tranche'), label: defaultLabel, amount: 0 as never, ratePct: 0, amortizationYears: 25, feesPct: 0 },
+          ],
+        }
+      }),
+
+    removeFinancingTranche: (id) =>
+      mutate((p) => ({ ...p, financingTranches: p.financingTranches.filter((t) => t.id !== id) })),
+
+    updateFinancingTranche: (id, patch) =>
+      mutate((p) => ({
+        ...p,
+        financingTranches: p.financingTranches.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+      })),
+
+    addProperty: () =>
+      mutate((p) => ({
+        ...p,
+        properties: [
+          ...p.properties,
+          { id: generateId('property'), address: 'New Property', askingPrice: 0 as never, proposedOffer: 0 as never, notes: '' },
+        ],
+      })),
+
+    removeProperty: (id) =>
+      mutate((p) => ({
+        ...p,
+        properties: p.properties.filter((prop) => prop.id !== id),
+        selectedPropertyId: p.selectedPropertyId === id ? null : p.selectedPropertyId,
+      })),
+
+    updateProperty: (id, patch) =>
+      mutate((p) => ({
+        ...p,
+        properties: p.properties.map((prop) => (prop.id === id ? { ...prop, ...patch } : prop)),
+      })),
+
+    selectProperty: (id) => mutate((p) => ({ ...p, selectedPropertyId: id })),
   }
 })
+
+const nextTrancheLabel = (type: FinancingType, existingCount: number): string => {
+  if (type === 'SBA_504') return existingCount === 0 ? 'Bank First Lien' : existingCount === 1 ? 'CDC/SBA Second Lien' : 'New Tranche'
+  if (type === 'SBA_7A') return existingCount === 0 ? 'SBA 7(a) Loan' : 'New Tranche'
+  if (type === 'CONVENTIONAL') return existingCount === 0 ? 'Conventional Loan' : 'New Tranche'
+  if (type === 'SELLER_FINANCING') return existingCount === 0 ? 'Seller Note' : 'New Tranche'
+  if (type === 'OWNER_FINANCING') return existingCount === 0 ? 'Owner Financing' : 'New Tranche'
+  return 'New Tranche'
+}

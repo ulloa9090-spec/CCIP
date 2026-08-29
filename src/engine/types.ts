@@ -72,6 +72,32 @@ export interface ProjectCostLineItem {
   amount: Money
 }
 
+export type FinancingType = 'SBA_504' | 'SBA_7A' | 'CONVENTIONAL' | 'SELLER_FINANCING' | 'OWNER_FINANCING' | 'CUSTOM'
+
+/**
+ * One lien/tranche of an actual proposed financing structure (spec §27-28).
+ * No rate, term, or fee is ever defaulted to a "current market" figure — the
+ * user enters real terms from a real lender conversation.
+ */
+export interface FinancingTranche {
+  id: string
+  label: string
+  amount: Money
+  ratePct: number
+  amortizationYears: number
+  /** Estimated closing/origination fee, % of tranche amount — informational only, not amortized. */
+  feesPct: number
+}
+
+/** A saved building the user is evaluating (spec §35 Property-First Mode). */
+export interface PropertyRecord {
+  id: string
+  address: string
+  askingPrice: Money
+  proposedOffer: Money
+  notes: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -100,8 +126,17 @@ export interface Project {
   ownerEquityAvailable: Money
   /** Quick-method working capital: months of payroll+OPEX to hold in reserve (spec §31). */
   workingCapitalMonths: number
-  /** Non-property project costs: renovation, FF&E, closing, professional fees, etc. */
+  /** Non-property project costs: renovation, FF&E, closing, professional fees, etc. Shared by forward and Property-First modes (spec §68: enter once, use everywhere). */
   projectCostLineItems: ProjectCostLineItem[]
+
+  /** Actual proposed financing structure for a real deal (spec §27-29), distinct from the abstract sustainable-capacity assumptions above. */
+  financingType: FinancingType
+  financingTranches: FinancingTranche[]
+  /** Lender-required minimum equity as a % of total project cost. */
+  requiredEquityPct: number
+
+  properties: PropertyRecord[]
+  selectedPropertyId: string | null
 
   createdAt: string
   updatedAt: string

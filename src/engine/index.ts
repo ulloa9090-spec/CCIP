@@ -4,9 +4,12 @@ import { computeBuildingAffordability, type BuildingAffordabilityResult } from '
 import { computeClassroomEconomics, type ClassroomEconomics } from './classroomEconomics'
 import { computeExpenseSummary, type ExpenseSummary } from './expenses'
 import { computeFinancialSummary, type FinancialSummary } from './financials'
+import { computeFinancingStructure, computeSourcesAndUses, type FinancingStructureResult, type SourcesUsesResult } from './financing'
 import { addMoney } from './money'
 import { computePayrollSummary, type PayrollSummary } from './payroll'
+import { computePropertyAffordability, type PropertyAffordabilityResult } from './propertyAnalysis'
 import { computeRevenueSummary, type RevenueSummary } from './revenue'
+import { computeReverseCalculation, type ReverseCalculationResult } from './reverseCalculation'
 import { computeStaffingSummary, type StaffingSummary } from './staffing'
 import { detectStaffingCliffs, nextCliffForGroup, type StaffingCliff } from './staffingCliffs'
 import type { Project } from './types'
@@ -24,6 +27,10 @@ export interface ProjectCalculation {
   expenses: ExpenseSummary
   financials: FinancialSummary
   building: BuildingAffordabilityResult
+  financingStructure: FinancingStructureResult
+  sourcesUses: SourcesUsesResult
+  propertyAffordability: PropertyAffordabilityResult | null
+  reverseCalculation: ReverseCalculationResult
   alerts: Alert[]
 }
 
@@ -52,7 +59,29 @@ export const computeProject = (project: Project): ProjectCalculation => {
   const classroomEconomics = computeClassroomEconomics(project.ageGroups, revenue.byGroup, staffing.byGroup, project.expenseItems)
   const building = computeBuildingAffordability(project, financials)
 
-  const alerts = computeAlerts(revenue, financials, validationIssues, staffing, nextCliffs, breakEven, building, project.ageGroups)
+  const financingStructure = computeFinancingStructure(project.financingTranches)
+  const selectedProperty = project.properties.find((p) => p.id === project.selectedPropertyId) ?? null
+  const sourcesUses = computeSourcesAndUses(
+    project.ownerEquityAvailable,
+    project.financingTranches,
+    selectedProperty ? (selectedProperty.proposedOffer > 0 ? selectedProperty.proposedOffer : selectedProperty.askingPrice) : null,
+    project.projectCostLineItems.map((i) => ({ label: i.label, amount: i.amount })),
+    building.projectCost.workingCapitalAmount,
+  )
+  const propertyAffordability = selectedProperty ? computePropertyAffordability(selectedProperty, project, financials, building) : null
+  const reverseCalculation = computeReverseCalculation(selectedProperty, project, building.projectCost)
+
+  const alerts = computeAlerts(
+    revenue,
+    financials,
+    validationIssues,
+    staffing,
+    nextCliffs,
+    breakEven,
+    building,
+    propertyAffordability,
+    project.ageGroups,
+  )
 
   return {
     validationIssues,
@@ -66,6 +95,10 @@ export const computeProject = (project: Project): ProjectCalculation => {
     expenses,
     financials,
     building,
+    financingStructure,
+    sourcesUses,
+    propertyAffordability,
+    reverseCalculation,
     alerts,
   }
 }
@@ -76,13 +109,17 @@ export * from './breakEven'
 export * from './buildingAffordability'
 export * from './classroomEconomics'
 export * from './debtCapacity'
-export * from './projectCost'
 export * from './enrollmentScaling'
 export * from './expenses'
 export * from './financials'
+export * from './financing'
+export * from './levelEconomics'
 export * from './money'
 export * from './payroll'
+export * from './projectCost'
+export * from './propertyAnalysis'
 export * from './revenue'
+export * from './reverseCalculation'
 export * from './staffing'
 export * from './staffingCliffs'
 export * from './types'

@@ -150,6 +150,12 @@ export const createDefaultProject = (name = 'New Childcare Center'): Project => 
     // Left empty rather than invented — spec §65 (no false precision) and §44 (UNKNOWN ≠ zero).
     // Enter real renovation/FF&E/closing/professional-fee estimates on the Building Calculator.
     projectCostLineItems: [],
+    // No current SBA/lender rates are hard-coded anywhere (spec §27) — tranches start empty.
+    financingType: 'CUSTOM',
+    financingTranches: [],
+    requiredEquityPct: 0.1,
+    properties: [],
+    selectedPropertyId: null,
     createdAt: now,
     updatedAt: now,
   }
