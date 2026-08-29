@@ -64,6 +64,14 @@ export interface PayrollLineItem {
   monthlyCostPerEmployee: Money
 }
 
+/** A non-property project cost (renovation, FF&E, closing costs, etc.) — spec §30. */
+export interface ProjectCostLineItem {
+  id: string
+  category: string
+  label: string
+  amount: Money
+}
+
 export interface Project {
   id: string
   name: string
@@ -78,6 +86,23 @@ export interface Project {
    * financing-style assumption, not a regulation — editable, defaulted low.
    */
   staffCoverageBufferPct: number
+
+  /**
+   * Building-affordability assumptions (spec §21-34). Every one of these is a
+   * financing/underwriting assumption the user sets — none is asserted as a
+   * universal requirement (spec §22: "Financing Assumption", not fact).
+   */
+  targetDSCR: number
+  targetProfitMarginPct: number
+  loanInterestRatePct: number
+  loanAmortizationYears: number
+  negotiationBufferPct: number
+  ownerEquityAvailable: Money
+  /** Quick-method working capital: months of payroll+OPEX to hold in reserve (spec §31). */
+  workingCapitalMonths: number
+  /** Non-property project costs: renovation, FF&E, closing, professional fees, etc. */
+  projectCostLineItems: ProjectCostLineItem[]
+
   createdAt: string
   updatedAt: string
 }

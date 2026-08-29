@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { BreakEvenScreen } from './components/breakeven/BreakEvenScreen'
+import { BuildingCalculatorScreen } from './components/building/BuildingCalculatorScreen'
 import { ComingSoon } from './components/common/ComingSoon'
 import { Dashboard } from './components/dashboard/Dashboard'
 import { EnrollmentScreen } from './components/enrollment/EnrollmentScreen'
@@ -40,7 +41,7 @@ function App() {
           <Route path="/expenses" element={<ExpensesScreen />} />
           <Route path="/break-even" element={<BreakEvenScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="/building-calculator" element={<ComingSoon title="Building Calculator" phase={3} />} />
+          <Route path="/building-calculator" element={<BuildingCalculatorScreen />} />
           <Route path="/properties" element={<ComingSoon title="Properties" phase={4} />} />
           <Route path="/financing" element={<ComingSoon title="Financing" phase={4} />} />
           <Route path="/scenarios" element={<ComingSoon title="Scenarios" phase={5} />} />

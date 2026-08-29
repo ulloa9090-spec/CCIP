@@ -1,5 +1,6 @@
 import { computeAlerts, type Alert } from './alerts'
 import { computeBreakEven, type BreakEvenResult } from './breakEven'
+import { computeBuildingAffordability, type BuildingAffordabilityResult } from './buildingAffordability'
 import { computeClassroomEconomics, type ClassroomEconomics } from './classroomEconomics'
 import { computeExpenseSummary, type ExpenseSummary } from './expenses'
 import { computeFinancialSummary, type FinancialSummary } from './financials'
@@ -22,6 +23,7 @@ export interface ProjectCalculation {
   classroomEconomics: ClassroomEconomics[]
   expenses: ExpenseSummary
   financials: FinancialSummary
+  building: BuildingAffordabilityResult
   alerts: Alert[]
 }
 
@@ -48,8 +50,9 @@ export const computeProject = (project: Project): ProjectCalculation => {
   const nextCliffs = project.ageGroups.map(nextCliffForGroup).filter((c): c is StaffingCliff => c !== null)
   const breakEven = computeBreakEven(project.ageGroups, project.payrollLineItems, project.expenseItems)
   const classroomEconomics = computeClassroomEconomics(project.ageGroups, revenue.byGroup, staffing.byGroup, project.expenseItems)
+  const building = computeBuildingAffordability(project, financials)
 
-  const alerts = computeAlerts(revenue, financials, validationIssues, staffing, nextCliffs, breakEven, project.ageGroups)
+  const alerts = computeAlerts(revenue, financials, validationIssues, staffing, nextCliffs, breakEven, building, project.ageGroups)
 
   return {
     validationIssues,
@@ -62,13 +65,18 @@ export const computeProject = (project: Project): ProjectCalculation => {
     classroomEconomics,
     expenses,
     financials,
+    building,
     alerts,
   }
 }
 
 export * from './alerts'
+export * from './amortization'
 export * from './breakEven'
+export * from './buildingAffordability'
 export * from './classroomEconomics'
+export * from './debtCapacity'
+export * from './projectCost'
 export * from './enrollmentScaling'
 export * from './expenses'
 export * from './financials'

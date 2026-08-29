@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { computeProject, type ProjectCalculation } from '../engine'
-import type { AgeGroup, ExpenseItem, PayrollLineItem, Project } from '../engine/types'
+import type { Money } from '../engine/money'
+import type { AgeGroup, ExpenseItem, PayrollLineItem, Project, ProjectCostLineItem } from '../engine/types'
 import { generateId } from '../lib/id'
 import { indexedDbRepository } from '../persistence/indexedDbRepository'
 import type { ProjectRepository } from '../persistence/repository'
@@ -42,6 +43,18 @@ interface ProjectStoreState {
   addExpenseItem: () => void
   removeExpenseItem: (id: string) => void
   updateExpenseItem: (id: string, patch: Partial<ExpenseItem>) => void
+
+  setTargetDSCR: (value: number) => void
+  setTargetProfitMarginPct: (value: number) => void
+  setLoanInterestRatePct: (value: number) => void
+  setLoanAmortizationYears: (value: number) => void
+  setNegotiationBufferPct: (value: number) => void
+  setOwnerEquityAvailable: (value: Money) => void
+  setWorkingCapitalMonths: (value: number) => void
+
+  addProjectCostLineItem: () => void
+  removeProjectCostLineItem: (id: string) => void
+  updateProjectCostLineItem: (id: string, patch: Partial<ProjectCostLineItem>) => void
 }
 
 const recompute = (project: Project): ProjectCalculation => computeProject(project)
@@ -261,6 +274,32 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       mutate((p) => ({
         ...p,
         expenseItems: p.expenseItems.map((i) => (i.id === id ? { ...i, ...patch } : i)),
+      })),
+
+    setTargetDSCR: (value) => mutate((p) => ({ ...p, targetDSCR: Math.max(0, value) })),
+    setTargetProfitMarginPct: (value) => mutate((p) => ({ ...p, targetProfitMarginPct: Math.max(0, value) })),
+    setLoanInterestRatePct: (value) => mutate((p) => ({ ...p, loanInterestRatePct: Math.max(0, value) })),
+    setLoanAmortizationYears: (value) => mutate((p) => ({ ...p, loanAmortizationYears: Math.max(0, value) })),
+    setNegotiationBufferPct: (value) => mutate((p) => ({ ...p, negotiationBufferPct: Math.max(0, value) })),
+    setOwnerEquityAvailable: (value) => mutate((p) => ({ ...p, ownerEquityAvailable: value })),
+    setWorkingCapitalMonths: (value) => mutate((p) => ({ ...p, workingCapitalMonths: Math.max(0, value) })),
+
+    addProjectCostLineItem: () =>
+      mutate((p) => ({
+        ...p,
+        projectCostLineItems: [
+          ...p.projectCostLineItems,
+          { id: generateId('cost'), category: 'Other', label: 'New Cost', amount: 0 as never },
+        ],
+      })),
+
+    removeProjectCostLineItem: (id) =>
+      mutate((p) => ({ ...p, projectCostLineItems: p.projectCostLineItems.filter((i) => i.id !== id) })),
+
+    updateProjectCostLineItem: (id, patch) =>
+      mutate((p) => ({
+        ...p,
+        projectCostLineItems: p.projectCostLineItems.map((i) => (i.id === id ? { ...i, ...patch } : i)),
       })),
   }
 })

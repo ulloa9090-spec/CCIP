@@ -1,5 +1,5 @@
 import { regulatoryMinStaffFor } from './staffing'
-import type { AgeGroup, ExpenseItem, PayrollLineItem, Project } from './types'
+import type { AgeGroup, ExpenseItem, PayrollLineItem, Project, ProjectCostLineItem } from './types'
 
 export type ValidationSeverity = 'ERROR' | 'WARNING' | 'CRITICAL'
 
@@ -79,6 +79,41 @@ export const validateExpenseItem = (item: ExpenseItem): ValidationIssue[] => {
   return issues
 }
 
+export const validateProjectCostLineItem = (item: ProjectCostLineItem): ValidationIssue[] => {
+  const issues: ValidationIssue[] = []
+  if (item.amount < 0) issues.push({ severity: 'ERROR', field: `projectCost:${item.id}`, message: `${item.label}: amount cannot be negative.` })
+  return issues
+}
+
+/** Building-affordability assumptions (spec §58: 0-year amortization and invalid interest are hard errors). */
+export const validateFinancingAssumptions = (project: Project): ValidationIssue[] => {
+  const issues: ValidationIssue[] = []
+
+  if (project.targetDSCR <= 0) {
+    issues.push({ severity: 'ERROR', field: 'targetDSCR', message: 'Target DSCR must be greater than zero.' })
+  }
+  if (project.targetProfitMarginPct < 0 || project.targetProfitMarginPct > 1) {
+    issues.push({ severity: 'ERROR', field: 'targetProfitMarginPct', message: 'Target profit margin must be between 0% and 100%.' })
+  }
+  if (project.loanInterestRatePct < 0) {
+    issues.push({ severity: 'ERROR', field: 'loanInterestRatePct', message: 'Interest rate cannot be negative.' })
+  }
+  if (project.loanAmortizationYears <= 0) {
+    issues.push({ severity: 'ERROR', field: 'loanAmortizationYears', message: 'Amortization period must be greater than zero years.' })
+  }
+  if (project.negotiationBufferPct < 0 || project.negotiationBufferPct > 1) {
+    issues.push({ severity: 'ERROR', field: 'negotiationBufferPct', message: 'Negotiation buffer must be between 0% and 100%.' })
+  }
+  if (project.ownerEquityAvailable < 0) {
+    issues.push({ severity: 'ERROR', field: 'ownerEquityAvailable', message: 'Owner equity available cannot be negative.' })
+  }
+  if (project.workingCapitalMonths < 0) {
+    issues.push({ severity: 'ERROR', field: 'workingCapitalMonths', message: 'Working capital months cannot be negative.' })
+  }
+
+  return issues
+}
+
 export const validateProject = (project: Project): ValidationIssue[] => {
   const issues: ValidationIssue[] = []
 
@@ -98,6 +133,8 @@ export const validateProject = (project: Project): ValidationIssue[] => {
   project.ageGroups.forEach((g) => issues.push(...validateAgeGroup(g)))
   project.payrollLineItems.forEach((p) => issues.push(...validatePayrollLineItem(p)))
   project.expenseItems.forEach((e) => issues.push(...validateExpenseItem(e)))
+  project.projectCostLineItems.forEach((p) => issues.push(...validateProjectCostLineItem(p)))
+  issues.push(...validateFinancingAssumptions(project))
 
   return issues
 }

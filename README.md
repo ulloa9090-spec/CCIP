@@ -8,7 +8,7 @@ price, to determine how much a center can responsibly borrow and spend on a buil
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full system architecture, data
 model, calculation dependency map, formula dictionary, screen map, and phased build plan.
 
-## Status: Phases 1–2 — Financial Core, Staffing & Break-Even
+## Status: Phases 1–3 — Financial Core, Staffing/Break-Even, Building Affordability
 
 Live: editable licensed capacity, add/remove age groups, enrollment validation, tuition
 engine (correct weekly→monthly conversion), private-pay/subsidized revenue split, operating
@@ -17,8 +17,13 @@ Dashboard. Classroom staffing driven by child:staff ratios that render as UNKNOW
 VERIFICATION rather than being assumed, staffing-cliff detection, support/admin payroll, a
 Break-Even engine that simulates enrollment child-by-child (not a linear formula, since
 staffing cliffs make cost non-linear), margin-tier targets, and per-classroom contribution
-economics. Multi-project save/duplicate/rename/delete via IndexedDB. Building affordability,
-financing, scenarios, and reports arrive in Phases 3–6.
+economics. A Building Calculator computes Maximum Property Price as a consequence of the
+center's own operating economy — DSCR and target-margin debt-capacity methods with the more
+conservative one always binding, standard loan amortization, editable non-property project
+costs, working capital (quick method), a negotiation buffer, and a LOW/MEDIUM confidence flag
+that keeps the result an honest "PRELIMINARY RANGE" until real project costs are entered.
+Multi-project save/duplicate/rename/delete via IndexedDB. Financing types (SBA 504/7(a)/
+seller), Property-First mode, scenarios, and reports arrive in Phases 4–6.
 
 ## Development
 

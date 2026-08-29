@@ -139,6 +139,17 @@ export const createDefaultProject = (name = 'New Childcare Center'): Project => 
     payrollLineItems: demoPayroll.map((p) => ({ ...p, id: generateId('pay') })),
     expenseItems: demoExpenses.map((e) => ({ ...e, id: generateId('exp') })),
     staffCoverageBufferPct: 0.15,
+    // Financing assumptions (spec §22: editable assumptions, never asserted as universal requirements).
+    targetDSCR: 1.25,
+    targetProfitMarginPct: 0.15,
+    loanInterestRatePct: 0.075,
+    loanAmortizationYears: 25,
+    negotiationBufferPct: 0.1,
+    ownerEquityAvailable: fromDollars(150000),
+    workingCapitalMonths: 3,
+    // Left empty rather than invented — spec §65 (no false precision) and §44 (UNKNOWN ≠ zero).
+    // Enter real renovation/FF&E/closing/professional-fee estimates on the Building Calculator.
+    projectCostLineItems: [],
     createdAt: now,
     updatedAt: now,
   }

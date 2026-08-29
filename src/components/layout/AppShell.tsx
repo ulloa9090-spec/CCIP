@@ -13,13 +13,13 @@ const navSections: { label: string; items: { to: string; label: string; phase?: 
       { to: '/payroll', label: 'Payroll' },
       { to: '/expenses', label: 'Expenses' },
       { to: '/break-even', label: 'Break-Even' },
+      { to: '/building-calculator', label: 'Building Calculator' },
       { to: '/settings', label: 'Settings & Projects' },
     ],
   },
   {
     label: 'Coming in later phases',
     items: [
-      { to: '/building-calculator', label: 'Building Calculator', phase: 3 },
       { to: '/properties', label: 'Properties', phase: 4 },
       { to: '/financing', label: 'Financing', phase: 4 },
       { to: '/scenarios', label: 'Scenarios', phase: 5 },

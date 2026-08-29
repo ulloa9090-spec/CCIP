@@ -10,7 +10,7 @@ export const Dashboard = () => {
 
   if (!project || !calc) return null
 
-  const { revenue, financials, alerts, breakEven } = calc
+  const { revenue, financials, alerts, breakEven, building } = calc
   const overallStatus = financials.ebitdaMonthly >= 0 ? (financials.ebitdaMargin >= 0.1 ? 'Healthy' : 'Marginal') : 'Loss-making'
   const statusTone: StatTone = financials.ebitdaMonthly >= 0 ? (financials.ebitdaMargin >= 0.1 ? 'good' : 'warning') : 'critical'
 
@@ -38,7 +38,7 @@ export const Dashboard = () => {
         <StatTile
           label="Monthly Cash Flow"
           value={formatMoney(financials.cashFlowMonthly)}
-          sublabel="Before debt/rent — added in Phase 3"
+          sublabel="Before debt/rent — subtracted once a property/loan is chosen (Phase 4)"
           tone={financials.cashFlowMonthly >= 0 ? 'good' : 'critical'}
         />
         <StatTile
@@ -53,7 +53,15 @@ export const Dashboard = () => {
           sublabel={breakEven.hasUnknownRatios ? 'Preliminary — ratio unverified' : breakEven.hasCapacity ? formatPercent(breakEven.breakEvenOccupancy ?? 0) + ' occupancy' : undefined}
           tone={breakEven.breakEvenExceedsCapacity ? 'critical' : 'neutral'}
         />
-        <StatTile label="Max Property Price" value="Phase 3" sublabel="Building Affordability engine" />
+        <StatTile label="Sustainable Monthly Debt" value={formatMoney(building.debtCapacity.maxMonthlyDebtService)} sublabel={`Binding: ${building.debtCapacity.bindingConstraint === 'DSCR' ? 'DSCR' : 'Target Margin'}`} />
+        <StatTile label="Max Sustainable Loan" value={formatMoney(building.maxSustainableLoan)} />
+        <StatTile
+          label="Max Property Price"
+          value={formatMoney(building.maxPropertyPrice)}
+          sublabel={building.confidence === 'LOW' ? 'Preliminary — no project costs entered' : `Search price: ${formatMoney(building.recommendedSearchPrice)}`}
+          tone={building.confidence === 'LOW' ? 'warning' : 'neutral'}
+        />
+        <StatTile label="Owner Equity Available" value={formatMoney(project.ownerEquityAvailable)} />
         <StatTile label="Overall Financial Status" value={overallStatus} tone={statusTone} />
       </div>
 

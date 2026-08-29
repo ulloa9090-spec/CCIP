@@ -1,4 +1,5 @@
 import type { BreakEvenResult } from './breakEven'
+import type { BuildingAffordabilityResult } from './buildingAffordability'
 import type { FinancialSummary } from './financials'
 import { formatMoney, formatPercent } from './money'
 import type { RevenueSummary } from './revenue'
@@ -25,6 +26,7 @@ export const computeAlerts = (
   staffing: StaffingSummary,
   nextCliffs: StaffingCliff[],
   breakEven: BreakEvenResult,
+  building: BuildingAffordabilityResult,
   ageGroups: AgeGroup[],
 ): Alert[] => {
   const alerts: Alert[] = []
@@ -85,6 +87,34 @@ export const computeAlerts = (
       alerts.push({
         level: 'warning',
         message: `Break-Even is a PRELIMINARY estimate — one or more group ratios are unverified, so staffing cost is extrapolated from planned staffing rather than a verified ratio.`,
+      })
+    }
+  }
+
+  if (financials.ebitdaMonthly >= 0) {
+    if (building.debtCapacity.maxMonthlyDebtService <= 0) {
+      alerts.push({
+        level: 'critical',
+        message: `This center's current profit does not support any debt service at the target DSCR / margin — Maximum Property Price is $0 until profitability improves.`,
+      })
+    } else {
+      alerts.push({
+        level: 'good',
+        message: `Sustainable debt service is ${formatMoney(building.debtCapacity.maxMonthlyDebtService)}/month, governed by the ${
+          building.debtCapacity.bindingConstraint === 'DSCR' ? 'DSCR' : 'target margin'
+        } constraint.`,
+      })
+    }
+    if (building.rawMaxPropertyPriceIsNegative) {
+      alerts.push({
+        level: 'critical',
+        message: `Non-property project costs (${formatMoney(building.projectCost.totalNonPropertyCost)}) exceed the maximum sustainable project cost — Maximum Property Price is $0.`,
+      })
+    }
+    if (building.confidence === 'LOW') {
+      alerts.push({
+        level: 'warning',
+        message: `Maximum Property Price is a PRELIMINARY / LOW CONFIDENCE range — no renovation, closing, or other project costs have been entered yet on the Building Calculator.`,
       })
     }
   }
