@@ -91,6 +91,44 @@ export const PercentInput = ({
   )
 }
 
+/** Like PercentInput, but allows negative values (for what-if deltas: -10% to +10%). */
+export const SignedPercentInput = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) => {
+  const [text, setText] = useState((value * 100).toString())
+
+  useEffect(() => {
+    setText((value * 100).toString())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <input
+          type="number"
+          inputMode="decimal"
+          step="0.5"
+          className={`${baseInputClass} pr-7`}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => {
+            const parsed = Number.parseFloat(text)
+            onChange((Number.isFinite(parsed) ? parsed : 0) / 100)
+          }}
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">%</span>
+      </div>
+    </Field>
+  )
+}
+
 export const NumberField = ({
   label,
   value,

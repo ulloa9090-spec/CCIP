@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { computeProject, type ProjectCalculation } from '../engine'
 import type { Money } from '../engine/money'
+import { applyScenarioData, extractScenarioData, syncActiveScenario } from '../engine/scenarios'
 import type {
   AgeGroup,
   ExpenseItem,
@@ -75,6 +76,12 @@ interface ProjectStoreState {
   removeProperty: (id: string) => void
   updateProperty: (id: string, patch: Partial<PropertyRecord>) => void
   selectProperty: (id: string | null) => void
+
+  createScenario: (name: string) => void
+  duplicateScenario: (id: string) => void
+  selectScenario: (id: string) => void
+  renameScenario: (id: string, name: string) => void
+  deleteScenario: (id: string) => void
 }
 
 const recompute = (project: Project): ProjectCalculation => computeProject(project)
@@ -103,7 +110,7 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
   const mutate = (updater: (project: Project) => Project) => {
     const current = get().activeProject
     if (!current) return
-    const next = touch(updater(current))
+    const next = syncActiveScenario(touch(updater(current)))
     set({ activeProject: next, calculation: recompute(next) })
     persist()
   }
@@ -369,6 +376,39 @@ export const useProjectStore = create<ProjectStoreState>((set, get) => {
       })),
 
     selectProperty: (id) => mutate((p) => ({ ...p, selectedPropertyId: id })),
+
+    createScenario: (name) =>
+      mutate((p) => {
+        const scenario = { id: generateId('scenario'), name, data: extractScenarioData(p) }
+        return { ...p, scenarios: [...p.scenarios, scenario], activeScenarioId: scenario.id }
+      }),
+
+    duplicateScenario: (id) =>
+      mutate((p) => {
+        const source = p.scenarios.find((s) => s.id === id)
+        if (!source) return p
+        const scenario = { id: generateId('scenario'), name: `${source.name} (Copy)`, basedOn: source.id, data: source.data }
+        return { ...p, scenarios: [...p.scenarios, scenario] }
+      }),
+
+    selectScenario: (id) =>
+      mutate((p) => {
+        const target = p.scenarios.find((s) => s.id === id)
+        if (!target) return p
+        return applyScenarioData({ ...p, activeScenarioId: id }, target.data)
+      }),
+
+    renameScenario: (id, name) =>
+      mutate((p) => ({ ...p, scenarios: p.scenarios.map((s) => (s.id === id ? { ...s, name } : s)) })),
+
+    deleteScenario: (id) =>
+      mutate((p) => {
+        if (p.scenarios.length <= 1) return p // always keep at least one scenario
+        const remaining = p.scenarios.filter((s) => s.id !== id)
+        if (p.activeScenarioId !== id) return { ...p, scenarios: remaining }
+        const next = remaining[0]
+        return applyScenarioData({ ...p, scenarios: remaining, activeScenarioId: next.id }, next.data)
+      }),
   }
 })
 

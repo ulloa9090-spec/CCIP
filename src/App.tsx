@@ -10,6 +10,7 @@ import { FinancingScreen } from './components/financing/FinancingScreen'
 import { AppShell } from './components/layout/AppShell'
 import { PayrollScreen } from './components/payroll/PayrollScreen'
 import { PropertiesScreen } from './components/properties/PropertiesScreen'
+import { ScenariosScreen } from './components/scenarios/ScenariosScreen'
 import { SettingsScreen } from './components/settings/SettingsScreen'
 import { StaffingScreen } from './components/staffing/StaffingScreen'
 import { TuitionScreen } from './components/tuition/TuitionScreen'
@@ -46,7 +47,7 @@ function App() {
           <Route path="/building-calculator" element={<BuildingCalculatorScreen />} />
           <Route path="/properties" element={<PropertiesScreen />} />
           <Route path="/financing" element={<FinancingScreen />} />
-          <Route path="/scenarios" element={<ComingSoon title="Scenarios" phase={5} />} />
+          <Route path="/scenarios" element={<ScenariosScreen />} />
           <Route path="/reports" element={<ComingSoon title="Reports" phase={6} />} />
         </Route>
       </Routes>

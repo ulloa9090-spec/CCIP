@@ -1,5 +1,6 @@
 import { generateId } from '../lib/id'
 import { fromDollars } from '../engine/money'
+import { extractScenarioData } from '../engine/scenarios'
 import type { AgeGroup, ExpenseItem, PayrollLineItem, Project } from '../engine/types'
 
 /**
@@ -131,7 +132,8 @@ const demoExpenses: Omit<ExpenseItem, 'id'>[] = [
 
 export const createDefaultProject = (name = 'New Childcare Center'): Project => {
   const now = new Date().toISOString()
-  return {
+
+  const withoutScenarios: Omit<Project, 'scenarios' | 'activeScenarioId'> = {
     id: generateId('project'),
     name,
     licensedCapacity: 60,
@@ -158,5 +160,12 @@ export const createDefaultProject = (name = 'New Childcare Center'): Project => 
     selectedPropertyId: null,
     createdAt: now,
     updatedAt: now,
+  }
+
+  const baseScenarioId = generateId('scenario')
+  return {
+    ...withoutScenarios,
+    scenarios: [{ id: baseScenarioId, name: 'Base', data: extractScenarioData(withoutScenarios as Project) }],
+    activeScenarioId: baseScenarioId,
   }
 }

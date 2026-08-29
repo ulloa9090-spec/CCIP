@@ -98,6 +98,40 @@ export interface PropertyRecord {
   notes: string
 }
 
+/**
+ * Everything a Scenario (Conservative/Base/Optimistic/Custom, spec §38) can
+ * vary independently: enrollment, tuition, wages, staffing, expenses,
+ * renovation/project cost, interest, equity, and financing. Properties are
+ * deliberately excluded — the buildings you're evaluating don't change
+ * between scenarios, only how affordable they look does.
+ */
+export interface ScenarioData {
+  licensedCapacity: number
+  ageGroups: AgeGroup[]
+  payrollLineItems: PayrollLineItem[]
+  expenseItems: ExpenseItem[]
+  staffCoverageBufferPct: number
+  targetDSCR: number
+  targetProfitMarginPct: number
+  loanInterestRatePct: number
+  loanAmortizationYears: number
+  negotiationBufferPct: number
+  ownerEquityAvailable: Money
+  workingCapitalMonths: number
+  projectCostLineItems: ProjectCostLineItem[]
+  financingType: FinancingType
+  financingTranches: FinancingTranche[]
+  requiredEquityPct: number
+}
+
+export interface Scenario {
+  id: string
+  name: string
+  /** Scenario id this was duplicated from, if any — for provenance only. */
+  basedOn?: string
+  data: ScenarioData
+}
+
 export interface Project {
   id: string
   name: string
@@ -137,6 +171,10 @@ export interface Project {
 
   properties: PropertyRecord[]
   selectedPropertyId: string | null
+
+  /** Saved named scenarios (spec §38); the fields above always mirror the active scenario's data. */
+  scenarios: Scenario[]
+  activeScenarioId: string
 
   createdAt: string
   updatedAt: string

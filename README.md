@@ -8,7 +8,7 @@ price, to determine how much a center can responsibly borrow and spend on a buil
 See [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full system architecture, data
 model, calculation dependency map, formula dictionary, screen map, and phased build plan.
 
-## Status: Phases 1–4 — Financial Core through Financing
+## Status: Phases 1–5 — Financial Core through Scenarios
 
 Live: editable licensed capacity, add/remove age groups, enrollment validation, tuition
 engine (correct weekly→monthly conversion), private-pay/subsidized revenue split, operating
@@ -27,8 +27,14 @@ financing, or custom — no current market rate ever hard-coded), a Sources & Us
 reports a FUNDING GAP rather than hiding it, saved Properties with Property-First affordability
 verdicts (AFFORDABLE / AFFORDABLE WITH CONDITIONS / RENEGOTIATE / HIGH RISK / NOT AFFORDABLE),
 and a Reverse Calculation panel answering "how many children do I need to afford this specific
-building?" Multi-project save/duplicate/rename/delete via IndexedDB. Scenarios, sensitivity
-analysis, Purchase vs. Lease, and reports arrive in Phases 5–6.
+building?" A Scenario Manager saves independent Conservative/Base/Optimistic/Custom variants
+(each with its own enrollment, tuition, staffing, expenses, project costs, and financing —
+switching scenarios swaps every screen at once, and edits to an inactive scenario are never
+lost), an automatic Sensitivity Analysis re-runs the full engine against 8 fixed presets
+(tuition ±10%, wages +10%, enrollment ±10%, renovation +20%, interest rate ±1%), and a
+freeform What-If Sandbox previews combined deltas (children, tuition, wages, interest) without
+committing them. Multi-project save/duplicate/rename/delete via IndexedDB. Purchase vs. Lease
+and Reports/Lender View/PWA arrive in Phase 6.
 
 ## Development
 

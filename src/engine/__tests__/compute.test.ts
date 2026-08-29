@@ -43,6 +43,8 @@ const baseProject = (overrides: Partial<Project> = {}): Project => ({
   requiredEquityPct: 0.1,
   properties: [],
   selectedPropertyId: null,
+  scenarios: [],
+  activeScenarioId: 'base',
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   ...overrides,

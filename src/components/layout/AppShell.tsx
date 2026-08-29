@@ -16,15 +16,13 @@ const navSections: { label: string; items: { to: string; label: string; phase?: 
       { to: '/building-calculator', label: 'Building Calculator' },
       { to: '/properties', label: 'Properties' },
       { to: '/financing', label: 'Financing' },
+      { to: '/scenarios', label: 'Scenarios' },
       { to: '/settings', label: 'Settings & Projects' },
     ],
   },
   {
     label: 'Coming in later phases',
-    items: [
-      { to: '/scenarios', label: 'Scenarios', phase: 5 },
-      { to: '/reports', label: 'Reports', phase: 6 },
-    ],
+    items: [{ to: '/reports', label: 'Reports', phase: 6 }],
   },
 ]
 
@@ -95,6 +93,11 @@ export const AppShell = () => {
           <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Childcare Financial</div>
           <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">&amp; Building Capacity Studio</div>
           {activeProject && <div className="mt-2 truncate text-xs text-slate-500">{activeProject.name}</div>}
+          {activeProject && activeProject.scenarios.length > 1 && (
+            <div className="mt-0.5 truncate text-[11px] text-indigo-500">
+              Scenario: {activeProject.scenarios.find((s) => s.id === activeProject.activeScenarioId)?.name}
+            </div>
+          )}
           <div className="mt-1 text-[11px] text-slate-400">{isSaving ? 'Saving…' : 'Saved'}</div>
         </div>
         <NavLinks />
