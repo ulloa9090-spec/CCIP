@@ -23,8 +23,11 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       llamar a la IA cuando la biblioteca está vacía, conversación persistida.
       _(completada; respuesta real de OpenAI pendiente de verificar en el Mac
       de destino con una clave real, ver DECISIONS.md ADR-015)_
-- [ ] **Fase 5 — Course Engine**: wizard de creación, generación estructurada,
-      módulos, lecciones, persistencia.
+- [x] **Fase 5 — Course Engine**: wizard de 5 pasos, generación estructurada
+      (Zod + JSON Schema, re-validada tras la respuesta de la IA), módulos,
+      lecciones, persistencia anidada. _(completada; generación real con
+      OpenAI pendiente de verificar en el Mac de destino, ver DECISIONS.md
+      ADR-016)_
 - [ ] **Fase 6 — Study Mode**: generación de sesión, lesson cards, quick checks,
       notas, resume.
 - [ ] **Fase 7 — Assessment**: generador de quizzes, question player, scoring,

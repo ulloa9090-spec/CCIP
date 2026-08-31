@@ -518,3 +518,120 @@ real disponible en esta sesión.
 **Lo que queda pendiente de verificar en el Mac de destino**: una respuesta
 real generada por OpenAI, con streaming real y latencia real, usando una
 clave de API real del usuario.
+
+---
+
+### ADR-016 — Alcance y decisiones del Course Engine (Fase 5)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §7 pide wizard de creación,
+generación estructurada, módulos, lecciones y persistencia. `DATA_MODEL.md`
+§8-14 define `courses`, `course_documents`, `modules`, `lessons`,
+`concepts`, `lesson_concepts`, `concept_sources`. `UX_UI.md` §9 define un
+wizard de 5 pasos (Objetivo, Material, Tiempo, Estilo, Confirmación).
+
+**Decisiones:**
+
+1. **Migración solo de las 4 tablas con consumidor real.** `0005_courses.ts`
+   crea `courses`, `course_documents`, `modules`, `lessons` — no
+   `concepts`/`lesson_concepts`/`concept_sources`. Nada en Fase 5 tiene
+   repositorio, IPC o UI para tracking por concepto individual; esa
+   necesidad llega con Mastery (Fase 8) y el Mapa de Conocimiento (Fase 11).
+   Mismo criterio que ADR-007.
+2. **Columna `lessons.summary` añadida, fuera del esquema original de
+   `DATA_MODEL.md`.** La generación estructurada produce un resumen breve
+   por lección (útil para mostrarlo en la pantalla de Curso sin tener que
+   re-generar nada); no había ninguna columna donde persistirlo. Es aditivo
+   y no rompe el modelo de datos existente — se documenta aquí en vez de
+   editar `DATA_MODEL.md` a mitad de fase.
+3. **`AIProvider.generateStructured` sigue sin saber nada de Zod.** El
+   contrato de `src/shared/types/ai.ts` ya declaraba `schema: unknown`
+   desde Fase 0 precisamente para esto. `src/main/courses/
+   courseGenerationSchema.ts` es el único lugar que conoce Zod: define
+   `courseStructureSchema`, lo convierte a JSON Schema plano con
+   `z.toJSONSchema()` (Zod v4, compatible con el modo estricto de
+   `response_format: json_schema` de OpenAI — `additionalProperties: false`
+   verificado antes de integrarlo) para pasarlo como `options.schema`, y
+   `CourseService` vuelve a validar la respuesta cruda con
+   `courseStructureSchema.safeParse()` antes de persistir nada. Cumple
+   `AI_RAG.md`: "nunca confiar en JSON de IA sin validar" — la validación
+   por JSON Schema en el transporte (constrained decoding de OpenAI) es una
+   garantía de forma, no de las reglas de negocio (mínimo un módulo, mínimo
+   una lección por módulo, etc.), así que ambas capas son necesarias.
+4. **Material fuente acotado por presupuesto de caracteres, no el texto
+   completo del PDF.** `src/main/courses/sourceMaterial.ts` combina el
+   índice de cada documento (si tiene bookmarks) con un subconjunto de
+   hasta 20 páginas muestreadas de forma uniforme (no solo las primeras —
+   un manual de cientos de páginas debe representar también sus capítulos
+   finales), recortado a un presupuesto total de ~30.000 caracteres
+   repartido entre los documentos seleccionados. Alternativa descartada:
+   enviar el texto extraído completo — coste y latencia no acotados para un
+   PDF grande, muy por encima de un presupuesto de contexto razonable para
+   un prompt de generación.
+5. **Paso 5 (Confirmación) del wizard usa estimaciones locales, no una
+   segunda llamada a IA.** `UX_UI.md` pide mostrar un resumen antes de
+   confirmar. Generar una vista previa real requeriría una llamada a
+   `generateStructured` que luego se descartaría o se tendría que reutilizar
+   (con riesgo de inconsistencia si el usuario cambia algo después de
+   verla). El wizard solo calcula localmente la fecha objetivo
+   (`hoy + duración en días`) y repite los datos ya introducidos; la única
+   llamada real a la IA ocurre al pulsar "Crear curso".
+6. **Sin modal, wizard como ruta de página completa (`/courses/new`).** No
+   existe todavía un componente `Modal` en el design system (catálogo
+   incremental, ver ADR-003) y construirlo solo para este wizard habría sido
+   adelantarse a una necesidad que no está confirmada en otra pantalla
+   todavía.
+7. **`lesson_type` cerrado a `'lesson' | 'practice' | 'assessment'`.** Es
+   una categorización simple y visualizable, distinta de la extensión más
+   fina que `DATA_MODEL.md` §16 (`session_activities.activity_type`) define
+   para Study Mode — esa tabla y ese enum llegan en Fase 6, no aquí.
+8. **Detalle de curso (`/courses/:id`) es de solo lectura en esta fase.**
+   Muestra módulos y lecciones con su estado (`○`/`▶`/`✓` como en el
+   wireframe de `UX_UI.md` §10), pero no permite "tomar" una lección — eso
+   es Study Mode (Fase 6). El botón "Crear curso" ya existente en
+   `DocumentDetailPage` (pendiente desde Fase 2, cuando el Course Engine no
+   existía) queda finalmente conectado, navegando a
+   `/courses/new?documentId=X` para preseleccionar ese documento en el paso
+   de Material.
+9. **Mensaje de "clave no configurada" generalizado.** `OpenAIProvider`
+   lanzaba un `AppError` con el texto "...para usar el Tutor", escrito en
+   Fase 4 cuando el Tutor era el único consumidor de `AIProvider`. Con el
+   Course Engine como segundo consumidor, ese texto ya no era correcto en
+   este contexto — se generalizó a "...para usar la IA." (único cambio de
+   copy en un archivo de Fase 4, sin tocar su lógica).
+
+**Verificación limitada de red (cuarta vez, mismo patrón que ADR-012/015).**
+`api.openai.com` sigue bloqueado en este contenedor — la generación real de
+un curso con una clave de OpenAI real no se pudo ejecutar de punta a punta
+aquí. Lo que sí se verificó:
+- `CourseService` completo con un `AIProvider` falso determinista
+  (`tests/unit/courses/courseService.test.ts`): generación y persistencia
+  exitosa, `documentIds` vacío → `INVALID_ARGUMENT`, documento inexistente →
+  `NOT_FOUND`, respuesta de IA que no cumple el schema (Zod) →
+  `AI_INVALID_STRUCTURE` sin persistir nada, y que un `AppError` lanzado por
+  el proveedor de IA (p. ej. `AI_KEY_NOT_CONFIGURED`) se propaga sin
+  envolver.
+- `buildSourceMaterial` probado de forma aislada y determinista
+  (`tests/unit/courses/sourceMaterial.test.ts`): índice incluido solo si
+  existen bookmarks, presupuesto de caracteres respetado con miles de
+  páginas sintéticas, presupuesto repartido entre varios documentos, y
+  muestreo verificablemente uniforme (una página bien pasada la posición 20
+  aparece en el material, algo que una estrategia de "primeras N páginas"
+  nunca produciría).
+- `CourseRepository` probado contra SQLite real en memoria
+  (`tests/unit/database/courseRepository.test.ts`): persistencia anidada
+  correcta de módulos/lecciones, `estimated_minutes` de un módulo calculado
+  como suma de sus lecciones, orden de `list()`, y que borrar el documento
+  fuente no borra el curso (solo su fila en `course_documents`, vía
+  `ON DELETE CASCADE`).
+- En la app real (Playwright/xvfb, sin red): flujo completo del wizard de 5
+  pasos con un documento real importado, incluida la navegación con
+  "Crear curso" preseleccionando el documento desde la Biblioteca, y que al
+  confirmar sin clave de OpenAI configurada la app muestra el error
+  específico (`AI_KEY_NOT_CONFIGURED` → mensaje claro) en vez de fallar de
+  forma confusa — la misma cadena de preservación de `AppError` establecida
+  en Fase 1 (ADR-006) y reutilizada en Fase 4 (ADR-015) sigue funcionando
+  igual para este tercer flujo.
+
+**Lo que queda pendiente de verificar en el Mac de destino**: un curso
+generado realmente por OpenAI a partir de un PDF real, incluida la calidad
+del contenido generado y de la estimación de tiempos.

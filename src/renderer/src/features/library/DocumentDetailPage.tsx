@@ -88,6 +88,15 @@ export function DocumentDetailPage(): React.JSX.Element {
           {document.status === 'ready' && !document.indexed && (
             <StatusBadge tone="muted">Sin indexar</StatusBadge>
           )}
+          {document.status === 'ready' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => navigate(`/courses/new?documentId=${document.id}`)}
+            >
+              Crear curso
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={handleReindex}>
             Reindexar
           </Button>

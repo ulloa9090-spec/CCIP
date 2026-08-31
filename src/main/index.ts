@@ -9,6 +9,7 @@ import { registerSettingsIpc } from './ipc/settingsIpc'
 import { registerDocumentsIpc } from './ipc/documentsIpc'
 import { registerRetrievalIpc } from './ipc/retrievalIpc'
 import { registerTutorIpc } from './ipc/tutorIpc'
+import { registerCoursesIpc } from './ipc/coursesIpc'
 import { LocalEmbeddingProvider } from './ai/localEmbeddingProvider'
 import { logger } from './logging/logger'
 
@@ -61,6 +62,7 @@ app.whenReady().then(() => {
   const documentQueue = registerDocumentsIpc(db, embeddings)
   registerRetrievalIpc(db, embeddings)
   registerTutorIpc(db, embeddings)
+  registerCoursesIpc(db)
   documentQueue.reconcileOrphanedJobs()
   logger.info('StudyOS main process ready')
 

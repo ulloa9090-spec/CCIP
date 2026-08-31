@@ -41,7 +41,7 @@ function getClient(): OpenAI {
   if (!apiKey) {
     throw new AppError({
       code: 'AI_KEY_NOT_CONFIGURED',
-      userMessage: 'Configura tu clave de OpenAI en Configuración > AI Provider para usar el Tutor.'
+      userMessage: 'Configura tu clave de OpenAI en Configuración > AI Provider para usar la IA.'
     })
   }
   return new OpenAI({ apiKey })

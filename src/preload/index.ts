@@ -7,6 +7,7 @@ import type {
 } from '../shared/types/documents'
 import type { RetrievalResult } from '../shared/types/retrieval'
 import type { ConversationDetail, TutorEvent } from '../shared/types/tutor'
+import type { Course, CourseDetail, CreateCourseInput } from '../shared/types/courses'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -54,6 +55,12 @@ const studyos = {
       ipcRenderer.on('tutor:event', listener)
       return () => ipcRenderer.removeListener('tutor:event', listener)
     }
+  },
+  courses: {
+    create: (input: CreateCourseInput): Promise<CourseDetail> =>
+      ipcRenderer.invoke('courses:create', input),
+    list: (): Promise<Course[]> => ipcRenderer.invoke('courses:list'),
+    get: (id: string): Promise<CourseDetail> => ipcRenderer.invoke('courses:get', id)
   }
 }
 

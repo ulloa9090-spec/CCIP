@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 4 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 5 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -45,8 +45,15 @@ respuesta, y cada respuesta fundamentada muestra sus fuentes como citas
 clicables que abren el PDF en la página exacta. Las conversaciones se
 persisten y siguen disponibles al reabrir la app. Si no hay conexión para
 descargar el modelo de embeddings la primera vez, el documento sigue siendo
-100% legible — solo queda sin indexar hasta reintentarlo. El resto de
-pantallas se implementan en su fase correspondiente.
+100% legible — solo queda sin indexar hasta reintentarlo.
+
+Desde Fase 5, `/courses` permite crear un curso a partir de uno o varios
+documentos de la biblioteca: un wizard de 5 pasos (objetivo, material,
+tiempo, estilo, confirmación) genera una estructura de módulos y lecciones
+con IA, validada con un esquema estricto antes de guardarse, y el curso
+resultante se puede consultar en `/courses/:id`. Tomar lecciones de forma
+interactiva llega con Study Mode (Fase 6). El resto de pantallas se
+implementan en su fase correspondiente.
 
 ## Desarrollo
 
@@ -86,11 +93,12 @@ pnpm build:mac
 Este MVP prioriza la arquitectura del Mac de desarrollo. Distribución universal
 Intel + Apple Silicon, firma y notarización no son requisitos de esta fase.
 
-## Usar el Tutor
+## Usar el Tutor y crear cursos
 
 Necesitas configurar tu clave de OpenAI en **Configuración > AI Provider**
-para que el Tutor genere respuestas. Sin clave configurada, o sin conexión,
-la app lo indica con un mensaje claro en vez de fallar de forma confusa.
+para que el Tutor genere respuestas o para crear un curso. Sin clave
+configurada, o sin conexión, la app lo indica con un mensaje claro en vez de
+fallar de forma confusa.
 
 ## Privacidad
 

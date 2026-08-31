@@ -447,14 +447,50 @@ No requerido en primer prototipo personal.
   ADR-014), streaming en vivo, fuentes citables que abren el PDF en la
   página correcta.
 
+### Fase 5 (completada)
+
+- SQLite: migración `0005_courses` agrega `courses`, `course_documents`,
+  `modules`, `lessons` (DATA_MODEL.md §8-11). `concepts`/`lesson_concepts`/
+  `concept_sources` no se crean todavía — sin repositorio/IPC/UI real hasta
+  Mastery (Fase 8) / Mapa de Conocimiento (Fase 11), mismo criterio que
+  ADR-007. `lessons` añade una columna `summary` fuera del esquema original
+  para persistir el resumen generado por la IA — ver ADR-016.
+- `courseGenerationSchema.ts`: contrato Zod (`courseStructureSchema`) para
+  la generación estructurada, convertido a JSON Schema plano vía
+  `z.toJSONSchema()` para pasarlo a `AIProvider.generateStructured` sin que
+  este conozca Zod.
+- `sourceMaterial.ts`: construye el material fuente para el prompt
+  combinando el índice de cada documento con un muestreo uniforme de hasta
+  20 páginas, acotado a un presupuesto total de ~30.000 caracteres — nunca
+  el texto completo del documento. Ver ADR-016.
+- `CourseService`: orquesta selección de documentos → construcción de
+  material fuente → `AIProvider.generateStructured` → re-validación con
+  `courseStructureSchema.safeParse()` (nunca confía en el JSON de la IA sin
+  validar, `AI_RAG.md`) → persistencia vía `CourseRepository`.
+- `CourseRepository`: persiste curso + módulos + lecciones anidados en una
+  transacción; `getById` reconstruye el árbol completo.
+- IPC: `window.studyos.courses.{create,list,get}`.
+- UI: wizard de 5 pasos (`/courses/new`, Objetivo → Material → Tiempo →
+  Estilo → Confirmación, la confirmación usa estimaciones locales, no una
+  segunda llamada a IA — ver ADR-016), listado (`/courses`, reemplaza el
+  placeholder "Mis Cursos") y detalle de solo lectura (`/courses/:id`,
+  módulos/lecciones con estado, sin tomar lecciones todavía — eso es Study
+  Mode, Fase 6). El botón "Crear curso" de `DocumentDetailPage` (pendiente
+  desde Fase 2) queda conectado, preseleccionando el documento de origen.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
   búsqueda semántica con red disponible — no verificable en el contenedor de
   desarrollo (ver ADR-012). Pendiente en el Mac de destino.
 - Verificación de una respuesta real generada por OpenAI (streaming real,
-  con clave de API real) — tampoco verificable aquí (`api.openai.com`
-  bloqueado). Ver ADR-015. Pendiente en el Mac de destino.
-- Selector de modo (Profesor/Asesor/Entrenador) — depende de Course Engine
-  (Fase 5) y Plan adaptativo (Fase 9).
+  generación estructurada real, con clave de API real) — tampoco verificable
+  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016. Pendiente en el
+  Mac de destino.
+- Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
+  Course Engine real detrás desde esta fase; Asesor/Entrenador siguen
+  dependiendo del Plan adaptativo (Fase 9).
+- Tomar una lección / progreso real de curso (`courses.progress`,
+  `modules.status`, `lessons.status`) — persistidos pero fijos en sus
+  valores iniciales hasta Study Mode (Fase 6).
 
