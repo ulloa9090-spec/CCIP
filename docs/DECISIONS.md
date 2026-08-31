@@ -428,3 +428,93 @@ completados con éxito) como interrumpido. Se corrigió llamando
 pipeline. `reconcileOrphanedJobs` además ahora solo revierte a `failed` si el
 documento seguía en `extracting` (nunca si ya llegó a `ready`), consistente
 con que la indexación interrumpida no es un fallo del documento.
+
+---
+
+### ADR-014 — Alcance del Tutor Q&A (Fase 4)
+
+**Contexto.** `MASTER_SPEC.md` §5 define cuatro modos de IA (Profesor, Tutor,
+Asesor, Entrenador) y `UX_UI.md` §13 muestra un selector entre ellos en la
+pantalla de Tutor.
+
+**Decisión.** Fase 4 implementa un único modo — el Tutor conversacional
+grounded en la biblioteca —, sin selector de modo. Profesor depende del
+Course Engine (Fase 5, no existe aún), Entrenador depende del Plan adaptativo
+(Fase 9, no existe aún); construir el selector ahora significaría exponer
+modos que no hacen nada distinto todavía. `ai_conversations.mode` se guarda
+como `'tutor'` fijo; el selector se agrega cuando los otros modos tengan algo
+real detrás.
+
+**Citas por construcción, no citas generadas por el modelo.** `AI_RAG.md`
+§23 pide validar que "toda citation debe referirse a chunk existente, página
+válida, documento válido". En vez de pedirle al modelo que genere
+metadatos de cita en texto libre y luego parsear/validar eso, la aplicación
+nunca le pide al modelo que cite nada: las fuentes mostradas
+(`MessageSource[]`) son exactamente los chunks que `RetrievalService` ya
+recuperó, adjuntados de forma determinista por `TutorService`, no inventados
+por el LLM. Esto vuelve la "validación de citas" trivial por diseño — no
+hay nada que validar porque no hay nada que el modelo pueda inventar.
+
+**Confianza binaria, no de tres niveles.** `AI_RAG.md` §22 sugiere
+`Supported / Partially supported / Insufficient evidence`. Fase 4 solo
+distingue dos casos: evidencia insuficiente (cero chunks recuperados, o el
+propio modelo devuelve la frase fija) vs. respondida con fuentes adjuntas.
+No existe todavía una señal real para distinguir "Partially supported" de
+"Supported" (eso requeriría un paso de verificación/re-ranking que no se ha
+construido) — inventar una distinción de tres niveles sin esa señal sería
+peor que no tenerla.
+
+**Modelo por defecto.** `gpt-4o-mini` como constante única en
+`openAIProvider.ts`, fácilmente reemplazable cuando exista una UI de
+selección de modelo (Fase 12+).
+
+**Bug real encontrado y corregido.** `mapError()` en `openAIProvider.ts` no
+dejaba pasar un `AppError` ya construido (p. ej. `AI_KEY_NOT_CONFIGURED` de
+`getClient()`) — lo envolvía siempre como `AI_REQUEST_FAILED` genérico,
+perdiendo el mensaje específico. Detectado por un test real
+(`openAIProvider.test.ts`, "fails fast with a clear AppError when no API key
+is configured") que esperaba el código específico y lo recibió incorrecto.
+Corregido centralizando el passthrough (`if (error instanceof AppError)
+return error`) al inicio de `mapError`, igual que ya se hacía en
+`generateStructured` de forma aislada.
+
+**Optimización de costo ya presente en Fase 3, relevante aquí.**
+`RetrievalService.search()` corta antes de embeber la pregunta si la
+biblioteca no tiene chunks (`candidates.length === 0`) — Fase 4 se apoya en
+esto para el caso "biblioteca vacía": la app nunca llama a OpenAI ni intenta
+cargar el modelo de embeddings solo para terminar diciendo "no encontré
+información". Verificado en la app real.
+
+---
+
+### ADR-015 — Verificación de red limitada (tercera vez): `api.openai.com` también bloqueado
+
+**Contexto.** Igual que `electronjs.org` (Fase 1) y `huggingface.co`
+(Fase 3), `api.openai.com` está bloqueado por la política de red de este
+contenedor (403 en el `CONNECT` del proxy). Tampoco hay una clave de OpenAI
+real disponible en esta sesión.
+
+**Qué se verificó de todos modos:**
+- `OpenAIProvider` completo probado con el SDK de `openai` simulado
+  (`tests/unit/ai/openAIProvider.test.ts`): forma de la petición a
+  `chat.completions.create` (texto, streaming, `response_format:
+  json_schema`), mapeo de `AuthenticationError`/`APIConnectionError` a
+  `AppError`, y que sin clave configurada falla rápido sin llamar al SDK.
+- `TutorService` completo probado con un `AIProvider` falso determinista
+  (`tests/unit/tutor/tutorService.test.ts`): biblioteca vacía → mensaje fijo
+  sin llamar a la IA; biblioteca con chunks → streaming, ensamblado del
+  contenido, citas deduplicadas y correctas; el modelo decide por sí mismo
+  que no hay evidencia suficiente → sin fuentes adjuntas; el stream falla a
+  mitad → evento de error, sin persistir un mensaje de asistente a medias.
+- En la app real: biblioteca vacía → respuesta de evidencia insuficiente sin
+  tocar ningún proveedor de IA (confirmado, ver ADR-014). Con un chunk
+  sembrado directamente en SQLite (bypaseando el pipeline de embeddings
+  local, también bloqueado por red) → el error específico de
+  `LocalEmbeddingProvider` se propaga correctamente de punta a punta hasta
+  la UI, confirmando que la cadena de preservación de `AppError` a través
+  del límite de IPC (establecida en Fase 1, ADR-006) sigue funcionando
+  igual para el Tutor.
+
+**Lo que queda pendiente de verificar en el Mac de destino**: una respuesta
+real generada por OpenAI, con streaming real y latencia real, usando una
+clave de API real del usuario.

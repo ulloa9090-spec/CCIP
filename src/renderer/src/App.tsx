@@ -5,9 +5,11 @@ import { NAV_ITEMS, SETTINGS_NAV_ITEM } from './app/nav'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { LibraryPage } from './features/library/LibraryPage'
 import { DocumentDetailPage } from './features/library/DocumentDetailPage'
+import { TutorPage } from './features/tutor/TutorPage'
 
 const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
-  '/library': <LibraryPage />
+  '/library': <LibraryPage />,
+  '/tutor': <TutorPage />
 }
 
 function App(): React.JSX.Element {

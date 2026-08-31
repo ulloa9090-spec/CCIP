@@ -18,8 +18,11 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       en la topbar, citas clicables a página. Indexación best-effort — no
       bloquea la lectura si no hay red. _(completada; descarga real del modelo
       pendiente de verificar en el Mac de destino, ver DECISIONS.md ADR-012)_
-- [ ] **Fase 4 — Tutor Q&A**: `OpenAIProvider`, ask flow, streaming, citas,
-      comportamiento de evidencia insuficiente.
+- [x] **Fase 4 — Tutor Q&A**: `OpenAIProvider`, ask flow con streaming, citas
+      por construcción (no generadas por el modelo), evidencia insuficiente sin
+      llamar a la IA cuando la biblioteca está vacía, conversación persistida.
+      _(completada; respuesta real de OpenAI pendiente de verificar en el Mac
+      de destino con una clave real, ver DECISIONS.md ADR-015)_
 - [ ] **Fase 5 — Course Engine**: wizard de creación, generación estructurada,
       módulos, lecciones, persistencia.
 - [ ] **Fase 6 — Study Mode**: generación de sesión, lesson cards, quick checks,

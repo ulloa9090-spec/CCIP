@@ -6,6 +6,7 @@ import type {
   LibraryDocument
 } from '../shared/types/documents'
 import type { RetrievalResult } from '../shared/types/retrieval'
+import type { ConversationDetail, TutorEvent } from '../shared/types/tutor'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -40,6 +41,19 @@ const studyos = {
   retrieval: {
     search: (query: string, documentIds?: string[]): Promise<RetrievalResult[]> =>
       ipcRenderer.invoke('retrieval:search', query, documentIds)
+  },
+  tutor: {
+    getLatestConversation: (): Promise<ConversationDetail | null> =>
+      ipcRenderer.invoke('tutor:getLatestConversation'),
+    newConversation: (): Promise<ConversationDetail> => ipcRenderer.invoke('tutor:newConversation'),
+    ask: (question: string, conversationId?: string): Promise<{ conversationId: string }> =>
+      ipcRenderer.invoke('tutor:ask', question, conversationId),
+    onEvent: (callback: (event: TutorEvent) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: TutorEvent): void =>
+        callback(payload)
+      ipcRenderer.on('tutor:event', listener)
+      return () => ipcRenderer.removeListener('tutor:event', listener)
+    }
   }
 }
 

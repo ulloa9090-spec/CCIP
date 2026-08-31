@@ -11,7 +11,8 @@
     "tests/unit/pdf/**/*",
     "tests/unit/jobs/**/*",
     "tests/unit/retrieval/**/*",
-    "tests/unit/ai/**/*"
+    "tests/unit/ai/**/*",
+    "tests/unit/tutor/**/*"
   ],
   "compilerOptions": {
     "composite": true,

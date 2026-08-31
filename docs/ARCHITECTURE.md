@@ -421,9 +421,40 @@ No requerido en primer prototipo personal.
   cita clicable que abre el PDF en la página correcta
   (`PdfViewer`/`DocumentDetailPage` ganan `initialPage`).
 
+### Fase 4 (completada)
+
+- SQLite: migración `0004_ai_conversations` agrega `ai_conversations` +
+  `ai_messages` (DATA_MODEL.md §25, §26). `course_id`/`document_scope_json`
+  quedan NULL hasta Fase 5.
+- `OpenAIProvider`: primera implementación real de `AIProvider`
+  (`generateText`, `generateStructured`, `streamText`, `testConnection`),
+  SDK oficial `openai`, modelo por defecto `gpt-4o-mini` (constante única,
+  swappable). Ver ADR-014.
+- `TutorService`: orquesta pregunta → `RetrievalService.search()` → si cero
+  chunks, responde con el mensaje fijo de evidencia insuficiente sin llamar
+  a la IA (Closed Library Mode, `AI_RAG.md` §2, §9) → si hay chunks, arma un
+  prompt de sistema estricto (grounding + defensa contra prompt injection,
+  `AI_RAG.md` §19) y transmite la respuesta vía `streamText`. Las citas se
+  adjuntan por construcción desde los chunks recuperados, nunca generadas
+  por el modelo — ver ADR-014.
+- `ConversationRepository`: persiste conversación + mensajes, título
+  derivado del primer mensaje del usuario.
+- IPC: `window.studyos.tutor.{getLatestConversation,newConversation,ask,
+  onEvent}` — `ask` dispara la generación de forma asíncrona y transmite
+  progreso vía eventos (mismo patrón que `documents:progress` de Fase 2/3).
+- UI: pantalla de Tutor (`/tutor`) reemplaza el placeholder — un solo modo
+  conversacional (sin selector Profesor/Tutor/Asesor/Entrenador todavía, ver
+  ADR-014), streaming en vivo, fuentes citables que abren el PDF en la
+  página correcta.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
   búsqueda semántica con red disponible — no verificable en el contenedor de
   desarrollo (ver ADR-012). Pendiente en el Mac de destino.
+- Verificación de una respuesta real generada por OpenAI (streaming real,
+  con clave de API real) — tampoco verificable aquí (`api.openai.com`
+  bloqueado). Ver ADR-015. Pendiente en el Mac de destino.
+- Selector de modo (Profesor/Asesor/Entrenador) — depende de Course Engine
+  (Fase 5) y Plan adaptativo (Fase 9).
 

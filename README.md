@@ -29,18 +29,21 @@ Dos abstracciones de IA independientes (`src/shared/types/ai.ts`):
   como `LocalEmbeddingProvider` (`@huggingface/transformers`, backend WASM,
   modelo `Xenova/all-MiniLM-L6-v2`). Ningún chunk de documento se envía a un
   servicio externo solo para generar su embedding.
-- **`AIProvider`** — generación de texto (`OpenAIProvider`, desde Fase 4).
+- **`AIProvider`** — generación de texto. Implementada desde Fase 4 como
+  `OpenAIProvider` (SDK oficial `openai`, modelo `gpt-4o-mini` por defecto).
 
 Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 3 completadas (ver `ROADMAP.md`). Además de persistencia,
-Configuración (Fase 1) y la Biblioteca con viewer de PDF (Fase 2), los
-documentos ahora se dividen en chunks y se indexan localmente (embeddings
-en el dispositivo, sin enviar contenido a servicios externos); el buscador
-de la barra superior hace búsqueda semántica real sobre la biblioteca y
-cada resultado abre el PDF en la página correcta. Si no hay conexión para
+Fases 0 a 4 completadas (ver `ROADMAP.md`). Además de persistencia,
+Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
+indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
+preguntas basándose únicamente en la biblioteca del usuario: si no hay
+evidencia suficiente lo dice explícitamente en vez de inventar una
+respuesta, y cada respuesta fundamentada muestra sus fuentes como citas
+clicables que abren el PDF en la página exacta. Las conversaciones se
+persisten y siguen disponibles al reabrir la app. Si no hay conexión para
 descargar el modelo de embeddings la primera vez, el documento sigue siendo
 100% legible — solo queda sin indexar hasta reintentarlo. El resto de
 pantallas se implementan en su fase correspondiente.
@@ -82,6 +85,12 @@ pnpm build:mac
 
 Este MVP prioriza la arquitectura del Mac de desarrollo. Distribución universal
 Intel + Apple Silicon, firma y notarización no son requisitos de esta fase.
+
+## Usar el Tutor
+
+Necesitas configurar tu clave de OpenAI en **Configuración > AI Provider**
+para que el Tutor genere respuestas. Sin clave configurada, o sin conexión,
+la app lo indica con un mensaje claro en vez de fallar de forma confusa.
 
 ## Privacidad
 

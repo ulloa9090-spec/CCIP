@@ -2,6 +2,7 @@ import type { Database } from 'better-sqlite3'
 import { migration0001Initial } from './0001_initial'
 import { migration0002Documents } from './0002_documents'
 import { migration0003DocumentChunks } from './0003_document_chunks'
+import { migration0004AiConversations } from './0004_ai_conversations'
 import type { Migration } from './types'
 
 export type { Migration } from './types'
@@ -10,7 +11,8 @@ export type { Migration } from './types'
 export const MIGRATIONS: Migration[] = [
   migration0001Initial,
   migration0002Documents,
-  migration0003DocumentChunks
+  migration0003DocumentChunks,
+  migration0004AiConversations
 ]
 
 /**
