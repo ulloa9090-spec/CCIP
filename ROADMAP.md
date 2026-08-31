@@ -10,8 +10,9 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
 - [x] **Fase 1 — Shell + Persistencia**: SQLite (`better-sqlite3`), migrations
       versionadas, `UserRepository`/`SettingsRepository`, `safeStorage` para la
       API key, IPC tipado, pantalla de Configuración real. _(completada)_
-- [ ] **Fase 2 — Biblioteca**: import PDF, copia local, metadata, viewer, extracción,
-      estado de procesamiento, delete/reindex.
+- [x] **Fase 2 — Biblioteca**: import PDF (diálogo nativo, dedup por hash), copia
+      local, extracción de texto/outline (pdf.js), cola de procesamiento con
+      progreso, viewer en el renderer, delete/reindex. _(completada)_
 - [ ] **Fase 3 — Retrieval**: chunking, `LocalEmbeddingProvider`, índice local,
       búsqueda semántica, referencias de fuente.
 - [ ] **Fase 4 — Tutor Q&A**: `OpenAIProvider`, ask flow, streaming, citas,

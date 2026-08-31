@@ -7,7 +7,9 @@
     "src/shared/**/*",
     "tests/unit/database/**/*",
     "tests/unit/security/**/*",
-    "tests/unit/shared/**/*"
+    "tests/unit/shared/**/*",
+    "tests/unit/pdf/**/*",
+    "tests/unit/jobs/**/*"
   ],
   "compilerOptions": {
     "composite": true,

@@ -1,5 +1,5 @@
 import type { Database } from 'better-sqlite3'
-import { ulid } from 'ulid'
+import { ulid } from '../ulid'
 
 interface SettingRow {
   id: string

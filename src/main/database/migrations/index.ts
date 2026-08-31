@@ -1,11 +1,12 @@
 import type { Database } from 'better-sqlite3'
 import { migration0001Initial } from './0001_initial'
+import { migration0002Documents } from './0002_documents'
 import type { Migration } from './types'
 
 export type { Migration } from './types'
 
 /** Ordered by version; the runner applies whatever is newer than `PRAGMA user_version`. */
-export const MIGRATIONS: Migration[] = [migration0001Initial]
+export const MIGRATIONS: Migration[] = [migration0001Initial, migration0002Documents]
 
 /**
  * Versioned migrations using SQLite's built-in `user_version` pragma —

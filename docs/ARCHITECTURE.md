@@ -357,11 +357,42 @@ No requerido en primer prototipo personal.
 - Pantalla de Configuración real (General + AI Provider) reemplaza el
   placeholder de esa ruta.
 
+### Fase 2 (completada)
+
+- SQLite: migración `0002_documents` agrega `documents`, `document_pages`,
+  `processing_jobs` (DATA_MODEL.md §3, §4, §27). `document_chunks` sigue
+  diferido a Fase 3. Ver ADR-007, ADR-008.
+- Repositorio real y probado: `DocumentRepository` (create con dedup por
+  `file_hash`, list, updateStatus, replacePages/getPages, getOutline),
+  `ProcessingJobRepository`.
+- IDs: todas las factories de ULID usan `monotonicFactory()` compartida
+  (`src/main/database/ulid.ts`), no `ulid()` plano. Ver ADR-011.
+- Filesystem: `documents/{id}/{original.pdf,metadata.json}` per
+  ARCHITECTURE.md §9; `extracted.json` de ese layout queda diferido (Fase 2
+  solo persiste en SQLite + el PDF original). Ver ADR-008 (implícito en el
+  scoping de artefactos).
+- PDF: extracción de texto y outline con `pdfjs-dist` build *legacy* en el
+  Main process, vía `require(esm)` (Node 22+) sobre el `.mjs` nativo del
+  paquete — verificado contra el bundle real de Electron, no solo
+  typecheck. Detección de outline únicamente por bookmarks embebidos del
+  PDF (`pdf.getOutline()`), sin heurística de layout. Ver ADR-008, ADR-010.
+- Cola de background jobs: `DocumentProcessingQueue`, un solo job concurrente,
+  respaldada por `processing_jobs`; reconcilia jobs huérfanos (`queued`/
+  `processing` al reiniciar tras un crash) marcándolos `failed`. Ver ADR-001.
+- IPC: `window.studyos.documents.{import,list,get,delete,reindex,
+  getFileBuffer,onProgress}`. `import` usa el diálogo nativo de Electron
+  (`dialog.showOpenDialog`), no un modal de drag-and-drop propio — deferido a
+  Fase 12 (Polish).
+- Visor de PDF en el renderer: `pdfjs-dist` build estándar + worker cargado
+  como asset de Vite (`?url`). Requiere un polyfill de
+  `Map.prototype.getOrInsertComputed` (propuesta TC39 "Upsert", no
+  implementada aún en el Chromium de Electron 39) — sin él, `page.render()`
+  falla en tiempo de ejecución. Ver ADR-009.
+- Design system: `ProgressBar`, `EmptyState`, `LoadingState` añadidos con
+  consumidores reales en Biblioteca.
+
 ### Pendiente de concretar (fases siguientes)
 
-- SQLite: `better-sqlite3` + `@electron/rebuild` para ABI de Electron (Fase 1). Ver ADR-001.
-- Secretos: `safeStorage` nativo de Electron en lugar de `keytar` (Fase 1). Ver ADR-001.
 - Embeddings locales: `EmbeddingProvider` implementado con `@huggingface/transformers` (WASM) + modelo `Xenova/all-MiniLM-L6-v2` (Fase 3). Ver ADR-005.
 - Índice vectorial: similitud coseno por fuerza bruta en proceso, sin extensión nativa tipo `sqlite-vec` en el MVP (Fase 3). Ver ADR-001.
-- Cola de background jobs: cola propia in-process respaldada por la tabla `processing_jobs` (Fase 1+). Ver ADR-001.
 

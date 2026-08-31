@@ -20,7 +20,8 @@ La documentación completa del producto vive en [`docs/`](./docs):
 ## Stack
 
 Electron · React · TypeScript · Vite (`electron-vite`) · Tailwind CSS v4 ·
-Zustand · SQLite (`better-sqlite3`, desde Fase 1) · PDF.js.
+Zustand · SQLite (`better-sqlite3`, desde Fase 1) · PDF.js (`pdfjs-dist`, desde
+Fase 2 — extracción en Main, viewer en el renderer).
 
 Dos abstracciones de IA independientes (`src/shared/types/ai.ts`):
 
@@ -33,11 +34,12 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 y 1 completadas (ver `ROADMAP.md`). La app abre, persiste datos en
-SQLite entre reinicios (perfil de usuario, preferencias), y la pantalla de
-Configuración permite editar el nombre y guardar la API key de OpenAI cifrada
-con `safeStorage`. El resto de pantallas se implementan en su fase
-correspondiente.
+Fases 0, 1 y 2 completadas (ver `ROADMAP.md`). Además de persistencia y
+Configuración (Fase 1), la Biblioteca permite importar PDFs (diálogo nativo,
+con detección de duplicados), procesarlos en background con progreso visible,
+ver el resultado (texto extraído, outline de marcadores) en un visor de PDF
+integrado, y eliminar/reindexar documentos. El resto de pantallas se
+implementan en su fase correspondiente.
 
 ## Desarrollo
 

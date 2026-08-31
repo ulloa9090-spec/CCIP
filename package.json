@@ -26,6 +26,7 @@
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "better-sqlite3": "^13.0.3",
+    "pdfjs-dist": "^6.3.289",
     "react-router-dom": "^7.18.3",
     "ulid": "^3.0.2"
   },

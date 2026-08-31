@@ -247,3 +247,100 @@ IPC o UI que la ejerza es exactamente el tipo de "implementación a medias"
 que el proyecto evita. El modelo de datos completo sigue siendo la referencia
 (`docs/DATA_MODEL.md`), pero su traducción a SQL ocurre por fase, no de una
 vez.
+
+---
+
+### ADR-008 — Detección de outline por bookmarks del PDF, no heurística de layout; subconjunto de `status` en Fase 2
+
+**Contexto.** `ARCHITECTURE.md` §10 pide "Detectar secciones" en el pipeline de
+procesamiento. `DATA_MODEL.md` §3 define el enum de `documents.status` como
+`imported, extracting, chunking, embedding, ready, failed` — chunking/embedding
+son de Fase 3 (Retrieval).
+
+**Decisiones:**
+
+1. **Outline**: se usa exclusivamente `pdf.getOutline()` de pdf.js (los
+   marcadores/bookmarks ya embebidos en el PDF), resolviendo cada entrada a un
+   número de página vía `getPageIndex`. **No** se implementa una heurística de
+   detección de secciones por tamaño de fuente/layout — es un proyecto no
+   trivial por sí solo, y muchos manuales técnicos (como el de referencia,
+   Michigan Residential Builder) ya traen bookmarks reales. Un PDF sin
+   bookmarks simplemente tiene `outline: []`; no es un error.
+2. **Subconjunto de `status`**: Fase 2 solo escribe `imported`, `extracting`,
+   `ready`, `failed`. `chunking`/`embedding` quedan reservados para cuando
+   Fase 3 exista de verdad — escribir esos valores ahora, sin que signifiquen
+   nada todavía, sería peor que no usarlos.
+
+**Consecuencias.** `src/shared/types/documents.ts` tipa `DocumentStatus` como
+el subconjunto de 4 valores, no los 6 del enum completo de `DATA_MODEL.md`.
+
+---
+
+### ADR-009 — Polyfill de `Map.prototype.getOrInsertComputed` para el visor PDF
+
+**Contexto.** Al verificar el visor de PDF en la app real (no solo build/typecheck),
+`page.render()` fallaba en tiempo de ejecución:
+`this[#methodPromises].getOrInsertComputed is not a function`, dentro del código
+interno de pdf.js (`WorkerTransport.getOptionalContentConfig`). El canvas quedaba
+con tamaño correcto pero contenido corrupto (818,055 píxeles no-blancos de ruido
+en una página que debería tener unos pocos miles, verificado con inspección de
+píxeles vía Playwright).
+
+**Diagnóstico.** `Map.prototype.getOrInsertComputed` es un método de la propuesta
+TC39 "Upsert", todavía no implementado en el Chromium empaquetado con Electron 39
+(confirmado empíricamente: `typeof Map.prototype.getOrInsertComputed === 'undefined'`
+dentro de la propia ventana de la app). Se reprodujo igual en `pdfjs-dist@6.3.289`
+y `@5.7.284` — no es un problema de versión de pdf.js, sino de soporte del motor.
+
+**Decisión.** Se agrega un polyfill mínimo y estándar de ese único método
+(`src/renderer/src/features/library/PdfViewer.tsx`, antes de cualquier uso de
+pdf.js), en vez de degradar a una versión más antigua de `pdfjs-dist` (que no
+resolvía el problema) o deshabilitar el "optional content" de pdf.js. Verificado
+con inspección de píxeles: sin el polyfill, ~818k píxeles de ruido; con el
+polyfill, ~4.6k píxeles de texto real, coherente con el contenido del PDF de
+prueba.
+
+---
+
+### ADR-010 — `extractPdf` lee bytes con `readFileSync` en vez de pasar `url` a pdf.js
+
+**Contexto.** La primera implementación de `extractPdf` llamaba a
+`getDocument({ url: pathToFileURL(filePath).href, ... })`, confiando en el
+mecanismo de carga de archivos de pdf.js. Funcionaba al correr la app real
+(Electron), pero los tests unitarios (Vitest, Node puro) fallaban con
+`UnknownErrorException: getArrayBuffer - unexpected data`, con los bytes del
+PDF visiblemente correctos pero mal interpretados por la capa de fetch interna
+de pdf.js para `file://` bajo Node plano.
+
+**Decisión.** `extractPdf` lee el archivo con `readFileSync` y pasa los bytes
+directamente como `data: new Uint8Array(...)`, evitando por completo el
+mecanismo de fetch interno de pdf.js. Es la misma vía verificada manualmente
+desde el principio (antes de introducir `url` prematuramente) y ahora es
+consistente entre Node puro (tests) y Electron (app real).
+
+**Consecuencia.** Los tests de `extractPdf` corren contra el PDF real de
+`tests/fixtures/sample.pdf` sin necesitar Electron.
+
+---
+
+### ADR-011 — ULIDs con `monotonicFactory()`, no `ulid()` plano
+
+**Contexto.** Un test real (`DocumentRepository`, "list orders by created_at
+descending") falló de forma no determinista: dos documentos creados en
+sucesión rápida caían en el mismo milisegundo, y `ORDER BY created_at DESC`
+no tenía un desempate confiable. Se intentó arreglar con `ORDER BY created_at
+DESC, id DESC` asumiendo que los ULID son ordenables lexicográficamente por
+creación — **falso** para IDs generados dentro del mismo milisegundo: la
+porción aleatoria de un `ulid()` plano no es monótona, así que el desempate
+seguía siendo incorrecto (confirmado: el test volvió a fallar con el mismo
+síntoma tras el primer intento de fix).
+
+**Decisión.** Todas las factories de ULID de la app (`documentRepository`,
+`processingJobRepository`, `settingsRepository`, `userRepository`) usan una
+única instancia compartida de `ulid.monotonicFactory()`
+(`src/main/database/ulid.ts`), que incrementa la parte aleatoria en colisiones
+de mismo milisegundo. Con eso, `ORDER BY id DESC` (como desempate de
+`created_at`) es correcto siempre, no solo "la mayoría de las veces". Relevante
+más allá de tests: una importación de varios PDFs a la vez desde el diálogo
+nativo (`documents:import`, `multiSelections`) crea varios documentos en
+sucesión muy rápida — exactamente el escenario que rompía el orden.

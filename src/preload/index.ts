@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AIKeyStatus, UserProfile } from '../shared/types/settings'
+import type {
+  DocumentDetail,
+  DocumentProgressEvent,
+  LibraryDocument
+} from '../shared/types/documents'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -15,6 +20,21 @@ const studyos = {
     getAIKeyStatus: (): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:getAIKeyStatus'),
     setAIKey: (key: string): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:setAIKey', key),
     clearAIKey: (): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:clearAIKey')
+  },
+  documents: {
+    import: (): Promise<LibraryDocument[]> => ipcRenderer.invoke('documents:import'),
+    list: (): Promise<LibraryDocument[]> => ipcRenderer.invoke('documents:list'),
+    get: (id: string): Promise<DocumentDetail> => ipcRenderer.invoke('documents:get', id),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('documents:delete', id),
+    reindex: (id: string): Promise<void> => ipcRenderer.invoke('documents:reindex', id),
+    getFileBuffer: (id: string): Promise<Uint8Array> =>
+      ipcRenderer.invoke('documents:getFileBuffer', id),
+    onProgress: (callback: (event: DocumentProgressEvent) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, payload: DocumentProgressEvent): void =>
+        callback(payload)
+      ipcRenderer.on('documents:progress', listener)
+      return () => ipcRenderer.removeListener('documents:progress', listener)
+    }
   }
 }
 

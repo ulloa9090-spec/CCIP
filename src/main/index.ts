@@ -6,6 +6,7 @@ import { ensureAppDirectories } from './filesystem/paths'
 import { closeDatabase, getDatabase } from './database/connection'
 import { runMigrations } from './database/migrations'
 import { registerSettingsIpc } from './ipc/settingsIpc'
+import { registerDocumentsIpc } from './ipc/documentsIpc'
 import { logger } from './logging/logger'
 
 function createWindow(): void {
@@ -51,6 +52,8 @@ app.whenReady().then(() => {
   const db = getDatabase()
   runMigrations(db)
   registerSettingsIpc(db)
+  const documentQueue = registerDocumentsIpc(db)
+  documentQueue.reconcileOrphanedJobs()
   logger.info('StudyOS main process ready')
 
   app.on('browser-window-created', (_, window) => {
