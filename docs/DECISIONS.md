@@ -166,7 +166,7 @@ Fase 0 únicamente fija el contrato de tipos.
 
 ---
 
-### ADR-006 — `sandbox: true` en el renderer
+### ADR-006 — `sandbox: true` en el renderer, preload sin dependencias de terceros
 
 **Contexto.** El template de `electron-vite` genera `sandbox: false` en
 `webPreferences` por defecto (para simplificar el preload de ejemplo).
@@ -174,7 +174,76 @@ Fase 0 únicamente fija el contrato de tipos.
 pero no menciona `sandbox` explícitamente.
 
 **Decisión.** Se activa `sandbox: true`, siguiendo la recomendación de seguridad
-oficial de Electron ("mantener el sandbox activado salvo razón de peso"). El
-preload actual (`@electron-toolkit/preload` + `contextBridge`) es compatible con
-sandbox activado sin cambios. Es un endurecimiento adicional, no una desviación
-de la especificación.
+oficial de Electron ("mantener el sandbox activado salvo razón de peso").
+
+**Hallazgo real durante Fase 1 (corregido en el mismo commit).** La primera
+implementación mantenía `@electron-toolkit/preload` (`electronAPI`) en el
+preload junto con nuestro propio bridge `studyos`. Con `sandbox: true`,
+Electron ejecuta el preload en un cargador restringido
+(`sandbox_bundle`) que **solo** resuelve un conjunto fijo de módulos
+incorporados (`electron`, `events`, `timers`, `url`, ...) — no resuelve
+paquetes de `node_modules` de terceros. El build fallaba en tiempo de
+ejecución con `Error: module not found: @electron-toolkit/preload`, dejando
+`window.studyos` como `undefined` y disparando el `ErrorBoundary` en cuanto
+la UI intentaba una llamada IPC. Esto se detectó empíricamente lanzando la
+app real (no solo con typecheck/build) — ver checklist de verificación en el
+reporte de Fase 1.
+
+**Corrección.** Como `window.electron`/`electronAPI` no tenía ningún consumidor
+real en la app, se eliminó por completo del preload en vez de desactivar el
+sandbox. El preload final (`src/preload/index.ts`) importa únicamente
+`{ contextBridge, ipcRenderer }` de `'electron'` (built-in, permitido bajo
+sandbox) y expone `window.studyos`. `@electron-toolkit/preload` se removió de
+`package.json`. Resultado: `sandbox: true` se mantiene (endurecimiento real,
+verificado en ejecución), y el preload queda más simple al no depender de
+un paquete que no se usaba.
+
+**Segundo hallazgo, mismo proceso de verificación.** El error real de
+`ipcMain.handle`/`ipcRenderer.invoke` no llega al renderer como el string JSON
+puro que `AppError.toJSON()` produce: Electron lo envuelve como
+`Error invoking remote method '<channel>': Error: <json>`. La primera versión
+de `parseSerializedAppError` (`shared/types/errors.ts`) hacía `JSON.parse` del
+mensaje completo, fallaba silenciosamente contra ese prefijo, y todo error caía
+al mensaje genérico "Ocurrió un error inesperado." — se detectó exactamente así
+(mensaje genérico donde debía aparecer uno específico) al probar el flujo de
+guardar la API key en la app real. Corregido extrayendo el JSON desde el
+primer `{` del mensaje. Ver test de regresión en
+`tests/unit/shared/errors.test.ts` ("extracts the payload from the real
+Electron ipcRenderer.invoke wrapper").
+
+**Limitación de entorno observada (no del código).** En este contenedor Linux
+sandboxeado, `safeStorage.isEncryptionAvailable()` devuelve `false` — no hay
+un Secret Service (`libsecret`/`gnome-keyring`/`kwallet`) corriendo. La app
+responde exactamente como debe: rechaza con `SECURE_STORAGE_UNAVAILABLE` y
+**no** cae a texto plano (`MASTER_SPEC.md` §15, "las API keys nunca deben
+almacenarse en plaintext"). En macOS, `safeStorage` usa Keychain y
+`isEncryptionAvailable()` es `true`; este camino se verificó con
+`safeStorage` simulado en `tests/unit/security/secretStore.test.ts` (cifrado,
+estado, borrado) — lo que no se pudo probar aquí es el backend real de
+Keychain, que requiere el Mac de destino.
+
+---
+
+### ADR-007 — Migrations incrementales por fase, no un único migration con las 29 tablas
+
+**Contexto.** `DATA_MODEL.md` ya especifica 29 tablas de forma completa y
+aprobada (v1.0). Al construir Fase 1 (Shell + Persistencia) surgió la
+pregunta: ¿la migración inicial crea las 29 tablas de una vez (ya que el
+modelo de datos está decidido), o solo las que Fase 1 usa de verdad?
+
+**Decisión.** Migración `0001_initial` crea únicamente `users` y `settings`
+— las dos que Fase 1 implementa con repositorio real, IPC real y UI real. El
+resto de tablas (`documents`, `courses`, `questions`, `flashcards`, ...)
+llega en la migración de la fase que las usa por primera vez (p. ej.
+`0002_documents` en Fase 2). Las migraciones son aditivas por convención
+(nunca se edita `0001_initial`; una migración futura se agrega para
+modificar), así que no hay riesgo de reescritura si `DATA_MODEL.md`
+evoluciona antes de llegar a esa fase.
+
+**Razonamiento.** Aplica el mismo principio que ya usamos con
+`AIProvider`/`EmbeddingProvider` (Fase 0) y con las 5 interfaces de
+repositorio no implementadas todavía: una tabla sin ningún repositorio,
+IPC o UI que la ejerza es exactamente el tipo de "implementación a medias"
+que el proyecto evita. El modelo de datos completo sigue siendo la referencia
+(`docs/DATA_MODEL.md`), pero su traducción a SQL ocurre por fase, no de una
+vez.

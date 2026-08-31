@@ -2,6 +2,11 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { ensureAppDirectories } from './filesystem/paths'
+import { closeDatabase, getDatabase } from './database/connection'
+import { runMigrations } from './database/migrations'
+import { registerSettingsIpc } from './ipc/settingsIpc'
+import { logger } from './logging/logger'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -42,6 +47,12 @@ function createWindow(): void {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.studyos.app')
 
+  ensureAppDirectories()
+  const db = getDatabase()
+  runMigrations(db)
+  registerSettingsIpc(db)
+  logger.info('StudyOS main process ready')
+
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
@@ -59,6 +70,6 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Phase 1+ adds IPC handlers here (src/main/ipc), SQLite bootstrap
-// (src/main/database) and secure storage (src/main/security). Phase 0 is
-// shell-only by design — see docs/ROADMAP.md.
+app.on('before-quit', () => {
+  closeDatabase()
+})

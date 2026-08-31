@@ -2,6 +2,7 @@ import { HashRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from './app/AppShell'
 import { PlaceholderPage } from './app/PlaceholderPage'
 import { NAV_ITEMS, SETTINGS_NAV_ITEM } from './app/nav'
+import { SettingsPage } from './features/settings/SettingsPage'
 
 function App(): React.JSX.Element {
   return (
@@ -15,10 +16,7 @@ function App(): React.JSX.Element {
               element={<PlaceholderPage title={item.label} />}
             />
           ))}
-          <Route
-            path={SETTINGS_NAV_ITEM.path}
-            element={<PlaceholderPage title={SETTINGS_NAV_ITEM.label} />}
-          />
+          <Route path={SETTINGS_NAV_ITEM.path} element={<SettingsPage />} />
         </Route>
       </Routes>
     </HashRouter>

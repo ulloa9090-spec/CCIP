@@ -7,8 +7,9 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
 
 - [x] **Fase 0 — Preparación**: repo, tooling, Electron+React shell, routing, error
       boundary, fundación de design system. _(completada — ver reporte de Phase 0)_
-- [ ] **Fase 1 — Shell + Persistencia**: sidebar/topbar reales, SQLite, migrations,
-      repositories, secure secret storage.
+- [x] **Fase 1 — Shell + Persistencia**: SQLite (`better-sqlite3`), migrations
+      versionadas, `UserRepository`/`SettingsRepository`, `safeStorage` para la
+      API key, IPC tipado, pantalla de Configuración real. _(completada)_
 - [ ] **Fase 2 — Biblioteca**: import PDF, copia local, metadata, viewer, extracción,
       estado de procesamiento, delete/reindex.
 - [ ] **Fase 3 — Retrieval**: chunking, `LocalEmbeddingProvider`, índice local,

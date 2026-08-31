@@ -33,8 +33,10 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fase 0 completada (ver `ROADMAP.md`). La app abre como shell de Electron con
-navegación funcional; las pantallas de cada feature se implementan en su fase
+Fases 0 y 1 completadas (ver `ROADMAP.md`). La app abre, persiste datos en
+SQLite entre reinicios (perfil de usuario, preferencias), y la pantalla de
+Configuración permite editar el nombre y guardar la API key de OpenAI cifrada
+con `safeStorage`. El resto de pantallas se implementan en su fase
 correspondiente.
 
 ## Desarrollo

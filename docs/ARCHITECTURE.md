@@ -331,6 +331,32 @@ No requerido en primer prototipo personal.
 - Design tokens: `src/renderer/src/design-system/tokens.css`, consumidos vía Tailwind v4 (`@theme`) y variables CSS nativas para valores no cubiertos por utilidades (spacing de sidebar/topbar, duraciones). Ver ADR-003.
 - Dos abstracciones de IA independientes en `src/shared/types/ai.ts`: `AIProvider` (generación) y `EmbeddingProvider` (embeddings). Ver ADR-004, ADR-005.
 
+### Fase 1 (completada)
+
+- SQLite: `better-sqlite3` (WAL + `foreign_keys = ON`), migrations versionadas con
+  `PRAGMA user_version` (sin tabla de tracking adicional). Migración 0001 crea
+  solo `users` y `settings` — el resto de `DATA_MODEL.md` llega con la fase que
+  primero lo necesita. Ver ADR-007.
+- Repositorios reales y probados: `UserRepository`, `SettingsRepository`. Las
+  otras 5 interfaces de `ARCHITECTURE.md` §7 se implementan cuando su feature
+  llega (Fase 2+), no antes.
+- Secretos: `safeStorage` de Electron (Keychain en macOS) para la API key de
+  OpenAI, nunca en texto plano, nunca devuelta completa por IPC (solo
+  `{ configured, lastFour }`).
+- Modelo de error `AppError` (código, mensaje, userMessage, recoverable,
+  metadata) cruzando el límite de IPC como JSON dentro de un `Error` estándar
+  — `ipcMain.handle`/`ipcRenderer.invoke` solo preserva `.message`, y Electron
+  antepone `"Error invoking remote method '<canal>': Error: "` a ese mensaje;
+  `parseSerializedAppError` extrae el JSON desde el primer `{`. Ver ADR-006.
+- `sandbox: true` en el renderer se mantiene, pero el preload quedó sin
+  dependencias de terceros (solo `electron` built-in) porque el cargador de
+  preload sandboxeado no resuelve paquetes de `node_modules`. Ver ADR-006.
+- IPC tipado: `window.studyos.settings.{getProfile,updateDisplayName,
+  getAIKeyStatus,setAIKey,clearAIKey}`, validado en el main process, nunca
+  SQL directo desde React.
+- Pantalla de Configuración real (General + AI Provider) reemplaza el
+  placeholder de esa ruta.
+
 ### Pendiente de concretar (fases siguientes)
 
 - SQLite: `better-sqlite3` + `@electron/rebuild` para ABI de Electron (Fase 1). Ver ADR-001.

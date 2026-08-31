@@ -1,8 +1,7 @@
-import { ElectronAPI } from '@electron-toolkit/preload'
+import type { StudyOSApi } from './index'
 
 declare global {
   interface Window {
-    electron: ElectronAPI
-    api: unknown
+    studyos: StudyOSApi
   }
 }
