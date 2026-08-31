@@ -391,8 +391,39 @@ No requerido en primer prototipo personal.
 - Design system: `ProgressBar`, `EmptyState`, `LoadingState` añadidos con
   consumidores reales en Biblioteca.
 
+### Fase 3 (completada)
+
+- SQLite: migración `0003_document_chunks` agrega `document_chunks`
+  (DATA_MODEL.md §5). `embedding_ref` guarda el `Float32Array` como BLOB
+  directo (ADR-001, decisión #4), no un puntero externo.
+- Chunking: `chunkPages.ts`, ventana deslizante ~800 tokens (aprox. 4
+  caracteres/token) con solape ~100 tokens, respetando límites de página
+  (cada chunk guarda `pageStart`/`pageEnd`/`heading`). Sin heurística de
+  splitting semántico más allá de eso.
+- Embeddings locales: `LocalEmbeddingProvider` (`@huggingface/transformers`,
+  modelo `Xenova/all-MiniLM-L6-v2`, backend forzado a `device: 'wasm'` — el
+  default de la librería bajo Node es el backend nativo `onnxruntime-node`,
+  exactamente lo que ADR-005 quería evitar). Ver ADR-012.
+- Índice vectorial: similitud coseno por fuerza bruta en proceso
+  (`similaritySearch.ts`), sin extensión nativa tipo `sqlite-vec`, tal como
+  decidía ADR-001.
+- `RetrievalService`: embebe la query, recupera candidatos (todo o un scope
+  de `documentIds`), rankea, devuelve `RetrievalResult[]` con cita
+  (documento, páginas, heading, score).
+- Pipeline de `DocumentProcessingQueue` extendido: extract → **ready** →
+  chunk → embed. La indexación es *best-effort* y nunca revierte un
+  documento ya extraído a `failed` — ver ADR-013, cambio importante respecto
+  al diseño inicial de esta fase (que sí lo hacía, y rompía el principio de
+  "funciona sin conexión" de `MASTER_SPEC.md` §16).
+- IPC: `window.studyos.retrieval.search(query, documentIds?)`.
+- UI: el input de búsqueda de la topbar (deshabilitado desde Fase 0) ahora
+  hace búsqueda semántica real sobre la biblioteca; cada resultado es una
+  cita clicable que abre el PDF en la página correcta
+  (`PdfViewer`/`DocumentDetailPage` ganan `initialPage`).
+
 ### Pendiente de concretar (fases siguientes)
 
-- Embeddings locales: `EmbeddingProvider` implementado con `@huggingface/transformers` (WASM) + modelo `Xenova/all-MiniLM-L6-v2` (Fase 3). Ver ADR-005.
-- Índice vectorial: similitud coseno por fuerza bruta en proceso, sin extensión nativa tipo `sqlite-vec` en el MVP (Fase 3). Ver ADR-001.
+- Verificación de descarga real del modelo de embeddings y calidad de
+  búsqueda semántica con red disponible — no verificable en el contenedor de
+  desarrollo (ver ADR-012). Pendiente en el Mac de destino.
 

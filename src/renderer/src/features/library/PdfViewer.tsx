@@ -29,12 +29,14 @@ if (!('getOrInsertComputed' in Map.prototype)) {
 interface PdfViewerProps {
   /** Render with `key={documentId}` at the call site to reset state on change. */
   documentId: string
+  /** Page to open on, e.g. from a citation/search result. Defaults to 1. */
+  initialPage?: number
 }
 
-export function PdfViewer({ documentId }: PdfViewerProps): React.JSX.Element {
+export function PdfViewer({ documentId, initialPage = 1 }: PdfViewerProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
-  const [pageNumber, setPageNumber] = useState(1)
+  const [pageNumber, setPageNumber] = useState(initialPage)
   const [numPages, setNumPages] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -62,11 +64,13 @@ export function PdfViewer({ documentId }: PdfViewerProps): React.JSX.Element {
     }
   }, [documentId])
 
+  const clampedPageNumber = numPages ? Math.min(Math.max(pageNumber, 1), numPages) : pageNumber
+
   useEffect(() => {
     if (!pdfRef.current || !canvasRef.current || !numPages) return
     let cancelled = false
 
-    pdfRef.current.getPage(pageNumber).then(async (page) => {
+    pdfRef.current.getPage(clampedPageNumber).then(async (page) => {
       if (cancelled) return
       const canvas = canvasRef.current
       if (!canvas) return
@@ -79,7 +83,7 @@ export function PdfViewer({ documentId }: PdfViewerProps): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [pageNumber, numPages])
+  }, [clampedPageNumber, numPages])
 
   if (error) {
     return <p className="text-sm text-danger">{error}</p>
@@ -98,18 +102,18 @@ export function PdfViewer({ documentId }: PdfViewerProps): React.JSX.Element {
         <Button
           size="sm"
           variant="ghost"
-          disabled={pageNumber <= 1}
+          disabled={clampedPageNumber <= 1}
           onClick={() => setPageNumber((n) => n - 1)}
         >
           Anterior
         </Button>
         <span>
-          Página {pageNumber} de {numPages}
+          Página {clampedPageNumber} de {numPages}
         </span>
         <Button
           size="sm"
           variant="ghost"
-          disabled={pageNumber >= numPages}
+          disabled={clampedPageNumber >= numPages}
           onClick={() => setPageNumber((n) => n + 1)}
         >
           Siguiente

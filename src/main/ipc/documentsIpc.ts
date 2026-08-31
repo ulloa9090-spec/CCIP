@@ -3,6 +3,7 @@ import { existsSync, statSync } from 'fs'
 import { BrowserWindow, dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Database } from 'better-sqlite3'
 import { DocumentRepository } from '../database/repositories/documentRepository'
+import { DocumentChunkRepository } from '../database/repositories/documentChunkRepository'
 import { DocumentProcessingQueue } from '../jobs/documentProcessingQueue'
 import {
   deleteDocumentStorage,
@@ -17,6 +18,7 @@ import type {
   DocumentProgressEvent,
   LibraryDocument
 } from '../../shared/types/documents'
+import type { EmbeddingProvider } from '../../shared/types/ai'
 
 const MAX_PDF_SIZE_BYTES = 300 * 1024 * 1024
 
@@ -92,9 +94,15 @@ function importOneFile(
   return document
 }
 
-export function registerDocumentsIpc(db: Database): DocumentProcessingQueue {
+export function registerDocumentsIpc(
+  db: Database,
+  embeddings?: EmbeddingProvider
+): DocumentProcessingQueue {
   const documents = new DocumentRepository(db)
-  const queue = new DocumentProcessingQueue(db)
+  const chunks = new DocumentChunkRepository(db)
+  const queue = embeddings
+    ? new DocumentProcessingQueue(db, embeddings)
+    : new DocumentProcessingQueue(db)
 
   queue.onProgress((event: DocumentProgressEvent) => {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -123,7 +131,8 @@ export function registerDocumentsIpc(db: Database): DocumentProcessingQueue {
     return {
       ...document,
       pages: documents.getPages(documentId),
-      outline: documents.getOutline(documentId)
+      outline: documents.getOutline(documentId),
+      indexed: chunks.countByDocument(documentId) > 0
     }
   })
 

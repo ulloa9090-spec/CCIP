@@ -7,6 +7,8 @@ import { closeDatabase, getDatabase } from './database/connection'
 import { runMigrations } from './database/migrations'
 import { registerSettingsIpc } from './ipc/settingsIpc'
 import { registerDocumentsIpc } from './ipc/documentsIpc'
+import { registerRetrievalIpc } from './ipc/retrievalIpc'
+import { LocalEmbeddingProvider } from './ai/localEmbeddingProvider'
 import { logger } from './logging/logger'
 
 function createWindow(): void {
@@ -52,7 +54,11 @@ app.whenReady().then(() => {
   const db = getDatabase()
   runMigrations(db)
   registerSettingsIpc(db)
-  const documentQueue = registerDocumentsIpc(db)
+  // One embedding pipeline instance shared by ingestion and search so the
+  // (large, ~90MB) model loads once, not twice.
+  const embeddings = new LocalEmbeddingProvider()
+  const documentQueue = registerDocumentsIpc(db, embeddings)
+  registerRetrievalIpc(db, embeddings)
   documentQueue.reconcileOrphanedJobs()
   logger.info('StudyOS main process ready')
 

@@ -5,6 +5,7 @@ import type {
   DocumentProgressEvent,
   LibraryDocument
 } from '../shared/types/documents'
+import type { RetrievalResult } from '../shared/types/retrieval'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -35,6 +36,10 @@ const studyos = {
       ipcRenderer.on('documents:progress', listener)
       return () => ipcRenderer.removeListener('documents:progress', listener)
     }
+  },
+  retrieval: {
+    search: (query: string, documentIds?: string[]): Promise<RetrievalResult[]> =>
+      ipcRenderer.invoke('retrieval:search', query, documentIds)
   }
 }
 

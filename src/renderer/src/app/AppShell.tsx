@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { NAV_ITEMS, SETTINGS_NAV_ITEM } from './nav'
+import { GlobalSearch } from './GlobalSearch'
 
 function SidebarLink({ label, path }: { label: string; path: string }): React.JSX.Element {
   return (
@@ -48,12 +49,7 @@ export function AppShell(): React.JSX.Element {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-(--topbar-height) shrink-0 items-center gap-4 border-b border-border px-6">
-          <input
-            type="search"
-            placeholder="Buscar en tu biblioteca o preguntar al tutor..."
-            disabled
-            className="h-9 w-full max-w-md rounded-md border border-border bg-surface px-3 text-sm text-text-secondary placeholder:text-text-muted disabled:cursor-not-allowed"
-          />
+          <GlobalSearch />
           <div className="ml-auto text-xs text-text-muted">Modo Local</div>
         </header>
 

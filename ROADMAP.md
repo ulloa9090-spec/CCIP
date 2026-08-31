@@ -13,8 +13,11 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
 - [x] **Fase 2 — Biblioteca**: import PDF (diálogo nativo, dedup por hash), copia
       local, extracción de texto/outline (pdf.js), cola de procesamiento con
       progreso, viewer en el renderer, delete/reindex. _(completada)_
-- [ ] **Fase 3 — Retrieval**: chunking, `LocalEmbeddingProvider`, índice local,
-      búsqueda semántica, referencias de fuente.
+- [x] **Fase 3 — Retrieval**: chunking, `LocalEmbeddingProvider` (embeddings
+      locales, WASM), índice local (coseno por fuerza bruta), búsqueda semántica
+      en la topbar, citas clicables a página. Indexación best-effort — no
+      bloquea la lectura si no hay red. _(completada; descarga real del modelo
+      pendiente de verificar en el Mac de destino, ver DECISIONS.md ADR-012)_
 - [ ] **Fase 4 — Tutor Q&A**: `OpenAIProvider`, ask flow, streaming, citas,
       comportamiento de evidencia insuficiente.
 - [ ] **Fase 5 — Course Engine**: wizard de creación, generación estructurada,

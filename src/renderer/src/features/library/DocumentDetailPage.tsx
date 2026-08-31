@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button, Card, LoadingState, StatusBadge } from '../../design-system'
 import type { StatusTone } from '../../design-system'
 import type { DocumentDetail, DocumentProgressEvent, DocumentStatus } from '@shared/types/documents'
@@ -21,6 +21,8 @@ const STATUS_TONE: Record<DocumentStatus, StatusTone> = {
 
 export function DocumentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const initialPage = Number(searchParams.get('page')) || 1
   const navigate = useNavigate()
   const [document, setDocument] = useState<DocumentDetail | null>(null)
   const [notFound, setNotFound] = useState(false)
@@ -36,7 +38,7 @@ export function DocumentDetailPage(): React.JSX.Element {
 
   useEffect(() => {
     return window.studyos.documents.onProgress((event: DocumentProgressEvent) => {
-      if (event.documentId === id && (event.status === 'ready' || event.status === 'failed')) {
+      if (event.documentId === id && (event.stage === 'ready' || event.stage === 'failed')) {
         refresh()
       }
     })
@@ -83,6 +85,9 @@ export function DocumentDetailPage(): React.JSX.Element {
           <StatusBadge tone={STATUS_TONE[document.status]}>
             {STATUS_LABEL[document.status]}
           </StatusBadge>
+          {document.status === 'ready' && !document.indexed && (
+            <StatusBadge tone="muted">Sin indexar</StatusBadge>
+          )}
           <Button size="sm" variant="ghost" onClick={handleReindex}>
             Reindexar
           </Button>
@@ -92,10 +97,18 @@ export function DocumentDetailPage(): React.JSX.Element {
         </div>
       </div>
 
+      {document.status === 'ready' && !document.indexed && (
+        <p className="text-xs text-text-muted">
+          Este documento aún no está indexado para búsqueda semántica — puedes seguir leyéndolo
+          normalmente. Usa &quot;Reindexar&quot; para intentarlo de nuevo (necesita conexión a
+          internet la primera vez).
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
         <Card>
           {document.status === 'ready' ? (
-            <PdfViewer key={document.id} documentId={document.id} />
+            <PdfViewer key={document.id} documentId={document.id} initialPage={initialPage} />
           ) : (
             <p className="p-6 text-center text-sm text-text-secondary">
               {document.status === 'failed'

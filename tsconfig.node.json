@@ -9,7 +9,9 @@
     "tests/unit/security/**/*",
     "tests/unit/shared/**/*",
     "tests/unit/pdf/**/*",
-    "tests/unit/jobs/**/*"
+    "tests/unit/jobs/**/*",
+    "tests/unit/retrieval/**/*",
+    "tests/unit/ai/**/*"
   ],
   "compilerOptions": {
     "composite": true,

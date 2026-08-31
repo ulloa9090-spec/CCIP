@@ -344,3 +344,87 @@ de mismo milisegundo. Con eso, `ORDER BY id DESC` (como desempate de
 más allá de tests: una importación de varios PDFs a la vez desde el diálogo
 nativo (`documents:import`, `multiSelections`) crea varios documentos en
 sucesión muy rápida — exactamente el escenario que rompía el orden.
+
+---
+
+### ADR-012 — `LocalEmbeddingProvider`: forzar `device: 'wasm'`; verificación de red limitada en este entorno
+
+**Contexto.** ADR-005 (Fase 0) eligió `@huggingface/transformers` con backend
+WASM específicamente para no añadir un segundo módulo nativo (además de
+`better-sqlite3`). Al instalar `@huggingface/transformers@4.2.0` para Fase 3,
+el paquete trae como dependencias tanto `onnxruntime-web` (WASM) como
+`onnxruntime-node` (nativo) y `sharp` (nativo).
+
+**Hallazgo real (leyendo el código fuente del paquete, no solo su
+documentación).** `DEFAULT_DEVICE = apis.IS_NODE_ENV ? "cpu" : "wasm"` —
+bajo Node/Electron (`IS_NODE_ENV` es `true` en el Main process), la librería
+usa por defecto el backend nativo `onnxruntime-node` ("cpu"), no WASM. Esto
+habría reintroducido exactamente el riesgo que ADR-005 quería evitar.
+
+**Decisión.** `pipeline('feature-extraction', MODEL_ID, { device: 'wasm' })`
+con el device explícito, siempre. Verificado empíricamente en este contenedor
+(sin acceso a `huggingface.co`, ver más abajo): con `device: 'wasm'` la
+librería llega directo a la descarga del modelo (falla ahí, por la red) sin
+tocar `onnxruntime-node` en ningún momento — confirma que la ruta nativa
+queda evitada. No se aprobó el build script de `onnxruntime-node` ni `sharp`
+en pnpm (`onlyBuiltDependencies`), a propósito: no se usan.
+
+**Limitación de entorno (no del código).** `huggingface.co` está bloqueado
+por la política de red de este contenedor (403), igual que `electronjs.org`
+en Fase 1. No fue posible verificar aquí la descarga real del modelo
+(~90MB) ni la calidad real de los embeddings/búsqueda semántica de punta a
+punta. Lo que sí se verificó en este entorno:
+- El módulo carga correctamente bajo el runtime de Electron (CJS nativo,
+  `main: dist/transformers.node.cjs` — sin necesitar `require(esm)`).
+- Con `device: 'wasm'` el fallo ocurre exactamente en el límite de red
+  (`Forbidden access to file: ".../config.json"`), un error claro y
+  capturable, no un crash ni un error de módulo nativo faltante.
+- `LocalEmbeddingProvider` mapea ese fallo a un `AppError` claro
+  (`EMBEDDING_MODEL_UNAVAILABLE`) y permite reintentar en la siguiente
+  llamada (no cachea el rechazo para siempre) — probado con
+  `@huggingface/transformers` simulado en
+  `tests/unit/ai/localEmbeddingProvider.test.ts`.
+- La lógica de chunking, similitud coseno y ranking (`chunkPages.ts`,
+  `similaritySearch.ts`, `retrievalService.ts`) están completamente probadas
+  con embeddings sintéticos deterministas — no dependen de la red y
+  verifican la corrección real del algoritmo de retrieval.
+
+La descarga real del modelo y una búsqueda semántica con embeddings reales
+quedan pendientes de verificar en el Mac de destino, que sí tendrá acceso
+normal a internet.
+
+---
+
+### ADR-013 — `ready` depende solo de extracción; indexación (chunk+embed) es best-effort
+
+**Contexto.** La primera implementación de Fase 3 hacía que el pipeline
+completo (extraer → chunkear → embeber) tuviera que terminar con éxito antes
+de marcar un documento `ready`, escribiendo `chunking`/`embedding` como
+valores reales de `documents.status`. Verificando esto en la app real
+(contenedor sin acceso a `huggingface.co`), **todo documento importado
+terminaba en `failed`** simplemente porque no había red para el modelo de
+embeddings — aunque el PDF se hubiera extraído perfectamente y fuera
+completamente legible. Esto contradice directamente
+`MASTER_SPEC.md` §16: "debe seguir funcionando parcialmente sin conexión."
+
+**Decisión.** `documents.status` vuelve a los 4 valores de Fase 2
+(`imported`, `extracting`, `ready`, `failed`) — un documento es `ready` en
+cuanto la extracción de texto tiene éxito, sin importar qué pase después con
+la indexación. `chunking`/`embedding` pasan a ser valores transitorios de un
+nuevo tipo `ProcessingStage` (solo para eventos de progreso vía IPC), nunca
+persistidos en `documents.status`. Si chunking/embedding fallan (sin red, u
+otro error), se registra el error y el documento **permanece `ready`**, solo
+que sin resultados de búsqueda hasta un "Reindexar" exitoso. Se añadió
+`DocumentDetail.indexed` (derivado de `document_chunks` count > 0) para que
+la UI muestre un aviso no bloqueante ("Sin indexar") en vez de tratarlo como
+un fallo del documento.
+
+**Corrección relacionada.** Al revisar `reconcileOrphanedJobs` para este
+cambio se encontró que ningún job se marcaba `processing`/`succeeded` — todo
+job quedaba `queued` para siempre en la tabla, así que en cada reinicio
+`findOrphaned()` habría tratado *todo* job histórico (incluidos los ya
+completados con éxito) como interrumpido. Se corrigió llamando
+`jobs.updateProgress(...)`/`jobs.markFailed(...)` en los puntos reales del
+pipeline. `reconcileOrphanedJobs` además ahora solo revierte a `failed` si el
+documento seguía en `extracting` (nunca si ya llegó a `ready`), consistente
+con que la indexación interrumpida no es un fallo del documento.

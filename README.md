@@ -25,21 +25,25 @@ Fase 2 — extracción en Main, viewer en el renderer).
 
 Dos abstracciones de IA independientes (`src/shared/types/ai.ts`):
 
-- **`EmbeddingProvider`** — indexación 100% local (`LocalEmbeddingProvider`,
-  desde Fase 3). Ningún chunk de documento se envía a un servicio externo solo
-  para generar su embedding.
+- **`EmbeddingProvider`** — indexación 100% local. Implementada desde Fase 3
+  como `LocalEmbeddingProvider` (`@huggingface/transformers`, backend WASM,
+  modelo `Xenova/all-MiniLM-L6-v2`). Ningún chunk de documento se envía a un
+  servicio externo solo para generar su embedding.
 - **`AIProvider`** — generación de texto (`OpenAIProvider`, desde Fase 4).
 
 Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0, 1 y 2 completadas (ver `ROADMAP.md`). Además de persistencia y
-Configuración (Fase 1), la Biblioteca permite importar PDFs (diálogo nativo,
-con detección de duplicados), procesarlos en background con progreso visible,
-ver el resultado (texto extraído, outline de marcadores) en un visor de PDF
-integrado, y eliminar/reindexar documentos. El resto de pantallas se
-implementan en su fase correspondiente.
+Fases 0 a 3 completadas (ver `ROADMAP.md`). Además de persistencia,
+Configuración (Fase 1) y la Biblioteca con viewer de PDF (Fase 2), los
+documentos ahora se dividen en chunks y se indexan localmente (embeddings
+en el dispositivo, sin enviar contenido a servicios externos); el buscador
+de la barra superior hace búsqueda semántica real sobre la biblioteca y
+cada resultado abre el PDF en la página correcta. Si no hay conexión para
+descargar el modelo de embeddings la primera vez, el documento sigue siendo
+100% legible — solo queda sin indexar hasta reintentarlo. El resto de
+pantallas se implementan en su fase correspondiente.
 
 ## Desarrollo
 
