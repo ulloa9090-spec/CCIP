@@ -478,6 +478,37 @@ No requerido en primer prototipo personal.
   Mode, Fase 6). El botón "Crear curso" de `DocumentDetailPage` (pendiente
   desde Fase 2) queda conectado, preseleccionando el documento de origen.
 
+### Fase 6 (completada)
+
+- SQLite: migración `0006_study` agrega `study_sessions`,
+  `session_activities` (DATA_MODEL.md §15-16) y `notes` (§23, sin
+  `concept_id` todavía — llega como columna aditiva en Fase 8, mismo
+  patrón que ADR-007/016). `SessionStatus` se tipa como
+  `'in_progress' | 'completed'` — `'planned'` queda para el Plan adaptativo
+  (Fase 9), que sí programa sesiones por adelantado.
+- `CourseRepository` gana `listPendingLessons`, `markLessonCompleted`
+  (recalcula estado de módulo y progreso/estado del curso en la misma
+  transacción) y `markLessonInProgress` — la consistencia del agregado
+  curso vive en su propio repositorio, no en el servicio de sesión.
+- `StudySessionRepository`: persiste sesión + actividades (`activity_type`
+  fijo en `'lesson'` — el resto del enum depende de motores que no existen
+  aún, Fase 7/10), reconstruye el detalle con título/resumen de cada
+  lección.
+- `StudySessionService`: sin llamadas a IA — construye deterministamente
+  una sesión a partir de las lecciones pendientes del curso agrupadas por
+  el presupuesto de `dailyMinutes` (mínimo una lección garantizada),
+  reanuda una sesión `in_progress` existente en vez de crear otra, y
+  recalcula progreso/estado al completar cada actividad. Ver ADR-017.
+- `NoteRepository`: notas simples ligadas a un curso (crear/listar/borrar).
+- IPC: `window.studyos.study.{startOrResume,completeActivity}`,
+  `window.studyos.notes.{create,listByCourse,delete}`.
+- UI: `/study` (landing de cursos activos con "Continuar"), `/study/:id`
+  (tarjeta de lección enfocada — título, resumen, quick check
+  Entendido/Necesito repasar, Continuar →; sin timer visible ni botones de
+  regeneración de IA — ver ADR-017), `NotesPanel` reutilizado en la sesión
+  de estudio y en el detalle del curso, botón "Continuar" en
+  `CourseDetailPage` cuando el curso está activo.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
@@ -490,7 +521,14 @@ No requerido en primer prototipo personal.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
   Course Engine real detrás desde esta fase; Asesor/Entrenador siguen
   dependiendo del Plan adaptativo (Fase 9).
-- Tomar una lección / progreso real de curso (`courses.progress`,
-  `modules.status`, `lessons.status`) — persistidos pero fijos en sus
-  valores iniciales hasta Study Mode (Fase 6).
+- Citación por lección (Fuente: documento p. N) en la tarjeta de estudio —
+  depende de `concept_sources` (Fase 8/11), ver ADR-017.
+- Acciones de regeneración de IA en la tarjeta de estudio y en el Tutor
+  (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
+  todavía, ver ADR-014/017.
+- Preguntas/ejercicios/flashcards/repaso como tipos reales de
+  `session_activities` — dependen de Assessment (Fase 7) y Flashcards
+  (Fase 10).
+- Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
+  ligadas a un curso, ver ADR-017.
 

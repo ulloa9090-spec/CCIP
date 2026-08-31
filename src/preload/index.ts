@@ -8,6 +8,8 @@ import type {
 import type { RetrievalResult } from '../shared/types/retrieval'
 import type { ConversationDetail, TutorEvent } from '../shared/types/tutor'
 import type { Course, CourseDetail, CreateCourseInput } from '../shared/types/courses'
+import type { StudySessionDetail } from '../shared/types/study'
+import type { CreateNoteInput, Note } from '../shared/types/notes'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -61,6 +63,18 @@ const studyos = {
       ipcRenderer.invoke('courses:create', input),
     list: (): Promise<Course[]> => ipcRenderer.invoke('courses:list'),
     get: (id: string): Promise<CourseDetail> => ipcRenderer.invoke('courses:get', id)
+  },
+  study: {
+    startOrResume: (courseId: string): Promise<StudySessionDetail> =>
+      ipcRenderer.invoke('study:startOrResume', courseId),
+    completeActivity: (activityId: string, understood: boolean): Promise<StudySessionDetail> =>
+      ipcRenderer.invoke('study:completeActivity', activityId, understood)
+  },
+  notes: {
+    create: (input: CreateNoteInput): Promise<Note> => ipcRenderer.invoke('notes:create', input),
+    listByCourse: (courseId: string): Promise<Note[]> =>
+      ipcRenderer.invoke('notes:listByCourse', courseId),
+    delete: (id: string): Promise<void> => ipcRenderer.invoke('notes:delete', id)
   }
 }
 

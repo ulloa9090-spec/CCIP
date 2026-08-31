@@ -4,6 +4,7 @@ import { migration0002Documents } from './0002_documents'
 import { migration0003DocumentChunks } from './0003_document_chunks'
 import { migration0004AiConversations } from './0004_ai_conversations'
 import { migration0005Courses } from './0005_courses'
+import { migration0006Study } from './0006_study'
 import type { Migration } from './types'
 
 export type { Migration } from './types'
@@ -14,7 +15,8 @@ export const MIGRATIONS: Migration[] = [
   migration0002Documents,
   migration0003DocumentChunks,
   migration0004AiConversations,
-  migration0005Courses
+  migration0005Courses,
+  migration0006Study
 ]
 
 /**

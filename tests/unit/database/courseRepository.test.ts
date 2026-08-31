@@ -103,4 +103,75 @@ describe('CourseRepository', () => {
     expect(reloaded).not.toBeNull()
     expect(reloaded?.documentIds).toEqual([])
   })
+
+  it('listPendingLessons excludes completed lessons and orders by module/lesson position', () => {
+    const course = courses.create({
+      objective: 'A',
+      documentIds: [documentId],
+      targetDate: null,
+      dailyMinutes: 60,
+      structure
+    })
+    courses.markLessonCompleted(course.modules[0].lessons[0].id)
+
+    const pending = courses.listPendingLessons(course.id)
+
+    expect(pending.map((l) => l.title)).toEqual(['Lección 2', 'Lección 3'])
+  })
+
+  it('markLessonCompleted marks the module completed once all its lessons are done', () => {
+    const course = courses.create({
+      objective: 'A',
+      documentIds: [documentId],
+      targetDate: null,
+      dailyMinutes: 60,
+      structure
+    })
+    const [lesson1, lesson2] = course.modules[0].lessons
+
+    courses.markLessonCompleted(lesson1.id)
+    expect(courses.getById(course.id)?.modules[0].status).toBe('in_progress')
+
+    courses.markLessonCompleted(lesson2.id)
+    expect(courses.getById(course.id)?.modules[0].status).toBe('completed')
+  })
+
+  it('markLessonCompleted recomputes course progress and flips status to completed at 100%', () => {
+    const course = courses.create({
+      objective: 'A',
+      documentIds: [documentId],
+      targetDate: null,
+      dailyMinutes: 60,
+      structure
+    })
+    const allLessonIds = course.modules.flatMap((m) => m.lessons.map((l) => l.id))
+
+    courses.markLessonCompleted(allLessonIds[0])
+    let reloaded = courses.getById(course.id)
+    expect(reloaded?.progress).toBe(33)
+    expect(reloaded?.status).toBe('active')
+
+    allLessonIds.slice(1).forEach((id) => courses.markLessonCompleted(id))
+    reloaded = courses.getById(course.id)
+    expect(reloaded?.progress).toBe(100)
+    expect(reloaded?.status).toBe('completed')
+  })
+
+  it('markLessonInProgress escalates not_started but never downgrades a completed lesson', () => {
+    const course = courses.create({
+      objective: 'A',
+      documentIds: [documentId],
+      targetDate: null,
+      dailyMinutes: 60,
+      structure
+    })
+    const lessonId = course.modules[0].lessons[0].id
+
+    courses.markLessonInProgress(lessonId)
+    expect(courses.getById(course.id)?.modules[0].lessons[0].status).toBe('in_progress')
+
+    courses.markLessonCompleted(lessonId)
+    courses.markLessonInProgress(lessonId)
+    expect(courses.getById(course.id)?.modules[0].lessons[0].status).toBe('completed')
+  })
 })

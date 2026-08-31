@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Card, LoadingState, ProgressBar, StatusBadge } from '../../design-system'
+import { Link, useParams } from 'react-router-dom'
+import { Button, Card, LoadingState, ProgressBar, StatusBadge } from '../../design-system'
 import type { StatusTone } from '../../design-system'
+import { NotesPanel } from '../notes/NotesPanel'
 import type { CourseDetail, LessonStatus, LessonType, ModuleStatus } from '@shared/types/courses'
 
 const LESSON_TYPE_LABEL: Record<LessonType, string> = {
@@ -54,7 +55,14 @@ export function CourseDetailPage(): React.JSX.Element {
             <h1 className="text-lg font-semibold text-text-primary">{course.title}</h1>
             <p className="text-sm text-text-secondary">Objetivo: {course.objective}</p>
           </div>
-          <p className="shrink-0 text-2xl font-semibold text-success">{course.progress}%</p>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <p className="text-2xl font-semibold text-success">{course.progress}%</p>
+            {course.status === 'active' && (
+              <Link to={`/study/${course.id}`}>
+                <Button size="sm">Continuar</Button>
+              </Link>
+            )}
+          </div>
         </div>
         <div className="mt-3 flex items-center gap-3">
           <div className="flex-1">
@@ -98,6 +106,10 @@ export function CourseDetailPage(): React.JSX.Element {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <NotesPanel courseId={course.id} />
+      </Card>
     </div>
   )
 }

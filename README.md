@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 5 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 6 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -51,9 +51,12 @@ Desde Fase 5, `/courses` permite crear un curso a partir de uno o varios
 documentos de la biblioteca: un wizard de 5 pasos (objetivo, material,
 tiempo, estilo, confirmación) genera una estructura de módulos y lecciones
 con IA, validada con un esquema estricto antes de guardarse, y el curso
-resultante se puede consultar en `/courses/:id`. Tomar lecciones de forma
-interactiva llega con Study Mode (Fase 6). El resto de pantallas se
-implementan en su fase correspondiente.
+resultante se puede consultar en `/courses/:id`. Desde Fase 6, `/study`
+permite tomar esas lecciones de verdad: cada sesión agrupa las lecciones
+pendientes según los minutos diarios del curso, se puede marcar cada una
+como entendida o pendiente de repasar, tomar notas rápidas ligadas al
+curso, y cerrar/reabrir la app retoma exactamente donde quedaste. El resto
+de pantallas se implementan en su fase correspondiente.
 
 ## Desarrollo
 

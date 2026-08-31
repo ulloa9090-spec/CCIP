@@ -197,4 +197,95 @@ export class CourseRepository {
 
     return { ...mapCourse(row), modules, documentIds }
   }
+
+  /** Ordered by module/lesson position — the order a study session presents them in. */
+  listPendingLessons(courseId: string): {
+    lessonId: string
+    moduleId: string
+    title: string
+    summary: string | null
+    estimatedMinutes: number
+  }[] {
+    const rows = this.db
+      .prepare(
+        `SELECT lessons.id as lesson_id, lessons.module_id, lessons.title, lessons.summary,
+                lessons.estimated_minutes
+         FROM lessons
+         JOIN modules ON modules.id = lessons.module_id
+         WHERE modules.course_id = ? AND lessons.status != 'completed'
+         ORDER BY modules.position ASC, lessons.position ASC`
+      )
+      .all(courseId) as {
+      lesson_id: string
+      module_id: string
+      title: string
+      summary: string | null
+      estimated_minutes: number
+    }[]
+
+    return rows.map((row) => ({
+      lessonId: row.lesson_id,
+      moduleId: row.module_id,
+      title: row.title,
+      summary: row.summary,
+      estimatedMinutes: row.estimated_minutes
+    }))
+  }
+
+  /**
+   * Marks a lesson completed and recomputes its module's status and the
+   * course's overall progress/status in the same transaction — the
+   * aggregate's own repository is where that consistency belongs, not a
+   * caller that would otherwise have to know the recomputation rules.
+   */
+  markLessonCompleted(lessonId: string): void {
+    const now = new Date().toISOString()
+    const run = this.db.transaction(() => {
+      this.db.prepare("UPDATE lessons SET status = 'completed' WHERE id = ?").run(lessonId)
+
+      const lessonRow = this.db
+        .prepare('SELECT module_id FROM lessons WHERE id = ?')
+        .get(lessonId) as { module_id: string } | undefined
+      if (!lessonRow) return
+      const moduleId = lessonRow.module_id
+
+      const moduleLessons = this.db
+        .prepare('SELECT status FROM lessons WHERE module_id = ?')
+        .all(moduleId) as { status: LessonStatus }[]
+      const moduleStatus: ModuleStatus = moduleLessons.every((l) => l.status === 'completed')
+        ? 'completed'
+        : moduleLessons.some((l) => l.status !== 'not_started')
+          ? 'in_progress'
+          : 'not_started'
+      this.db.prepare('UPDATE modules SET status = ? WHERE id = ?').run(moduleStatus, moduleId)
+
+      const moduleRow = this.db
+        .prepare('SELECT course_id FROM modules WHERE id = ?')
+        .get(moduleId) as { course_id: string } | undefined
+      if (!moduleRow) return
+      const courseId = moduleRow.course_id
+
+      const allLessons = this.db
+        .prepare(
+          `SELECT lessons.status FROM lessons
+           JOIN modules ON modules.id = lessons.module_id
+           WHERE modules.course_id = ?`
+        )
+        .all(courseId) as { status: LessonStatus }[]
+      const completedCount = allLessons.filter((l) => l.status === 'completed').length
+      const progress = Math.round((completedCount / allLessons.length) * 100)
+      const courseStatus: CourseStatus = progress === 100 ? 'completed' : 'active'
+      this.db
+        .prepare('UPDATE courses SET progress = ?, status = ?, updated_at = ? WHERE id = ?')
+        .run(progress, courseStatus, now, courseId)
+    })
+    run()
+  }
+
+  /** Only escalates `not_started` → `in_progress`; never downgrades a completed lesson. */
+  markLessonInProgress(lessonId: string): void {
+    this.db
+      .prepare("UPDATE lessons SET status = 'in_progress' WHERE id = ? AND status = 'not_started'")
+      .run(lessonId)
+  }
 }

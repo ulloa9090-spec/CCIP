@@ -635,3 +635,103 @@ aquí. Lo que sí se verificó:
 **Lo que queda pendiente de verificar en el Mac de destino**: un curso
 generado realmente por OpenAI a partir de un PDF real, incluida la calidad
 del contenido generado y de la estimación de tiempos.
+
+---
+
+### ADR-017 — Alcance y decisiones de Study Mode (Fase 6)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §8 pide "session generation,
+lesson cards, quick checks, notes, resume", con criterio de aceptación
+"estudiar, cerrar, abrir, continuar". `DATA_MODEL.md` §15-16 define
+`study_sessions`/`session_activities`, §23 define `notes`. `UX_UI.md` §11
+muestra un wireframe con una tarjeta de lección (título, explicación,
+fuente) y una fila de acciones `[Entendido] [Más simple] [Ejemplo]
+[Preguntar]` sobre `[Continuar →]`.
+
+**Decisiones:**
+
+1. **Sin llamadas a IA en todo el ciclo de estudio.** A diferencia del
+   Course Engine (Fase 5) y el Tutor (Fase 4), generar y avanzar una sesión
+   de estudio es determinista: se construye a partir de las lecciones ya
+   persistidas por Fase 5 (título + `summary`). Esto hace que Fase 6
+   funcione 100% offline y sea verificable de punta a punta en este
+   contenedor sandboxeado sin ninguna de las limitaciones de red de
+   ADR-012/015/016.
+2. **`[Más simple] [Ejemplo] [Preguntar]` no se implementan en esta fase.**
+   Mismo criterio que Fase 4 (ADR-014) con el selector de modo del Tutor:
+   estos botones ya aparecen en el wireframe del propio Tutor (`UX_UI.md`
+   §13, junto con "Crear flashcard") y Fase 4 tampoco los construyó — no
+   hay overreach nuevo aquí, solo se mantiene la misma línea. Construirlos
+   ahora significaría inventar un mecanismo de regeneración de contenido ad
+   hoc antes de que exista una razón real (ninguna pantalla los necesita
+   todavía) y, en el caso de "Preguntar", duplicaría al Tutor en vez de
+   reutilizarlo. `[Entendido]` y `[Continuar →]` sí se implementan — son
+   los únicos controles de navegación reales del wireframe.
+3. **"Quick check" = auto-reporte de comprensión, no una pregunta generada
+   ni calificada.** `session_activities.activity_type` incluye `question`,
+   pero el motor de preguntas real (`questions`, generación, scoring) es
+   Assessment (Fase 7), que no existe. Inventar una pregunta de opción
+   múltiple ad hoc aquí duplicaría ese futuro sistema con una versión a
+   medias. En su lugar, "Entendido" / "Necesito repasar" son el quick check
+   completo de esta fase: el primero marca la lección completada
+   (persistido), el segundo la deja en `in_progress` sin avanzar. Real y
+   honesto con lo que existe, sin fabricar una calificación.
+4. **Sin citación por lección todavía.** El wireframe muestra "Fuente:
+   Builder Manual p. 82" bajo la explicación. El mecanismo correcto para
+   eso es `concept_sources` (vincula un concepto/lección a los chunks que
+   lo respaldan) — deliberadamente diferido a Fase 8/11 (ADR-016, punto 1).
+   Calcular una cita ad hoc vía `RetrievalService` habría requerido el
+   modelo de embeddings local (mismo bloqueo de red que ADR-012) solo para
+   construir un mecanismo paralelo y desechable al que ya está planeado
+   correctamente más adelante. La tarjeta de lección de Fase 6 muestra
+   título + `summary` (ya generado en Fase 5), sin cita.
+5. **Sin timer visible.** El wireframe muestra un cronómetro
+   (`28:41`). `UX_UI.md` §11 exige explícitamente "no mostrar demasiadas
+   métricas mientras estudia" — un timer en vivo no tiene ningún consumidor
+   real (no hay límite de tiempo que hacer cumplir) y habría sido
+   puramente decorativo. `actual_minutes` se calcula igualmente al cerrar
+   la sesión, a partir de `started_at`/`completed_at` reales, sin necesitar
+   una cuenta regresiva en pantalla.
+6. **Selección de lecciones por presupuesto de `dailyMinutes`.** Al iniciar
+   o reanudar, `StudySessionService` toma las lecciones pendientes del
+   curso en orden (módulo → posición de lección) y las agrupa hasta agotar
+   `course.dailyMinutes`, garantizando siempre al menos una lección aunque
+   por sí sola supere el presupuesto (una sesión nunca queda vacía).
+7. **Consistencia de agregado centralizada en `CourseRepository`.**
+   `markLessonCompleted`/`markLessonInProgress` viven en el repositorio del
+   curso, no en el servicio de sesión: recalculan el estado del módulo y el
+   progreso/estado del curso en la misma transacción que actualiza la
+   lección. Mantiene la regla "un repositorio por agregado" (el curso con
+   sus módulos/lecciones es un solo agregado) en vez de esparcir lógica de
+   recomputo entre dos repositorios.
+8. **Notas: solo lo que Fase 6 usa de verdad.** `notes.concept_id`
+   (DATA_MODEL.md §23) no se crea todavía — `concepts` no existe hasta Fase
+   8, mismo patrón que las tablas ya diferidas en ADR-007/016. Se añadirá
+   como columna aditiva cuando llegue, nunca editando esta migración. La
+   UI de notas se limita a "tomar una nota mientras estudias" (ligada a
+   `courseId`) y verla en el detalle del curso — no se construye un
+   navegador de notas independiente (`/notes` sigue como placeholder); eso
+   excede lo que Fase 6 pide y no tiene un dueño claro en el roadmap
+   todavía.
+9. **`/study` como landing de cursos activos + `/study/:courseId` como
+   pantalla enfocada.** Refleja la estructura ya usada por
+   Biblioteca/Cursos (lista → detalle) y evita necesitar un selector de
+   curso embebido en la propia pantalla de estudio.
+
+**Verificación.** A diferencia de Fase 4/5, esta fase no tiene ninguna
+limitación de red que documentar — todo se verificó de punta a punta:
+- Unit tests deterministas, sin mocks de IA (`tests/unit/study/
+  studySessionService.test.ts`, `tests/unit/database/
+  studySessionRepository.test.ts`, extensiones de `courseRepository.test.ts`
+  para `markLessonCompleted`/`markLessonInProgress`/`listPendingLessons`,
+  `tests/unit/database/noteRepository.test.ts`): agrupamiento por
+  presupuesto diario, al menos una lección garantizada, reanudar una sesión
+  activa en vez de crear una nueva, recomputo de progreso/estado de
+  módulo/curso, transición a `COURSE_COMPLETE`, notas aisladas por curso.
+- E2E real (`tests/e2e/study.spec.ts`), sembrando un curso directamente con
+  las mismas clases de repositorio que usa la app (no SQL a mano) contra el
+  archivo SQLite exacto que la app abre, para evitar depender de una
+  generación real de OpenAI: el criterio de aceptación literal "estudiar,
+  cerrar, abrir, continuar" probado cerrando y reabriendo la app de verdad
+  entre sesiones; completar todas las lecciones de un curso hasta el 100%;
+  una nota tomada durante el estudio visible en el detalle del curso.

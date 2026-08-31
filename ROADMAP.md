@@ -28,8 +28,11 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       lecciones, persistencia anidada. _(completada; generación real con
       OpenAI pendiente de verificar en el Mac de destino, ver DECISIONS.md
       ADR-016)_
-- [ ] **Fase 6 — Study Mode**: generación de sesión, lesson cards, quick checks,
-      notas, resume.
+- [x] **Fase 6 — Study Mode**: generación de sesión (sin IA, determinista a
+      partir de las lecciones de Fase 5), lesson cards, quick checks
+      (Entendido/Necesito repasar), notas ligadas a un curso, resume real
+      probado cerrando y reabriendo la app. _(completada — ver DECISIONS.md
+      ADR-017; sin limitaciones de red, todo verificado de punta a punta)_
 - [ ] **Fase 7 — Assessment**: generador de quizzes, question player, scoring,
       explicaciones, historial.
 - [ ] **Fase 8 — Mastery**: tracking de conceptos, mastery score, detección de
