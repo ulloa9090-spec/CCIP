@@ -33,8 +33,13 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       (Entendido/Necesito repasar), notas ligadas a un curso, resume real
       probado cerrando y reabriendo la app. _(completada — ver DECISIONS.md
       ADR-017; sin limitaciones de red, todo verificado de punta a punta)_
-- [ ] **Fase 7 — Assessment**: generador de quizzes, question player, scoring,
-      explicaciones, historial.
+- [x] **Fase 7 — Assessment**: generador de quizzes (opción múltiple, Zod +
+      JSON Schema re-validado), reproductor secuencial, scoring real,
+      explicaciones y citas reales por pregunta (vía `RetrievalService`,
+      nunca generadas por la IA), historial con comparación al promedio de
+      intentos anteriores. _(completada — ver DECISIONS.md ADR-018;
+      generación real con OpenAI pendiente de verificar en el Mac de
+      destino, igual que Fase 5)_
 - [ ] **Fase 8 — Mastery**: tracking de conceptos, mastery score, detección de
       debilidades, remediación.
 - [ ] **Fase 9 — Plan adaptativo**: schedule, fecha objetivo, minutos diarios,

@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 6 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 7 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -55,8 +55,13 @@ resultante se puede consultar en `/courses/:id`. Desde Fase 6, `/study`
 permite tomar esas lecciones de verdad: cada sesión agrupa las lecciones
 pendientes según los minutos diarios del curso, se puede marcar cada una
 como entendida o pendiente de repasar, tomar notas rápidas ligadas al
-curso, y cerrar/reabrir la app retoma exactamente donde quedaste. El resto
-de pantallas se implementan en su fase correspondiente.
+curso, y cerrar/reabrir la app retoma exactamente donde quedaste. Desde
+Fase 7, `/exams` genera un examen de práctica de opción múltiple a partir
+de un curso: cada pregunta se califica contra la respuesta real, muestra
+una explicación y, cuando es posible, una cita real a la página del
+documento que la respalda, y el historial compara cada intento con el
+promedio de los anteriores. El resto de pantallas se implementan en su
+fase correspondiente.
 
 ## Desarrollo
 
@@ -96,12 +101,12 @@ pnpm build:mac
 Este MVP prioriza la arquitectura del Mac de desarrollo. Distribución universal
 Intel + Apple Silicon, firma y notarización no son requisitos de esta fase.
 
-## Usar el Tutor y crear cursos
+## Usar el Tutor, crear cursos y generar exámenes
 
 Necesitas configurar tu clave de OpenAI en **Configuración > AI Provider**
-para que el Tutor genere respuestas o para crear un curso. Sin clave
-configurada, o sin conexión, la app lo indica con un mensaje claro en vez de
-fallar de forma confusa.
+para que el Tutor genere respuestas, para crear un curso o para generar un
+examen de práctica. Sin clave configurada, o sin conexión, la app lo indica
+con un mensaje claro en vez de fallar de forma confusa.
 
 ## Privacidad
 

@@ -509,6 +509,40 @@ No requerido en primer prototipo personal.
   de estudio y en el detalle del curso, botón "Continuar" en
   `CourseDetailPage` cuando el curso está activo.
 
+### Fase 7 (completada)
+
+- SQLite: migración `0007_assessment` agrega `questions`,
+  `assessment_attempts`, `assessment_answers` (DATA_MODEL.md §17-19).
+  `assessment_answers.answer_json`/`is_correct` son nullable — la tabla
+  hace de manifiesto del intento (una fila sin responder por pregunta
+  desde que se crea), no hay tabla `attempt_questions` separada. Ver
+  ADR-018.
+- `quizGenerationSchema.ts`: contrato Zod (`quizSchema`, 5-15 preguntas de
+  opción múltiple con 4 opciones) igual patrón que Fase 5 — JSON Schema
+  para el transporte, re-validación Zod al recibir la respuesta.
+- `QuizService`: selecciona documentos del curso → reutiliza
+  `buildSourceMaterial` (Fase 5) → `generateStructured` → valida →
+  persiste preguntas → adjunta una cita real por pregunta vía
+  `RetrievalService` (nunca generada por la IA, mismo principio que el
+  Tutor) → crea el intento. `submitAnswer`/`finish` califican contra el
+  índice correcto real, nunca contra lo que la IA "cree" que contestaste.
+- `QuestionRepository`, `AssessmentRepository`: persistencia de preguntas
+  e intentos; `AssessmentRepository.getPreviousAverageScore` da la
+  comparación histórica de la pantalla de resultados.
+- IPC: `window.studyos.exams.{generate,getAttempt,submitAnswer,finish,
+  getResult,listHistory}`.
+- UI: `/exams` (reemplaza el placeholder "Exámenes" — cursos con "Nuevo
+  examen" + historial), `/exams/:attemptId` (reproductor secuencial,
+  opción múltiple, Anterior/Siguiente/Finalizar, sin cronómetro ni
+  "Marcar" — ver ADR-018), `/exams/results/:attemptId` (score, duración,
+  comparación con el promedio histórico, explicación y cita real por
+  pregunta).
+- Deliberadamente fuera de alcance (ADR-018): el Exam Center completo
+  (Quick/Practice/Module/Final/Custom Exam) y su Custom Exam Builder, más
+  de un tipo de pregunta, banco de preguntas reutilizable,
+  fortalezas/debilidades por tema, confianza estimada, botón "Crear
+  sesión de recuperación", cronómetro visible.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
@@ -516,8 +550,8 @@ No requerido en primer prototipo personal.
   desarrollo (ver ADR-012). Pendiente en el Mac de destino.
 - Verificación de una respuesta real generada por OpenAI (streaming real,
   generación estructurada real, con clave de API real) — tampoco verificable
-  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016. Pendiente en el
-  Mac de destino.
+  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018.
+  Pendiente en el Mac de destino.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
   Course Engine real detrás desde esta fase; Asesor/Entrenador siguen
   dependiendo del Plan adaptativo (Fase 9).
@@ -527,8 +561,13 @@ No requerido en primer prototipo personal.
   (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
   todavía, ver ADR-014/017.
 - Preguntas/ejercicios/flashcards/repaso como tipos reales de
-  `session_activities` — dependen de Assessment (Fase 7) y Flashcards
-  (Fase 10).
+  `session_activities` — dependen de Assessment (ya real desde esta fase
+  para tipo `question`, pero no conectado a Study Mode todavía) y
+  Flashcards (Fase 10).
 - Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
   ligadas a un curso, ver ADR-017.
+- Exam Center completo, Custom Exam Builder, banco de preguntas
+  reutilizable, fortalezas/debilidades por tema, "Crear sesión de
+  recuperación" — dependen de Mastery/Mapa de Conocimiento (Fase 8/11) o
+  quedan fuera de alcance por ahora, ver ADR-018.
 

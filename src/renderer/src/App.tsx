@@ -11,12 +11,16 @@ import { CreateCoursePage } from './features/courses/CreateCoursePage'
 import { CourseDetailPage } from './features/courses/CourseDetailPage'
 import { StudyLandingPage } from './features/study/StudyLandingPage'
 import { StudySessionPage } from './features/study/StudySessionPage'
+import { ExamsLandingPage } from './features/exams/ExamsLandingPage'
+import { QuizPlayerPage } from './features/exams/QuizPlayerPage'
+import { QuizResultsPage } from './features/exams/QuizResultsPage'
 
 const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/library': <LibraryPage />,
   '/tutor': <TutorPage />,
   '/courses': <CoursesPage />,
-  '/study': <StudyLandingPage />
+  '/study': <StudyLandingPage />,
+  '/exams': <ExamsLandingPage />
 }
 
 function App(): React.JSX.Element {
@@ -35,6 +39,8 @@ function App(): React.JSX.Element {
           <Route path="/courses/new" element={<CreateCoursePage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/study/:courseId" element={<StudySessionPage />} />
+          <Route path="/exams/results/:attemptId" element={<QuizResultsPage />} />
+          <Route path="/exams/:attemptId" element={<QuizPlayerPage />} />
           <Route path={SETTINGS_NAV_ITEM.path} element={<SettingsPage />} />
         </Route>
       </Routes>

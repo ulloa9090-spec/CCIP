@@ -10,6 +10,11 @@ import type { ConversationDetail, TutorEvent } from '../shared/types/tutor'
 import type { Course, CourseDetail, CreateCourseInput } from '../shared/types/courses'
 import type { StudySessionDetail } from '../shared/types/study'
 import type { CreateNoteInput, Note } from '../shared/types/notes'
+import type {
+  AssessmentHistoryEntry,
+  AssessmentResult,
+  AttemptDetail
+} from '../shared/types/assessment'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -75,6 +80,23 @@ const studyos = {
     listByCourse: (courseId: string): Promise<Note[]> =>
       ipcRenderer.invoke('notes:listByCourse', courseId),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('notes:delete', id)
+  },
+  exams: {
+    generate: (courseId: string): Promise<{ attemptId: string }> =>
+      ipcRenderer.invoke('exams:generate', courseId),
+    getAttempt: (attemptId: string): Promise<AttemptDetail> =>
+      ipcRenderer.invoke('exams:getAttempt', attemptId),
+    submitAnswer: (
+      attemptId: string,
+      questionId: string,
+      choiceIndex: number
+    ): Promise<AttemptDetail> =>
+      ipcRenderer.invoke('exams:submitAnswer', attemptId, questionId, choiceIndex),
+    finish: (attemptId: string): Promise<AssessmentResult> =>
+      ipcRenderer.invoke('exams:finish', attemptId),
+    getResult: (attemptId: string): Promise<AssessmentResult> =>
+      ipcRenderer.invoke('exams:getResult', attemptId),
+    listHistory: (): Promise<AssessmentHistoryEntry[]> => ipcRenderer.invoke('exams:listHistory')
   }
 }
 

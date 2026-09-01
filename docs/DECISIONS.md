@@ -735,3 +735,115 @@ limitación de red que documentar — todo se verificó de punta a punta:
   cerrar, abrir, continuar" probado cerrando y reabriendo la app de verdad
   entre sesiones; completar todas las lecciones de un curso hasta el 100%;
   una nota tomada durante el estudio visible en el detalle del curso.
+
+---
+
+### ADR-018 — Alcance y decisiones de Assessment (Fase 7)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §9 pide "quiz generator, question
+player, scoring, explanations, source refs, history", con criterio de
+aceptación "quiz completo con resultados". `DATA_MODEL.md` §17-19 define
+`questions`, `assessment_attempts`, `assessment_answers`. `UX_UI.md` §14-17
+muestran un "Exam Center" (Quick Quiz/Practice Test/Module Exam/Final
+Exam/Custom Exam), un "Custom Exam Builder" (contenido, número de
+preguntas, dificultad, tipos, tiempo, feedback inmediato) y una pantalla de
+resultados con comparación histórica, fortalezas/debilidades y un botón
+"Crear sesión de recuperación".
+
+**Decisiones:**
+
+1. **Un solo flujo de examen, no el Exam Center completo.** Se construye
+   un único generador (curso completo, opción múltiple, ~10 preguntas por
+   intento) en vez de las cinco variantes del wireframe (Quick/Practice/
+   Module/Final/Custom). Ninguna de esas variantes tiene todavía una
+   diferencia real de comportamiento que las justifique (mismo criterio que
+   ADR-014 con el selector de modo del Tutor: "no exponer modos que no
+   hacen nada distinto todavía"). El Custom Exam Builder (elegir dificultad,
+   tipos, tiempo límite, feedback inmediato sí/no) queda diferido por la
+   misma razón — construirlo ahora sería una UI sin ninguna lógica de
+   negocio diferenciada detrás.
+2. **`assessment_type` fijo en `'quiz'`.** Consecuencia directa de la
+   decisión anterior — no hay todavía una categorización real que ese campo
+   deba distinguir.
+3. **Un único tipo de pregunta: `multiple_choice`, con exactamente 4
+   opciones.** Es el único tipo que aparece en el wireframe real de Exam
+   Mode (`UX_UI.md` §16). `questions.type` queda tipado como
+   `'multiple_choice'` únicamente; el enum completo de `DATA_MODEL.md`
+   admite más valores para cuando existan.
+4. **Sin `attempt_questions`: `assessment_answers` hace de manifiesto del
+   intento.** `DATA_MODEL.md` no define una tabla de unión entre un intento
+   y sus preguntas — solo liga preguntas a intento a través de
+   `assessment_answers`, que en el modelo original solo existiría una vez
+   contestada la pregunta. Para saber qué preguntas pertenecen a un intento
+   *antes* de responder (necesario para el reproductor y para poder navegar
+   Anterior/Siguiente), se reinterpreta esa tabla: se inserta una fila por
+   pregunta en el momento de crear el intento (`answer_json`/`is_correct`
+   NULL, "sin responder") y se completa al contestar. Alternativa
+   descartada: añadir una tabla `attempt_questions` nueva — habría sido una
+   tabla más fiel a una relación N:M explícita, pero se prefiere no añadir
+   una tabla que `DATA_MODEL.md` no contempla cuando la tabla existente ya
+   puede modelar el mismo hecho con un cambio de nulabilidad, documentado
+   aquí. El orden de las preguntas de un intento se conserva vía
+   `ORDER BY id ASC` sobre esas filas (ids del factory ulid monotónico,
+   igual que en toda la app).
+5. **Citas por construcción, igual que el Tutor (ADR-014).** La IA nunca
+   genera `source_refs_json` — genera solo prompt/opciones/respuesta
+   correcta/explicación/dificultad (validado con Zod, mismo patrón que
+   Fase 5). Una vez creadas las preguntas, `QuizService` busca por
+   `RetrievalService.search(pregunta.prompt, course.documentIds, 1)` y
+   adjunta el mejor chunk como cita real. Si la búsqueda falla (modelo de
+   embeddings no disponible, ver ADR-012) o no encuentra nada, la pregunta
+   simplemente queda sin cita — nunca bloquea la generación del examen
+   (mismo principio *offline-first* que ADR-013).
+6. **Cada "Nuevo examen" genera preguntas frescas — no hay banco de
+   preguntas reutilizable.** Reutilizar/excluir preguntas ya vistas es
+   parte del "Custom Exam Builder" diferido (decisión #1). Cada generación
+   crea un conjunto de preguntas nuevo, exclusivo de ese intento.
+7. **Comparación histórica sí; fortalezas/debilidades/confianza/sesión de
+   recuperación no.** `previousAverageScore` (promedio de intentos previos
+   completados del mismo curso) es calculable con lo que ya existe.
+   Fortalezas/debilidades por tema y una "sesión de recuperación" real
+   necesitan vincular preguntas falladas a conceptos/lecciones concretas —
+   eso depende de `concept_sources`/`lesson_concepts` (Fase 8/11), igual
+   que la cita por lección de Study Mode (ADR-017, punto 4). "Confianza
+   estimada" (que el propio usuario reporte qué tan seguro estaba)
+   corresponde a `assessment_answers.confidence_optional`, ya en el
+   esquema pero sin ninguna pantalla que lo pida todavía — se deja NULL.
+8. **Sin cronómetro ni "Marcar para revisar".** Mismo criterio que Study
+   Mode (ADR-017, punto 5): sin consumidor real de un límite de tiempo
+   todavía, y "Marcar" es una comodidad de navegación no pedida por el
+   roadmap. `duration_seconds` se calcula igual de forma real a partir de
+   `started_at`/`completed_at`, sin necesitar un reloj visible.
+9. **Respuestas persistidas antes de finalizar; los resultados nunca
+   exponen la respuesta correcta durante el intento.** `AttemptQuestion`
+   (lo que ve el reproductor) no incluye `correctIndex`/`explanation`;
+   `ResultQuestion` (lo que ve la pantalla de resultados) sí. Guardar cada
+   respuesta al elegirla (no solo al finalizar) es una consecuencia natural
+   del diseño del punto 4 y permite cambiar de opción libremente antes de
+   finalizar.
+
+**Verificación.** Igual que Fase 6, todo el ciclo de tomar/calificar un
+examen es determinista y se verificó de punta a punta sin limitaciones de
+red; solo la *generación* depende de OpenAI (bloqueado aquí, igual que
+Fase 5):
+- Unit tests deterministas: `QuestionRepository` (persistencia y orden),
+  `AssessmentRepository` (manifiesto de intento, respuestas
+  sobrescribibles, cálculo de score/duración, promedio histórico excluyendo
+  el intento actual e intentos sin terminar), `QuizService` con un
+  `AIProvider` falso (generación válida, `NOT_FOUND`, reinvalidación Zod de
+  una respuesta mal formada sin persistir nada, passthrough de `AppError`,
+  scoring real contra el índice correcto, cita real adjuntada vía
+  `RetrievalService` con embeddings deterministas).
+- E2E real (`tests/e2e/exams.spec.ts`): un curso y sus preguntas sembrados
+  con las mismas clases de repositorio que usa la app (no SQL a mano),
+  reproductor completo (responder, cambiar de pregunta, finalizar),
+  resultados con score/explicaciones/citas correctos, e historial
+  reflejándolo; por separado, generar un examen sin clave de OpenAI
+  configurada muestra el error normal de la app en vez de fallar de forma
+  confusa (mismo patrón que Fase 5).
+
+**Lo que queda pendiente de verificar en el Mac de destino**: un examen
+generado realmente por OpenAI a partir de un curso real, incluida la
+calidad de las preguntas y la relevancia de las citas reales de
+`RetrievalService` (que sí requiere el modelo de embeddings local
+descargado, ver ADR-012).
