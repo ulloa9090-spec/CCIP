@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3'
 import { ulid } from '../ulid'
+import { upsertConcept } from './conceptRepository'
 import type {
   QuestionDifficulty,
   QuestionSourceRef,
@@ -11,6 +12,7 @@ interface QuestionRow {
   id: string
   course_id: string
   module_id: string | null
+  concept_id: string | null
   type: QuestionType
   prompt: string
   choices_json: string
@@ -23,6 +25,7 @@ interface QuestionRow {
 export interface Question {
   id: string
   courseId: string
+  conceptId: string | null
   type: QuestionType
   prompt: string
   choices: string[]
@@ -36,6 +39,7 @@ function mapQuestion(row: QuestionRow): Question {
   return {
     id: row.id,
     courseId: row.course_id,
+    conceptId: row.concept_id,
     type: row.type,
     prompt: row.prompt,
     choices: JSON.parse(row.choices_json) as string[],
@@ -55,17 +59,19 @@ export class QuestionRepository {
   createMany(courseId: string, structure: QuizStructure): Question[] {
     const insert = this.db.prepare(
       `INSERT INTO questions
-         (id, course_id, module_id, type, prompt, choices_json, correct_answer_json, explanation, difficulty, source_refs_json)
-       VALUES (?, ?, NULL, 'multiple_choice', ?, ?, ?, ?, ?, NULL)`
+         (id, course_id, module_id, concept_id, type, prompt, choices_json, correct_answer_json, explanation, difficulty, source_refs_json)
+       VALUES (?, ?, NULL, ?, 'multiple_choice', ?, ?, ?, ?, ?, NULL)`
     )
     const ids: string[] = []
     const persist = this.db.transaction(() => {
       for (const question of structure.questions) {
         const id = ulid()
         ids.push(id)
+        const conceptId = question.concept ? upsertConcept(this.db, question.concept) : null
         insert.run(
           id,
           courseId,
+          conceptId,
           question.prompt,
           JSON.stringify(question.choices),
           JSON.stringify({ correctIndex: question.correctIndex }),

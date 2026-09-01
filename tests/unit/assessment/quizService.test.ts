@@ -6,8 +6,14 @@ import { CourseRepository } from '../../../src/main/database/repositories/course
 import { QuestionRepository } from '../../../src/main/database/repositories/questionRepository'
 import { AssessmentRepository } from '../../../src/main/database/repositories/assessmentRepository'
 import { DocumentChunkRepository } from '../../../src/main/database/repositories/documentChunkRepository'
+import {
+  ConceptRepository,
+  upsertConcept
+} from '../../../src/main/database/repositories/conceptRepository'
+import { MasteryRepository } from '../../../src/main/database/repositories/masteryRepository'
 import { RetrievalService } from '../../../src/main/retrieval/retrievalService'
 import { QuizService } from '../../../src/main/assessment/quizService'
+import { MasteryService } from '../../../src/main/mastery/masteryService'
 import { AppError } from '../../../src/shared/types/errors'
 import type { AIProvider, EmbeddingProvider, StreamTextChunk } from '../../../src/shared/types/ai'
 
@@ -81,6 +87,7 @@ function buildService(ai: AIProvider): QuizService {
     new QuestionRepository(db),
     new AssessmentRepository(db),
     new RetrievalService(chunks, fakeEmbeddings()),
+    new MasteryService(new ConceptRepository(db), new MasteryRepository(db)),
     ai
   )
 }
@@ -225,5 +232,40 @@ describe('QuizService', () => {
 
     service.finish(attemptId)
     expect(service.listHistory()).toHaveLength(1)
+  })
+
+  it('finish() records mastery evidence only for answered questions with a concept', async () => {
+    const quizWithConcepts = {
+      questions: validQuiz.questions.map((q, i) => (i === 0 ? { ...q, concept: 'Concreto' } : q))
+    }
+    const service = buildService(fakeAIProvider(quizWithConcepts))
+    const { attemptId } = await service.generate(courseId)
+    const detail = service.getAttemptDetail(attemptId)
+
+    // Q1 (has a concept) answered correctly; Q2 (no concept) left unanswered.
+    service.submitAnswer(attemptId, detail.questions[0].id, 0)
+    service.finish(attemptId)
+
+    // upsertConcept dedupes by canonical key, so this returns the same id
+    // the question was linked to during generation — not a new concept.
+    const conceptId = upsertConcept(db, 'Concreto')
+    const score = new MasteryRepository(db).get(conceptId, courseId)
+
+    expect(score).toEqual({ conceptId, score: 100, state: 'mastered', evidenceCount: 1 })
+  })
+
+  it('finish() does not record evidence for a question with a concept that was left unanswered', async () => {
+    const quizWithConcepts = {
+      questions: validQuiz.questions.map((q, i) =>
+        i === 1 ? { ...q, concept: 'Otro concepto' } : q
+      )
+    }
+    const service = buildService(fakeAIProvider(quizWithConcepts))
+    const { attemptId } = await service.generate(courseId)
+    // Q2 (has the concept) is left unanswered entirely.
+    service.finish(attemptId)
+
+    const conceptId = upsertConcept(db, 'Otro concepto')
+    expect(new MasteryRepository(db).get(conceptId, courseId)).toBeNull()
   })
 })

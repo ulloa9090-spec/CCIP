@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 7 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 8 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -60,8 +60,13 @@ Fase 7, `/exams` genera un examen de práctica de opción múltiple a partir
 de un curso: cada pregunta se califica contra la respuesta real, muestra
 una explicación y, cuando es posible, una cita real a la página del
 documento que la respalda, y el historial compara cada intento con el
-promedio de los anteriores. El resto de pantallas se implementan en su
-fase correspondiente.
+promedio de los anteriores. Desde Fase 8, cada curso rastrea los conceptos
+que enseña (generados junto con sus lecciones y preguntas) y calcula tu
+dominio de cada uno a partir de tus quick checks en Study Mode y tus
+respuestas en los exámenes; el detalle del curso muestra ese dominio y,
+cuando detecta conceptos débiles, permite crear una sesión de recuperación
+enfocada en ellos. El resto de pantallas se implementan en su fase
+correspondiente.
 
 ## Desarrollo
 

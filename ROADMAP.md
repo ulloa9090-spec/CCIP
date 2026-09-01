@@ -40,8 +40,12 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       intentos anteriores. _(completada — ver DECISIONS.md ADR-018;
       generación real con OpenAI pendiente de verificar en el Mac de
       destino, igual que Fase 5)_
-- [ ] **Fase 8 — Mastery**: tracking de conceptos, mastery score, detección de
-      debilidades, remediación.
+- [x] **Fase 8 — Mastery**: tracking de conceptos (generados junto con
+      cursos/exámenes, deduplicados globalmente), mastery score (promedio
+      acumulado + estado por umbrales), detección de áreas débiles, sesión
+      de recuperación real (reutiliza Study Mode). _(completada — ver
+      DECISIONS.md ADR-019; sin llamadas a IA en el ciclo de mastery en sí,
+      solo hereda la limitación de red de Fase 5/7 para generar conceptos)_
 - [ ] **Fase 9 — Plan adaptativo**: schedule, fecha objetivo, minutos diarios,
       manejo de sesiones perdidas, recálculo.
 - [ ] **Fase 10 — Flashcards**: decks, generación automática, scheduling SM-2-like,

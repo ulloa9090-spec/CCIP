@@ -12,7 +12,14 @@ export const lessonPlanSchema = z.object({
   title: z.string().min(1),
   type: z.enum(['lesson', 'practice', 'assessment']),
   estimatedMinutes: z.number().int().positive(),
-  summary: z.string().min(1)
+  summary: z.string().min(1),
+  /**
+   * Concept titles this lesson covers, most important first (Fase 8 —
+   * concept tracking/mastery). Optional: a course generated before Fase 8
+   * shipped, or any test fixture that doesn't care about mastery, simply
+   * omits it and gets zero concepts linked — no migration or backfill.
+   */
+  concepts: z.array(z.string().min(1)).min(1).max(5).optional()
 })
 
 export const modulePlanSchema = z.object({

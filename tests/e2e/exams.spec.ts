@@ -126,7 +126,7 @@ test.describe('Exámenes', () => {
       await expect(window.getByText('París es la capital de Francia.')).toBeVisible()
 
       await window.getByRole('link', { name: 'Volver a Exámenes' }).click()
-      await expect(window.getByText('Curso sembrado')).toBeVisible()
+      await expect(window.getByText('Curso sembrado').first()).toBeVisible()
       await expect(window.getByText('50%')).toBeVisible()
     } finally {
       await app.close()

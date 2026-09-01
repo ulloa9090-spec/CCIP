@@ -1,14 +1,11 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Database } from 'better-sqlite3'
-import { CourseRepository } from '../database/repositories/courseRepository'
-import { StudySessionRepository } from '../database/repositories/studySessionRepository'
 import { ConceptRepository } from '../database/repositories/conceptRepository'
 import { MasteryRepository } from '../database/repositories/masteryRepository'
-import { StudySessionService } from '../study/studySessionService'
 import { MasteryService } from '../mastery/masteryService'
 import { AppError } from '../../shared/types/errors'
 import { logger } from '../logging/logger'
-import type { StudySessionDetail } from '../../shared/types/study'
+import type { CourseMastery } from '../../shared/types/mastery'
 
 function handle(
   channel: string,
@@ -39,28 +36,10 @@ function assertId(value: unknown, userMessage: string): string {
   return value
 }
 
-export function registerStudyIpc(db: Database): void {
-  const concepts = new ConceptRepository(db)
-  const mastery = new MasteryService(concepts, new MasteryRepository(db))
-  const service = new StudySessionService(
-    new CourseRepository(db),
-    new StudySessionRepository(db),
-    concepts,
-    mastery
-  )
+export function registerMasteryIpc(db: Database): void {
+  const service = new MasteryService(new ConceptRepository(db), new MasteryRepository(db))
 
-  handle('study:startOrResume', (_event, courseId): StudySessionDetail => {
-    return service.startOrResume(assertId(courseId, 'Curso inválido.'))
-  })
-
-  handle('study:startRemediation', (_event, courseId): StudySessionDetail => {
-    return service.startRemediation(assertId(courseId, 'Curso inválido.'))
-  })
-
-  handle('study:completeActivity', (_event, activityId, understood): StudySessionDetail => {
-    return service.completeActivity(
-      assertId(activityId, 'Actividad inválida.'),
-      Boolean(understood)
-    )
+  handle('mastery:getCourseMastery', (_event, courseId): CourseMastery => {
+    return service.getCourseMastery(assertId(courseId, 'Curso inválido.'))
   })
 }

@@ -2,11 +2,15 @@ import { ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Database } from 'better-sqlite3'
 import { DocumentRepository } from '../database/repositories/documentRepository'
 import { CourseRepository } from '../database/repositories/courseRepository'
+import { ConceptRepository } from '../database/repositories/conceptRepository'
+import { DocumentChunkRepository } from '../database/repositories/documentChunkRepository'
+import { RetrievalService } from '../retrieval/retrievalService'
 import { CourseService } from '../courses/courseService'
 import { OpenAIProvider } from '../ai/openAIProvider'
+import { LocalEmbeddingProvider } from '../ai/localEmbeddingProvider'
 import { AppError } from '../../shared/types/errors'
 import { logger } from '../logging/logger'
-import type { AIProvider } from '../../shared/types/ai'
+import type { AIProvider, EmbeddingProvider } from '../../shared/types/ai'
 import type { Course, CourseDetail, CreateCourseInput } from '../../shared/types/courses'
 
 function handle(
@@ -65,10 +69,16 @@ function assertCourseId(value: unknown): string {
   return value
 }
 
-export function registerCoursesIpc(db: Database, ai: AIProvider = new OpenAIProvider()): void {
+export function registerCoursesIpc(
+  db: Database,
+  embeddings: EmbeddingProvider = new LocalEmbeddingProvider(),
+  ai: AIProvider = new OpenAIProvider()
+): void {
   const documents = new DocumentRepository(db)
   const courses = new CourseRepository(db)
-  const service = new CourseService(documents, courses, ai)
+  const concepts = new ConceptRepository(db)
+  const retrieval = new RetrievalService(new DocumentChunkRepository(db), embeddings)
+  const service = new CourseService(documents, courses, concepts, retrieval, ai)
 
   handle('courses:create', async (_event, input): Promise<CourseDetail> => {
     return service.create(assertCreateCourseInput(input))

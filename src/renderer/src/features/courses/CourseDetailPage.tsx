@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Button, Card, LoadingState, ProgressBar, StatusBadge } from '../../design-system'
 import type { StatusTone } from '../../design-system'
 import { NotesPanel } from '../notes/NotesPanel'
+import { MasteryPanel } from '../mastery/MasteryPanel'
 import type { CourseDetail, LessonStatus, LessonType, ModuleStatus } from '@shared/types/courses'
 
 const LESSON_TYPE_LABEL: Record<LessonType, string> = {
@@ -106,6 +107,8 @@ export function CourseDetailPage(): React.JSX.Element {
           </Card>
         ))}
       </div>
+
+      <MasteryPanel courseId={course.id} />
 
       <Card>
         <NotesPanel courseId={course.id} />

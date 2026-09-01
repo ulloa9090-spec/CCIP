@@ -4,11 +4,19 @@ import { runMigrations } from '../../../src/main/database/migrations'
 import { DocumentRepository } from '../../../src/main/database/repositories/documentRepository'
 import { CourseRepository } from '../../../src/main/database/repositories/courseRepository'
 import { StudySessionRepository } from '../../../src/main/database/repositories/studySessionRepository'
+import {
+  ConceptRepository,
+  upsertConcept
+} from '../../../src/main/database/repositories/conceptRepository'
+import { MasteryRepository } from '../../../src/main/database/repositories/masteryRepository'
 import { StudySessionService } from '../../../src/main/study/studySessionService'
+import { MasteryService } from '../../../src/main/mastery/masteryService'
 import type { CourseStructure } from '../../../src/main/courses/courseGenerationSchema'
 
 let db: Database.Database
 let courses: CourseRepository
+let concepts: ConceptRepository
+let mastery: MasteryRepository
 let service: StudySessionService
 let courseId: string
 
@@ -31,7 +39,14 @@ function setUp(dailyMinutes: number): void {
   runMigrations(db)
   const documents = new DocumentRepository(db)
   courses = new CourseRepository(db)
-  service = new StudySessionService(courses, new StudySessionRepository(db))
+  concepts = new ConceptRepository(db)
+  mastery = new MasteryRepository(db)
+  service = new StudySessionService(
+    courses,
+    new StudySessionRepository(db),
+    concepts,
+    new MasteryService(concepts, mastery)
+  )
   const documentId = documents.create({
     title: 'Manual',
     originalFilename: 'manual.pdf',
@@ -138,5 +153,40 @@ describe('StudySessionService', () => {
     expect(() => service.completeActivity('missing', true)).toThrowError(
       expect.objectContaining({ code: 'NOT_FOUND' })
     )
+  })
+
+  it('completeActivity records mastery evidence for every concept linked to the lesson', () => {
+    const session = service.startOrResume(courseId)
+    const [firstActivity] = session.activities
+    const course = courses.getById(courseId)!
+    const conceptId = upsertConcept(db, 'Concreto')
+    concepts.linkLessonConcept(course.modules[0].lessons[0].id, conceptId, 'primary')
+
+    service.completeActivity(firstActivity.id, true)
+    expect(mastery.get(conceptId, courseId)).toMatchObject({ score: 75, evidenceCount: 1 })
+
+    service.completeActivity(firstActivity.id, false)
+    expect(mastery.get(conceptId, courseId)).toMatchObject({ evidenceCount: 2 })
+  })
+
+  it('startRemediation throws NO_WEAK_CONCEPTS when there is no evidence of a weak concept yet', () => {
+    expect(() => service.startRemediation(courseId)).toThrowError(
+      expect.objectContaining({ code: 'NO_WEAK_CONCEPTS' })
+    )
+  })
+
+  it('startRemediation builds a review session covering the weakest concept, even for a completed lesson', () => {
+    const course = courses.getById(courseId)!
+    const [lesson1, lesson2] = course.modules[0].lessons
+    const conceptId = upsertConcept(db, 'Concreto')
+    concepts.linkLessonConcept(lesson1.id, conceptId, 'primary')
+    courses.markLessonCompleted(lesson1.id) // already completed, but still weak
+    mastery.recordEvidence(conceptId, courseId, 10) // struggling: state 'learning'
+
+    const remediation = service.startRemediation(courseId)
+
+    expect(remediation.activities.map((a) => a.lessonId)).toContain(lesson1.id)
+    expect(remediation.activities.map((a) => a.lessonId)).not.toContain(lesson2.id)
+    expect(remediation.activities[0].type).toBe('review')
   })
 })

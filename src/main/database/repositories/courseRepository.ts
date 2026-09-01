@@ -1,5 +1,6 @@
 import type { Database } from 'better-sqlite3'
 import { ulid } from '../ulid'
+import { upsertConcept } from './conceptRepository'
 import type {
   Course,
   CourseDetail,
@@ -106,6 +107,9 @@ export class CourseRepository {
         `INSERT INTO lessons (id, module_id, title, position, lesson_type, estimated_minutes, status, summary)
          VALUES (?, ?, ?, ?, ?, ?, 'not_started', ?)`
       )
+      const insertLessonConcept = this.db.prepare(
+        'INSERT OR IGNORE INTO lesson_concepts (lesson_id, concept_id, importance) VALUES (?, ?, ?)'
+      )
 
       input.structure.modules.forEach((modulePlan, moduleIndex) => {
         const moduleId = ulid()
@@ -116,8 +120,9 @@ export class CourseRepository {
         insertModule.run(moduleId, courseId, modulePlan.title, moduleIndex, estimatedMinutes)
 
         modulePlan.lessons.forEach((lessonPlan, lessonIndex) => {
+          const lessonId = ulid()
           insertLesson.run(
-            ulid(),
+            lessonId,
             moduleId,
             lessonPlan.title,
             lessonIndex,
@@ -125,6 +130,15 @@ export class CourseRepository {
             lessonPlan.estimatedMinutes,
             lessonPlan.summary
           )
+
+          lessonPlan.concepts?.forEach((conceptTitle, conceptIndex) => {
+            const conceptId = upsertConcept(this.db, conceptTitle)
+            insertLessonConcept.run(
+              lessonId,
+              conceptId,
+              conceptIndex === 0 ? 'primary' : 'secondary'
+            )
+          })
         })
       })
     })
@@ -216,6 +230,37 @@ export class CourseRepository {
          ORDER BY modules.position ASC, lessons.position ASC`
       )
       .all(courseId) as {
+      lesson_id: string
+      module_id: string
+      title: string
+      summary: string | null
+      estimated_minutes: number
+    }[]
+
+    return rows.map((row) => ({
+      lessonId: row.lesson_id,
+      moduleId: row.module_id,
+      title: row.title,
+      summary: row.summary,
+      estimatedMinutes: row.estimated_minutes
+    }))
+  }
+
+  /** Lessons by explicit id, regardless of status — used to batch a remediation session. */
+  getLessonsByIds(lessonIds: string[]): {
+    lessonId: string
+    moduleId: string
+    title: string
+    summary: string | null
+    estimatedMinutes: number
+  }[] {
+    if (lessonIds.length === 0) return []
+    const rows = this.db
+      .prepare(
+        `SELECT id as lesson_id, module_id, title, summary, estimated_minutes
+         FROM lessons WHERE id IN (${lessonIds.map(() => '?').join(',')})`
+      )
+      .all(...lessonIds) as {
       lesson_id: string
       module_id: string
       title: string

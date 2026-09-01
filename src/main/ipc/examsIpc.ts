@@ -5,8 +5,11 @@ import { DocumentRepository } from '../database/repositories/documentRepository'
 import { QuestionRepository } from '../database/repositories/questionRepository'
 import { AssessmentRepository } from '../database/repositories/assessmentRepository'
 import { DocumentChunkRepository } from '../database/repositories/documentChunkRepository'
+import { ConceptRepository } from '../database/repositories/conceptRepository'
+import { MasteryRepository } from '../database/repositories/masteryRepository'
 import { RetrievalService } from '../retrieval/retrievalService'
 import { QuizService } from '../assessment/quizService'
+import { MasteryService } from '../mastery/masteryService'
 import { OpenAIProvider } from '../ai/openAIProvider'
 import { LocalEmbeddingProvider } from '../ai/localEmbeddingProvider'
 import { AppError } from '../../shared/types/errors'
@@ -59,12 +62,14 @@ export function registerExamsIpc(
   embeddings: EmbeddingProvider = new LocalEmbeddingProvider(),
   ai: AIProvider = new OpenAIProvider()
 ): void {
+  const mastery = new MasteryService(new ConceptRepository(db), new MasteryRepository(db))
   const service = new QuizService(
     new CourseRepository(db),
     new DocumentRepository(db),
     new QuestionRepository(db),
     new AssessmentRepository(db),
     new RetrievalService(new DocumentChunkRepository(db), embeddings),
+    mastery,
     ai
   )
 

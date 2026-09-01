@@ -847,3 +847,131 @@ generado realmente por OpenAI a partir de un curso real, incluida la
 calidad de las preguntas y la relevancia de las citas reales de
 `RetrievalService` (que sí requiere el modelo de embeddings local
 descargado, ver ADR-012).
+
+---
+
+### ADR-019 — Alcance y decisiones de Mastery (Fase 8)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §10 pide "concept tracking,
+mastery score, weak-area detection, remediation". `DATA_MODEL.md` §12-14
+define `concepts`/`lesson_concepts`/`concept_sources` (deliberadamente no
+creadas en Fase 5/6, ver ADR-016 punto 1 y ADR-017 punto 4) y §22 define
+`mastery_scores`. Esta es la primera fase que no añade una pantalla nueva:
+conecta Course Engine (Fase 5), Study Mode (Fase 6) y Assessment (Fase 7)
+entre sí.
+
+**Decisiones:**
+
+1. **`concepts` es global, deduplicado por `canonical_key`.** No está
+   scopeado a un curso — la misma "Change Orders" mencionada en dos cursos
+   distintos es una sola fila. `canonicalKey()` normaliza (minúsculas, sin
+   acentos, separadores a guiones) antes de comparar. Es lo que permite que
+   `mastery_scores` (concept_id + course_id) signifique algo real por curso
+   y, más adelante, que el Mapa de Conocimiento (Fase 11) pueda agregar
+   dominio entre cursos.
+2. **Conceptos generados junto con el contenido que ya se genera, no con
+   una llamada de IA aparte.** `courseGenerationSchema.ts`'s
+   `lessonPlanSchema` gana un campo `concepts` (1-5 títulos, más importante
+   primero) y `quizGenerationSchema.ts`'s `quizQuestionSchema` gana
+   `concept` (uno). Ambos **opcionales**: un curso o examen generado antes
+   de esta fase, o cualquier fixture de test que no le importe mastery,
+   simplemente no linkea conceptos — evita duplicar el costo de una
+   llamada a IA solo para extraer conceptos después de generar el
+   contenido, y evita reescribir cada fixture de test existente de
+   Fase 5/7 para añadir un campo que no necesitan.
+3. **`concept_sources` sí se puebla en esta fase — no queda como tabla sin
+   consumidor.** A diferencia de la citación por lección (ADR-017 punto 4,
+   diferida por completo), aquí el propio roadmap pide "concept tracking"
+   como bloque explícito, y `concept_sources` es literalmente el mecanismo
+   de DATA_MODEL para eso. Se puebla igual que las citas del Tutor/
+   Assessment (ADR-014/018): la IA nunca genera la cita, `CourseService`
+   busca por `RetrievalService.search(concepto.title, ...)` tras crear el
+   curso y adjunta los chunks reales encontrados — best-effort, nunca
+   bloquea la creación del curso si el modelo de embeddings no está
+   disponible (ADR-013). Se muestra en `MasteryPanel` de forma indirecta
+   (a través de `ConceptMastery.sources`, aunque la UI de esta fase no
+   los renderiza todavía — ver "Pendiente" más abajo).
+4. **Score = promedio acumulado simple, no una media ponderada por
+   recencia.** `MasteryRepository.recordEvidence` recalcula
+   `(score_anterior × evidencias_anteriores + nueva_evidencia) /
+   evidencias_totales`. Se consideró una fórmula con decaimiento (dar más
+   peso a evidencia reciente) pero no hay ninguna señal real todavía de
+   que la evidencia vieja deba pesar menos — añadir esa complejidad sin
+   justificación sería exactamente el tipo de sobre-ingeniería que el
+   roadmap pide evitar. `state` se deriva puramente de umbrales sobre el
+   score (`new` solo si `evidence_count = 0`; luego `learning` <50,
+   `familiar` <75, `competent` <90, `mastered` ≥90).
+5. **Dos fuentes de evidencia, ambas ya reales de fases anteriores.**
+   `StudySessionService.completeActivity` (Fase 6) registra evidencia
+   "Entendido"/"Necesito repasar" (75/25 — autorreporte, más débil) para
+   cada concepto de la lección. `QuizService.finish` (Fase 7) registra
+   evidencia de cada pregunta respondida con concepto vinculado (100/0 —
+   objetiva). Una pregunta **sin responder** nunca cuenta como evidencia
+   (distinto de contarla como incorrecta) — se verifica explícitamente
+   comparando contra las respuestas registradas, no contra un valor por
+   defecto.
+6. **Detección de área débil: `learning` antes que `new`.** `new` (sin
+   evidencia) es menos accionable que `learning` (con evidencia, con
+   dificultad real) — un concepto nunca estudiado no es necesariamente
+   "débil", solo pendiente. `weakConcepts` prioriza `learning` (ordenado
+   por score ascendente) y añade `new` al final.
+7. **Remediación reutiliza `study_sessions`/`session_activities` tal
+   cual, sin pantalla nueva.** `StudySessionService.startRemediation`
+   agrupa por presupuesto de `dailyMinutes` (misma función que
+   `startOrResume`) las lecciones de los conceptos más débiles,
+   **ignorando si la lección ya está completada** — a diferencia de una
+   sesión normal, que solo mira lecciones pendientes. Se etiqueta
+   `activity_type = 'review'` (ya en el enum de DATA_MODEL, sin usar hasta
+   ahora) para que quede distinguible. `StudySessionPage` no necesitó
+   ningún cambio: una sesión de recuperación se ve y se juega exactamente
+   igual que una normal.
+8. **Sin candado si ya hay una sesión activa.** Si el usuario pulsa "Crear
+   sesión de recuperación" mientras tiene otra sesión de estudio a medias,
+   la nueva sesión de recuperación pasa a ser la "activa" (la reanudación
+   siempre toma la más reciente) y la anterior queda huérfana — no
+   recuperable desde la UI. Aceptado como limitación conocida en una app
+   personal de un solo usuario; añadir un candado explícito no tiene
+   todavía un caso de uso real que lo justifique.
+9. **`MasteryPanel` vive dentro de `CourseDetailPage`, no en una pantalla
+   propia.** `nav.ts` no reserva ninguna entrada para "Mastery" — el
+   dominio por curso es información contextual del curso, no una sección
+   de navegación independiente. Se oculta por completo (`return null`)
+   cuando el curso no tiene ningún concepto vinculado (cursos generados
+   antes de esta fase), en vez de mostrar una tarjeta vacía.
+
+**Consecuencia en otros archivos.** `CourseService` gana `ConceptRepository`
+y `RetrievalService` como dependencias nuevas; `QuizService` gana
+`MasteryService`; `StudySessionService` gana `ConceptRepository` y
+`MasteryService`. Todos los call sites (IPC, tests) se actualizaron para
+inyectar las nuevas dependencias — sin cambios de comportamiento para el
+código que no usa conceptos (todo sigue funcionando igual con cero
+conceptos vinculados).
+
+**Pendiente (fases siguientes).** La UI de esta fase no muestra las citas
+de `concept_sources` (aunque ya se generan y persisten) ni "confianza
+estimada" — eso encaja mejor en el Mapa de Conocimiento (Fase 11), que sí
+necesita presentar esas fuentes visualmente.
+
+**Verificación.** Como Study Mode (Fase 6), esta fase no depende de
+ninguna llamada a IA en su propio ciclo (registrar evidencia, calcular
+mastery, detectar áreas débiles, armar una sesión de recuperación son
+deterministas) — solo la generación original de conceptos hereda la
+limitación de red de Course Engine/Assessment (ADR-016/018). Se verificó
+de punta a punta:
+- Unit tests deterministas: `canonicalKey`/`upsertConcept` (dedup por
+  clave canónica, acentos/mayúsculas), `ConceptRepository`
+  (listForCourse/listConceptIdsForLesson/getLessonIdsForConcept/
+  addSource+getSources ordenadas por relevancia), `MasteryRepository`
+  (promedio acumulado, umbrales de estado, aislamiento por curso),
+  `MasteryService` (evidencia de lección/pregunta, "new" con score 0 por
+  defecto, orden de `weakConcepts`), extensiones de `CourseService` (link
+  de conceptos + citas reales, compatible con estructuras sin conceptos),
+  extensiones de `QuizService` (evidencia solo de preguntas respondidas),
+  extensiones de `StudySessionService` (evidencia por actividad,
+  `startRemediation` con `NO_WEAK_CONCEPTS` cuando no hay nada débil
+  todavía, y cubriendo una lección ya completada).
+- E2E real (`tests/e2e/mastery.spec.ts`), sembrando conceptos y evidencia
+  directamente con las mismas clases de repositorio que usa la app: la
+  tarjeta de Dominio del curso muestra los estados correctos, "Crear
+  sesión de recuperación" arma una sesión con la lección del concepto más
+  débil, y completarla actualiza el estado visible en la misma sesión.

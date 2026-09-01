@@ -48,7 +48,8 @@ export class StudySessionRepository {
   create(
     courseId: string,
     activities: CreateSessionActivityInput[],
-    estimatedMinutes: number
+    estimatedMinutes: number,
+    activityType: ActivityType = 'lesson'
   ): string {
     const now = new Date().toISOString()
     const sessionId = ulid()
@@ -64,12 +65,13 @@ export class StudySessionRepository {
 
       const insertActivity = this.db.prepare(
         `INSERT INTO session_activities (id, study_session_id, activity_type, payload_json, position, completed_at)
-         VALUES (?, ?, 'lesson', ?, ?, NULL)`
+         VALUES (?, ?, ?, ?, ?, NULL)`
       )
       activities.forEach((activity, index) => {
         insertActivity.run(
           ulid(),
           sessionId,
+          activityType,
           JSON.stringify({ lessonId: activity.lessonId }),
           index
         )
@@ -146,14 +148,23 @@ export class StudySessionRepository {
     }
   }
 
-  getActivity(activityId: string): { id: string; sessionId: string; lessonId: string } | null {
-    const row = this.db.prepare('SELECT * FROM session_activities WHERE id = ?').get(activityId) as
-      ActivityRow | undefined
+  getActivity(
+    activityId: string
+  ): { id: string; sessionId: string; lessonId: string; courseId: string } | null {
+    const row = this.db
+      .prepare(
+        `SELECT session_activities.*, study_sessions.course_id as course_id
+         FROM session_activities
+         JOIN study_sessions ON study_sessions.id = session_activities.study_session_id
+         WHERE session_activities.id = ?`
+      )
+      .get(activityId) as (ActivityRow & { course_id: string }) | undefined
     if (!row) return null
     return {
       id: row.id,
       sessionId: row.study_session_id,
-      lessonId: parseLessonId(row.payload_json)
+      lessonId: parseLessonId(row.payload_json),
+      courseId: row.course_id
     }
   }
 

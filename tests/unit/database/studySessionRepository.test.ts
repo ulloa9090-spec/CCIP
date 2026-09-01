@@ -97,6 +97,12 @@ describe('StudySessionRepository', () => {
     expect(sessions.getDetail('missing')).toBeNull()
   })
 
+  it('create accepts an activityType override for remediation sessions', () => {
+    const sessionId = sessions.create(courseId, [{ lessonId }], 15, 'review')
+
+    expect(sessions.getDetail(sessionId)?.activities[0].type).toBe('review')
+  })
+
   it('getActivity resolves the lesson id embedded in the activity payload', () => {
     const sessionId = sessions.create(courseId, [{ lessonId }], 15)
     const activity = sessions.getDetail(sessionId)!.activities[0]
@@ -104,7 +110,8 @@ describe('StudySessionRepository', () => {
     expect(sessions.getActivity(activity.id)).toEqual({
       id: activity.id,
       sessionId,
-      lessonId
+      lessonId,
+      courseId
     })
   })
 })

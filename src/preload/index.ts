@@ -15,6 +15,7 @@ import type {
   AssessmentResult,
   AttemptDetail
 } from '../shared/types/assessment'
+import type { CourseMastery } from '../shared/types/mastery'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -72,6 +73,8 @@ const studyos = {
   study: {
     startOrResume: (courseId: string): Promise<StudySessionDetail> =>
       ipcRenderer.invoke('study:startOrResume', courseId),
+    startRemediation: (courseId: string): Promise<StudySessionDetail> =>
+      ipcRenderer.invoke('study:startRemediation', courseId),
     completeActivity: (activityId: string, understood: boolean): Promise<StudySessionDetail> =>
       ipcRenderer.invoke('study:completeActivity', activityId, understood)
   },
@@ -97,6 +100,10 @@ const studyos = {
     getResult: (attemptId: string): Promise<AssessmentResult> =>
       ipcRenderer.invoke('exams:getResult', attemptId),
     listHistory: (): Promise<AssessmentHistoryEntry[]> => ipcRenderer.invoke('exams:listHistory')
+  },
+  mastery: {
+    getCourseMastery: (courseId: string): Promise<CourseMastery> =>
+      ipcRenderer.invoke('mastery:getCourseMastery', courseId)
   }
 }
 

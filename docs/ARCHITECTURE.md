@@ -543,6 +543,39 @@ No requerido en primer prototipo personal.
   fortalezas/debilidades por tema, confianza estimada, botón "Crear
   sesión de recuperación", cronómetro visible.
 
+### Fase 8 (completada)
+
+- SQLite: migración `0008_mastery` agrega `concepts` (global, deduplicado
+  por `canonical_key`), `lesson_concepts`, `concept_sources`,
+  `mastery_scores` (DATA_MODEL.md §12-14, §22), y añade `concept_id` como
+  columna aditiva a `questions` y `notes` (prometido en ADR-017/018).
+- `courseGenerationSchema.ts`/`quizGenerationSchema.ts` ganan campos
+  opcionales `concepts`/`concept` — el mismo Course Engine y Assessment ya
+  construidos generan y linkean conceptos sin una llamada de IA aparte;
+  un curso/examen que no los incluye simplemente no linkea nada
+  (compatible con lo generado en Fase 5-7).
+- `ConceptRepository`: dedup global por clave canónica
+  (`canonicalKey`/`upsertConcept`), consultas por curso/lección, y
+  `concept_sources` con citas reales adjuntadas vía `RetrievalService`
+  (nunca generadas por la IA, mismo principio que Tutor/Assessment).
+- `MasteryRepository`: promedio acumulado simple + estado derivado por
+  umbrales (`new`/`learning`/`familiar`/`competent`/`mastered`). Ver
+  ADR-019 para por qué no hay decaimiento por recencia.
+- `MasteryService`: dos fuentes de evidencia ya reales —
+  `StudySessionService.completeActivity` (autorreporte 75/25) y
+  `QuizService.finish` (objetiva 100/0, solo preguntas respondidas) —,
+  cálculo de dominio por curso, y detección de áreas débiles
+  (`learning` antes que `new`).
+- `StudySessionService.startRemediation`: arma una sesión de estudio
+  normal (`session_activities.activity_type = 'review'`) con las
+  lecciones de los conceptos más débiles, ignorando si ya están
+  completadas — reutiliza el reproductor de Study Mode sin ningún cambio.
+- IPC: `window.studyos.mastery.getCourseMastery`,
+  `window.studyos.study.startRemediation`.
+- UI: `MasteryPanel` (tarjeta "Dominio" dentro de `CourseDetailPage`, sin
+  pantalla ni entrada de navegación propia — oculta por completo si el
+  curso no tiene conceptos).
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
@@ -555,19 +588,18 @@ No requerido en primer prototipo personal.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
   Course Engine real detrás desde esta fase; Asesor/Entrenador siguen
   dependiendo del Plan adaptativo (Fase 9).
-- Citación por lección (Fuente: documento p. N) en la tarjeta de estudio —
-  depende de `concept_sources` (Fase 8/11), ver ADR-017.
 - Acciones de regeneración de IA en la tarjeta de estudio y en el Tutor
   (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
   todavía, ver ADR-014/017.
-- Preguntas/ejercicios/flashcards/repaso como tipos reales de
-  `session_activities` — dependen de Assessment (ya real desde esta fase
-  para tipo `question`, pero no conectado a Study Mode todavía) y
-  Flashcards (Fase 10).
+- Preguntas/ejercicios/flashcards como tipos reales de `session_activities`
+  más allá de `lesson`/`review` — dependen de Flashcards (Fase 10).
 - Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
   ligadas a un curso, ver ADR-017.
 - Exam Center completo, Custom Exam Builder, banco de preguntas
-  reutilizable, fortalezas/debilidades por tema, "Crear sesión de
-  recuperación" — dependen de Mastery/Mapa de Conocimiento (Fase 8/11) o
-  quedan fuera de alcance por ahora, ver ADR-018.
+  reutilizable — quedan fuera de alcance por ahora, ver ADR-018.
+- Presentación visual de `concept_sources` (citas por concepto) — ya se
+  generan y persisten desde esta fase, pero la UI del Mapa de Conocimiento
+  que las mostrará es Fase 11, ver ADR-019.
+- Candado explícito para no crear una sesión de recuperación mientras otra
+  sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
 
