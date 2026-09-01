@@ -1,0 +1,21 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.node.json",
+  "include": [
+    "electron.vite.config.*",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/shared/**/*",
+    "tests/unit/database/**/*",
+    "tests/unit/security/**/*",
+    "tests/unit/shared/**/*",
+    "tests/unit/pdf/**/*",
+    "tests/unit/jobs/**/*",
+    "tests/unit/retrieval/**/*",
+    "tests/unit/ai/**/*",
+    "tests/unit/tutor/**/*"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "types": ["electron-vite/node"]
+  }
+}
