@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 10 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 11 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -75,7 +75,14 @@ respalda cuando es posible) o te deja crearlas a mano; el deck es
 acumulativo — generar más nunca borra tus tarjetas ni tu historial de
 repasos — y `/flashcards/:courseId/review` te hace repasar las que ya
 vencen hoy con un scheduling estilo SM-2 (Otra vez/Difícil/Bien/Fácil
-ajustan cuándo vuelve a tocar cada una). El resto de pantallas se
+ajustan cuándo vuelve a tocar cada una). Desde Fase 11, `/progress`
+reúne en un solo lugar tu racha de días estudiados, tiempo total y
+reciente, precisión en exámenes y flashcards, dominio por curso e
+historial de exámenes — todo calculado a partir de lo que ya hiciste en
+Study Mode, Exámenes, Mastery y Flashcards, sin ninguna llamada a IA; y
+`/knowledge-map` muestra, por curso, el árbol de conceptos con tu dominio
+de cada uno — tocar uno revela sus fuentes citadas y te deja saltar
+directo a una sesión de recuperación. El resto de pantallas se
 implementan en su fase correspondiente.
 
 ## Desarrollo

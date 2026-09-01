@@ -161,4 +161,19 @@ describe('FlashcardRepository', () => {
 
     expect(flashcards.getLatestReview(card.id)).toEqual({ intervalDays: 6, easeFactor: 2.65 })
   })
+
+  it('getReviewStats counts "good"/"easy" ratings as positive out of the total', () => {
+    const [a, b] = flashcards.createMany(courseId, [
+      { front: 'Q1', back: 'A1' },
+      { front: 'Q2', back: 'A2' }
+    ])
+    expect(flashcards.getReviewStats()).toEqual({ total: 0, positive: 0 })
+
+    flashcards.addReview(a.id, 'good', 1, 2.5, '2026-01-02')
+    flashcards.addReview(a.id, 'easy', 6, 2.65, '2026-01-08')
+    flashcards.addReview(b.id, 'again', 1, 2.3, '2026-01-02')
+    flashcards.addReview(b.id, 'hard', 1, 2.35, '2026-01-03')
+
+    expect(flashcards.getReviewStats()).toEqual({ total: 4, positive: 2 })
+  })
 })

@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { runMigrations } from '../../../src/main/database/migrations'
 import { DocumentRepository } from '../../../src/main/database/repositories/documentRepository'
 import { CourseRepository } from '../../../src/main/database/repositories/courseRepository'
@@ -112,6 +112,43 @@ describe('StudySessionRepository', () => {
       sessionId,
       lessonId,
       courseId
+    })
+  })
+
+  describe('Fase 11 aggregates', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /** Completes a session with `started_at` moved back so `actual_minutes` lands on a known value. */
+    function completeSessionOn(dateISO: string, minutes: number): void {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date(`${dateISO}T09:00:00Z`))
+      const sessionId = sessions.create(courseId, [{ lessonId }], minutes)
+      vi.setSystemTime(new Date(`${dateISO}T09:00:00Z`).getTime() + minutes * 60_000)
+      sessions.completeSession(sessionId)
+      vi.useRealTimers()
+    }
+
+    it('getTotalActualMinutes sums actual_minutes across every completed session', () => {
+      expect(sessions.getTotalActualMinutes()).toBe(0)
+      completeSessionOn('2026-01-01', 10)
+      completeSessionOn('2026-01-02', 20)
+      expect(sessions.getTotalActualMinutes()).toBe(30)
+    })
+
+    it('getActualMinutesSince only counts sessions completed on or after the cutoff date', () => {
+      completeSessionOn('2026-01-01', 10)
+      completeSessionOn('2026-01-05', 20)
+      expect(sessions.getActualMinutesSince('2026-01-03')).toBe(20)
+      expect(sessions.getActualMinutesSince('2026-01-01')).toBe(30)
+    })
+
+    it('getCompletedDates returns distinct calendar dates, deduped across same-day sessions', () => {
+      completeSessionOn('2026-01-01', 5)
+      completeSessionOn('2026-01-01', 5)
+      completeSessionOn('2026-01-03', 5)
+      expect(sessions.getCompletedDates().sort()).toEqual(['2026-01-01', '2026-01-03'])
     })
   })
 })

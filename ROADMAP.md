@@ -59,7 +59,11 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       de repaso (frente → revelar → calificar). _(completada — ver
       DECISIONS.md ADR-021; determinista salvo la generación por IA, que
       hereda la limitación de red de Fase 5/7/9)_
-- [ ] **Fase 11 — Progreso**: dashboard, tendencias, mapa de conocimiento, historial
-      de exámenes.
+- [x] **Fase 11 — Progreso**: dashboard con resumen/racha/tiempo/ritmo/
+      precisión, dominio por tema y conceptos en riesgo agregados across
+      todos los cursos, historial de exámenes, y Mapa de Conocimiento
+      (árbol de conceptos por curso con fuentes citadas y acceso directo a
+      "Estudiar ahora"). _(completada — ver DECISIONS.md ADR-022;
+      completamente determinista, sin llamadas a IA)_
 - [ ] **Fase 12 — Polish**: shortcuts, command palette, empty states,
       accesibilidad, toggle claro/oscuro, backups, export, packaging.

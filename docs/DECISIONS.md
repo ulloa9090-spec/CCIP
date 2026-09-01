@@ -1168,3 +1168,111 @@ con providers falsos + siembra directa por SQLite, no simulación de red:
   completo!"), confirmar que calificar con "Bien"/"Fácil" saca la tarjeta
   de la cola de vencidas, crear una tarjeta manual desde "+ Nueva
   tarjeta", y el error normal de clave de OpenAI faltante al generar.
+
+### ADR-022 — Alcance y decisiones de Progreso (Fase 11)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §13 pide "dashboard, trends,
+knowledge map, exam history, study time". `UX_UI.md` §19 (Mapa de
+Conocimiento) pide dos modos — árbol y mapa visual — con nodos que al
+tocarlos muestran definición/dominio/fuentes/errores/"estudiar ahora".
+`UX_UI.md` §20 (Progreso) pide ocho secciones — resumen, dominio por
+tema, tiempo, precisión, ritmo, racha, historial de exámenes, conceptos
+en riesgo — y advierte explícitamente "evitar gráficas decorativas sin
+utilidad". Ninguno de los dos wireframes tiene un criterio "Done:"
+explícito, a diferencia de fases con vertical slice más obvio.
+
+**Decisiones:**
+
+1. **"Dashboard" de Fase 11 es la pantalla `/progress` (Progreso), no
+   `/` (Inicio).** El wireframe de Inicio (`UX_UI.md` §5) mezcla
+   continuar-curso con XP/Nivel/racha de gamificación — conceptos que
+   ninguna fase construyó (no hay tabla de XP, y `achievements`/
+   `user_achievements` de `DATA_MODEL.md` #28-29 siguen sin consumidor,
+   ver ADR-002). `ROADMAP_IMPLEMENTATION.md` nunca asigna "Inicio" a
+   ninguna fase explícita, así que construirlo aquí sería inventar
+   alcance no pedido (violaría "no implementes funciones futuras
+   prematuramente"). "Dashboard" se interpreta como la nueva pantalla de
+   resumen que si pide esta fase: Progreso.
+2. **Todo en `ProgressService` se deriva de datos que ya existen —
+   ninguna tabla nueva.** A diferencia de Mastery (Fase 8, que sí
+   necesitó `concepts`/`mastery_scores` nuevas), Progreso solo agrega:
+   `courses.progress`/`status` (Fase 5), `study_sessions.actual_minutes`
+   (Fase 6, ya se calculaba pero nada lo leía agregado hasta ahora),
+   `assessment_attempts` vía `AssessmentRepository.listHistory()`
+   (Fase 7), `mastery_scores` vía `MasteryService.getCourseMastery()`
+   (Fase 8) y `flashcard_reviews` (Fase 10). Es la primera fase que lee
+   across *todos* los cursos a la vez en vez de por curso — coherente
+   con que "resumen"/"racha" no tienen sentido acotados a un curso.
+3. **Racha (streak) derivada de `study_sessions.completed_at`
+   únicamente** — no de exámenes ni repasos de flashcards. Combinar
+   varias fuentes de actividad en una sola señal de "día estudiado"
+   añadiría ambigüedad (¿un solo repaso de flashcard cuenta igual que
+   una sesión completa de Study Mode?) sin que el roadmap lo pida.
+   `computeStreak()` cuenta días consecutivos terminando hoy — o
+   terminando ayer si hoy todavía no tiene sesión, para no romper la
+   racha a medio día — con un tope defensivo de 3650 días para que un
+   historial corrupto nunca cause un bucle sin fin.
+4. **"Ritmo" es el promedio de minutos/día de los últimos 7 días**
+   (`studyMinutesLast7Days / 7`), no una comparación contra el plan de
+   Fase 9. Cruzar Progreso con `PlanService` para decidir "vas
+   adelantado/atrasado" es una lectura razonable del wireframe pero
+   añade una dependencia entre dos features que hoy son independientes
+   (ver ADR-020 punto 1, que deliberadamente desacopla Plan de Study
+   Mode); "ritmo" como promedio simple ya responde la pregunta central
+   ("¿cuánto estoy estudiando últimamente?") sin esa dependencia nueva.
+5. **"Precisión" combina dos señales separadas — quizzes y
+   flashcards — sin fundirlas en un solo número.** Son evidencias de
+   naturaleza distinta (examen calificado de una vez vs. repetición
+   espaciada continua); promediarlas ocultaría cuál de las dos está
+   débil. `quizAccuracy` es el promedio de `score` en
+   `assessment_attempts` terminados; `flashcardAccuracy` es el
+   porcentaje de repasos calificados "Bien"/"Fácil". Cualquiera de los
+   dos es `null` (no 0) cuando no hay evidencia todavía, para que la UI
+   distinga "0% de precisión" de "todavía no hay datos".
+6. **"Conceptos en riesgo" reutiliza `MasteryService.weakConcepts` por
+   curso** (Fase 8) y los funde en una sola lista global ordenada
+   primero por estado (`learning` antes que `new`, igual que dentro de
+   un curso) y luego por score ascendente — mismo criterio que ya usa
+   `getCourseMastery()`, solo extendido a través de cursos.
+7. **Mapa de Conocimiento: un solo modo (árbol/lista), no dos.** El
+   wireframe pide árbol y "mapa visual": se construye solo el árbol
+   (lista de conceptos por curso, igual que `MasteryPanel` ya renderiza
+   dentro de `CourseDetailPage`) — un "mapa visual" con nodos y
+   conexiones necesitaría una librería de grafos que ninguna otra
+   pantalla usa, y el propio `UX_UI.md` pide "evitar gráficas
+   decorativas sin utilidad" en la sección vecina de Progreso, extendido
+   aquí por el mismo espíritu (ver ADR-020 punto 7, misma simplificación
+   sobre el calendario de Plan).
+8. **Al tocar un nodo se muestran dominio, fuentes y "estudiar ahora";
+   se omiten "definición" y "errores".** `concepts.description` existe
+   en el esquema (`DATA_MODEL.md` #12) pero ninguna fase la puebla nunca
+   — `upsertConcept()` siempre la inserta en `NULL` (ver
+   `conceptRepository.ts`) — así que no hay ninguna definición real que
+   mostrar sin inventar contenido, lo que violaría la regla de "no
+   inventes citations"/no fabricar datos. Tampoco existe una tabla de
+   errores por concepto. "Estudiar ahora" reutiliza
+   `study.startRemediation(courseId)` tal cual (Fase 8) — arma una
+   sesión con todos los conceptos débiles del curso, no solo el nodo
+   tocado, porque `StudySessionService` no tiene (ni necesita) una
+   variante de un solo concepto.
+
+**Verificación.** Determinista por completo — a diferencia de Fase 5/7/9/10,
+ningún dato de Progreso ni del Mapa de Conocimiento depende de una llamada
+a IA, así que no hereda la limitación de red de este contenedor:
+- Unit tests: `computeStreak()` (racha activa terminando hoy, racha viva
+  sin sesión de hoy todavía, racha rota tras saltarse un día, historial
+  vacío), nuevos métodos de `StudySessionRepository`
+  (`getTotalActualMinutes`, `getActualMinutesSince`, `getCompletedDates`
+  con fechas deduplicadas) y de `FlashcardRepository`
+  (`getReviewStats`), y `progressService.test.ts` (cursos activos vs.
+  completados, precisión de quizzes y flashcards con `null` sin
+  evidencia, `courseMastery`/`conceptsAtRisk` ordenados igual que
+  Mastery, tiempo de estudio real).
+- E2E real (`tests/e2e/progress.spec.ts`), sembrando actividad real de
+  cada fase anterior (sesión de estudio, examen calificado, repaso de
+  flashcard, evidencia de mastery) a través de sus propias clases de
+  repositorio: el dashboard muestra racha/precisión/dominio/conceptos en
+  riesgo/historial reales, una biblioteca vacía muestra el estado vacío
+  en vez de un dashboard en ceros, y el Mapa de Conocimiento expande un
+  concepto para revelar su fuente citada y arma una sesión de
+  recuperación real desde "Estudiar ahora".

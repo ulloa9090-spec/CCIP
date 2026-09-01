@@ -24,6 +24,7 @@ import type {
   FlashcardRating,
   ReviewOutcome
 } from '../shared/types/flashcards'
+import type { ProgressSummary } from '../shared/types/progress'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -130,6 +131,9 @@ const studyos = {
       ipcRenderer.invoke('flashcards:getReviewQueue', courseId),
     submitReview: (flashcardId: string, rating: FlashcardRating): Promise<ReviewOutcome> =>
       ipcRenderer.invoke('flashcards:submitReview', flashcardId, rating)
+  },
+  progress: {
+    getSummary: (): Promise<ProgressSummary> => ipcRenderer.invoke('progress:getSummary')
   }
 }
 

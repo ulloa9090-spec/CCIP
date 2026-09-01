@@ -669,6 +669,39 @@ No requerido en primer prototipo personal.
   entre regeneraciones, tabla `decks` separada (un deck es simplemente
   las tarjetas de un curso), integración con `MasteryService`.
 
+### Fase 11 (completada)
+
+- `ProgressService` (nuevo, `src/main/progress/`): agrega datos ya
+  persistidos por fases anteriores — sin ninguna tabla nueva. Lee
+  `courses.progress`/`status` (Fase 5), `study_sessions.actual_minutes`
+  (Fase 6), `assessment_attempts` vía `AssessmentRepository.listHistory()`
+  (Fase 7), `mastery_scores` vía `MasteryService.getCourseMastery()`
+  (Fase 8) y `flashcard_reviews` (Fase 10). Primera fase que lee across
+  todos los cursos a la vez, no por curso. `computeStreak()` (exportada,
+  testeada con reloj simulado) cuenta días consecutivos con al menos una
+  sesión de Study Mode completada, terminando hoy o ayer si hoy todavía
+  no tiene sesión. Ver ADR-022.
+- `StudySessionRepository` gana `getTotalActualMinutes`/
+  `getActualMinutesSince`/`getCompletedDates`; `FlashcardRepository` gana
+  `getReviewStats` — agregados nuevos sobre columnas que ya existían
+  desde Fase 6/10 pero que nada leía en conjunto hasta ahora.
+- IPC: `window.studyos.progress.getSummary()`.
+- UI: `/progress` (reemplaza el placeholder "Progreso" — tarjetas de
+  resumen/racha/tiempo/ritmo/precisión, dominio por tema, conceptos en
+  riesgo, historial de exámenes; sin gráficas decorativas, solo números y
+  barras de progreso ya existentes en el design system), `/knowledge-map`
+  (reemplaza el placeholder "Mapa de Conocimiento" — árbol de conceptos
+  por curso reutilizando `mastery.getCourseMastery` sin IPC nueva; tocar
+  un concepto expande dominio/fuentes/"Estudiar ahora" inline,
+  reutilizando `study.startRemediation` tal cual la usa `MasteryPanel`).
+- Deliberadamente fuera de alcance (ADR-022): la pantalla "Inicio" (`/`)
+  con gamificación (XP/nivel/racha visual) del wireframe del Dashboard —
+  nunca asignada a una fase explícita del roadmap; modo "mapa visual" de
+  grafo en el Mapa de Conocimiento (solo se construye el árbol/lista);
+  "definición" y "errores" por concepto en el detalle del nodo (sin
+  fuente de datos real que mostrar sin inventar contenido); cruzar
+  "ritmo" con el Plan adaptativo de Fase 9.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
@@ -678,6 +711,11 @@ No requerido en primer prototipo personal.
   generación estructurada real, con clave de API real) — tampoco verificable
   aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018, ADR-021.
   Pendiente en el Mac de destino.
+- Pantalla "Inicio" (`/`) — dashboard de bienvenida con curso actual,
+  sesión de hoy, y gamificación (XP/nivel/racha visual) — nunca asignada
+  a una fase explícita; "racha" ya existe como número real en Progreso
+  (Fase 11), pero XP/nivel/logros (`achievements`/`user_achievements`)
+  siguen sin ningún consumidor. Ver ADR-002, ADR-022.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
   Course Engine real detrás desde esta fase; Asesor todavía no tiene nada
   real detrás; Entrenador ya podría apoyarse en el Plan adaptativo
@@ -693,13 +731,12 @@ No requerido en primer prototipo personal.
   ligadas a un curso, ver ADR-017.
 - Exam Center completo, Custom Exam Builder, banco de preguntas
   reutilizable — quedan fuera de alcance por ahora, ver ADR-018.
-- Presentación visual de `concept_sources` (citas por concepto) — ya se
-  generan y persisten desde Fase 8, pero la UI del Mapa de Conocimiento
-  que las mostrará es Fase 11, ver ADR-019.
 - Candado explícito para no crear una sesión de recuperación mientras otra
   sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
 - "Reprogramar" una sesión puntual, recálculo automático ante fallos
   repetidos/dominio rápido, grilla visual de calendario — ver ADR-020.
 - Deduplicación de tarjetas entre regeneraciones e integración de repasos
   de Flashcards con `MasteryService` — ver ADR-021 puntos 5 y 7.
+- Modo "mapa visual" de grafo en el Mapa de Conocimiento, "definición"/
+  "errores" por concepto, XP/nivel/logros — ver ADR-022 puntos 7 y 8.
 

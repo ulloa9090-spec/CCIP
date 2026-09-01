@@ -162,4 +162,16 @@ export class FlashcardRepository {
         nextReviewAt
       )
   }
+
+  /** Global review accuracy for Fase 11's Progreso dashboard — "positive" means a rating of 'good' or 'easy'. */
+  getReviewStats(): { total: number; positive: number } {
+    const row = this.db
+      .prepare(
+        `SELECT COUNT(*) as total,
+           COALESCE(SUM(CASE WHEN rating IN ('good', 'easy') THEN 1 ELSE 0 END), 0) as positive
+         FROM flashcard_reviews`
+      )
+      .get() as { total: number; positive: number }
+    return row
+  }
 }

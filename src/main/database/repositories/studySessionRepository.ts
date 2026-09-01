@@ -197,4 +197,32 @@ export class StudySessionRepository {
       )
       .run(now, actualMinutes, sessionId)
   }
+
+  /** Sum of real elapsed time across every completed session, for Fase 11's Progreso dashboard. */
+  getTotalActualMinutes(): number {
+    const row = this.db
+      .prepare('SELECT COALESCE(SUM(actual_minutes), 0) as total FROM study_sessions')
+      .get() as { total: number }
+    return row.total
+  }
+
+  /** `sinceDateISO` is a plain YYYY-MM-DD; string comparison against the full ISO timestamp works because it's a valid prefix. */
+  getActualMinutesSince(sinceDateISO: string): number {
+    const row = this.db
+      .prepare(
+        'SELECT COALESCE(SUM(actual_minutes), 0) as total FROM study_sessions WHERE completed_at >= ?'
+      )
+      .get(sinceDateISO) as { total: number }
+    return row.total
+  }
+
+  /** Distinct calendar dates (YYYY-MM-DD) with at least one completed session — the raw material for a study streak. */
+  getCompletedDates(): string[] {
+    const rows = this.db
+      .prepare(
+        'SELECT DISTINCT substr(completed_at, 1, 10) as d FROM study_sessions WHERE completed_at IS NOT NULL'
+      )
+      .all() as { d: string }[]
+    return rows.map((row) => row.d)
+  }
 }

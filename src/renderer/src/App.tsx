@@ -19,6 +19,8 @@ import { PlanDetailPage } from './features/plan/PlanDetailPage'
 import { FlashcardsLandingPage } from './features/flashcards/FlashcardsLandingPage'
 import { FlashcardDeckPage } from './features/flashcards/FlashcardDeckPage'
 import { FlashcardReviewPage } from './features/flashcards/FlashcardReviewPage'
+import { ProgressPage } from './features/progress/ProgressPage'
+import { KnowledgeMapPage } from './features/knowledge-map/KnowledgeMapPage'
 
 const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/library': <LibraryPage />,
@@ -27,7 +29,9 @@ const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/study': <StudyLandingPage />,
   '/exams': <ExamsLandingPage />,
   '/plan': <PlanLandingPage />,
-  '/flashcards': <FlashcardsLandingPage />
+  '/flashcards': <FlashcardsLandingPage />,
+  '/progress': <ProgressPage />,
+  '/knowledge-map': <KnowledgeMapPage />
 }
 
 function App(): React.JSX.Element {
