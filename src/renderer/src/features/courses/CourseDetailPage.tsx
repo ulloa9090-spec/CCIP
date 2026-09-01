@@ -58,11 +58,20 @@ export function CourseDetailPage(): React.JSX.Element {
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
             <p className="text-2xl font-semibold text-success">{course.progress}%</p>
-            {course.status === 'active' && (
-              <Link to={`/study/${course.id}`}>
-                <Button size="sm">Continuar</Button>
-              </Link>
-            )}
+            <div className="flex gap-2">
+              {course.status === 'active' && (
+                <>
+                  <Link to={`/plan/${course.id}`}>
+                    <Button size="sm" variant="ghost">
+                      Ver plan
+                    </Button>
+                  </Link>
+                  <Link to={`/study/${course.id}`}>
+                    <Button size="sm">Continuar</Button>
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-3">

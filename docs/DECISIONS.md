@@ -975,3 +975,102 @@ de punta a punta:
   tarjeta de Dominio del curso muestra los estados correctos, "Crear
   sesión de recuperación" arma una sesión con la lección del concepto más
   débil, y completarla actualiza el estado visible en la misma sesión.
+
+---
+
+### ADR-020 — Alcance y decisiones del Plan adaptativo (Fase 9)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §11 pide "schedule, target date,
+daily minutes, missed session handling, recalculation" — sin un criterio
+de aceptación explícito ("Done:"), a diferencia de fases anteriores.
+`DATA_MODEL.md` §24 define `study_plans` (course_id, version, start_date,
+target_date, daily_minutes, plan_json). `MASTER_SPEC.md` §7 pide
+recalcular ante días perdidos, adelanto de contenido, dominio rápido,
+fallos repetidos o cambio de meta. `UX_UI.md` §21 muestra un calendario
+con tema/duración/estado/prioridad por sesión y tres botones:
+reprogramar/cambiar meta/recalcular plan.
+
+**Decisiones:**
+
+1. **El plan es una proyección de calendario, desacoplada de Study
+   Mode.** `PlanService` no decide qué contiene una sesión real —
+   `StudySessionService` (Fase 6) sigue siendo el único mecanismo que
+   arma sesiones, exactamente igual que antes de esta fase. El Plan solo
+   dice "qué debería tocar cada día" a partir de las mismas lecciones
+   pendientes (`CourseRepository.listPendingLessons`) y el mismo
+   `dailyMinutes` del curso. Alternativa descartada: hacer que Study Mode
+   consultara el plan para decidir qué servir — habría acoplado dos
+   sistemas que hoy funcionan bien por separado, y "cambiar meta" ya
+   logra el efecto deseado indirectamente (`updateSchedule` escribe
+   `courses.daily_minutes`/`target_date`, que Study Mode ya lee).
+2. **Distribución por bin-packing voraz, en el mismo orden que ya usa
+   Study Mode.** `distribute()` llena cada día hasta `dailyMinutes` antes
+   de pasar al siguiente, sin reordenar por prioridad/dominio — el propio
+   roadmap no pide una señal de priorización todavía, y usar el mismo
+   orden módulo→lección que Study Mode evita que Plan y Study Mode
+   "cuenten historias distintas" sobre qué sigue. Si el trabajo pendiente
+   no cabe antes de la fecha objetivo, el excedente se acumula en el
+   último día (nunca se pierde) y el plan expone `feasible: false` para
+   que la UI lo señale.
+3. **"Manejo de sesiones perdidas" es puramente derivado, no un estado
+   persistido.** Un día se marca `missed` en el momento de leer el plan
+   si su fecha ya pasó y sus lecciones no están completas — comparando
+   contra el estado *actual* de las lecciones, no contra una copia
+   guardada en `plan_json`. Evita tener que invalidar/sincronizar el plan
+   guardado cada vez que se completa una lección en Study Mode; el plan
+   se recalcula solo cuando el usuario lo pide explícitamente (ver
+   decisión #4), y mientras tanto sus estados por día siempre reflejan la
+   realidad actual.
+4. **Recalcular es una acción explícita, no automática en cada
+   evento.** `MASTER_SPEC.md` sugiere recalcular ante varios disparadores
+   (perder días, dominar rápido, fallar repetido...). Recalcular
+   automáticamente en cada `completeActivity`/respuesta de examen
+   generaría una versión nueva de `study_plans` por cada lección
+   completada — ruido de historial sin beneficio real, dado que el plan
+   ya refleja lecciones completadas de forma derivada (decisión #3) sin
+   necesitar una nueva versión. `recalculate()` se dispara solo desde
+   "Recalcular plan" o "Cambiar meta" en la UI.
+5. **`study_plans.version` nunca se sobreescribe.** Cada recálculo
+   inserta una fila nueva; `getLatest()` siempre lee la más reciente. Es
+   la interpretación más simple de que `DATA_MODEL.md` incluya `version`
+   como columna — sin necesitar una tabla de auditoría aparte.
+6. **Sin "reprogramar" (mover una lección puntual a otro día).** De los
+   tres botones del wireframe de `UX_UI.md` §21, solo "cambiar meta" y
+   "recalcular plan" se construyen — "reprogramar" (arrastrar/mover el
+   contenido de un día a otro manualmente) necesitaría un mecanismo de
+   overrides manuales que sobrevivan al siguiente recálculo automático, y
+   ninguno de los cinco puntos de `ROADMAP_IMPLEMENTATION.md` lo pide
+   explícitamente (solo aparece en el wireframe). Mismo criterio que
+   Fase 7 con el Custom Exam Builder (ADR-018) y Fase 8 con la
+   "sesión de recuperación" antes de que existiera Mastery.
+7. **Vista de calendario como lista cronológica, no una grilla visual.**
+   `UX_UI.md` pide un "calendario semanal/mensual" pero también advierte
+   "evitar gráficas decorativas sin utilidad" (§20, sección Progreso,
+   aplicado aquí por el mismo espíritu). Una lista de tarjetas por día ya
+   muestra tema/duración/estado exactamente como pide el wireframe, sin
+   construir un componente de grilla de calendario que ninguna otra
+   pantalla necesita todavía.
+8. **`PlanLandingPage` solo lista cursos activos**, igual que
+   `StudyLandingPage` — un curso completado ya no tiene nada que planear.
+   Su plan sigue siendo accesible directamente por URL
+   (`/plan/:courseId`), simplemente no aparece en el listado.
+
+**Verificación.** Como Study Mode (Fase 6) y Mastery (Fase 8), calcular y
+recalcular un plan es completamente determinista — sin ninguna llamada a
+IA ni limitación de red que documentar. Se verificó de punta a punta:
+- Unit tests deterministas con reloj simulado (`vi.useFakeTimers`):
+  `PlanRepository` (versionado, aislamiento por curso), `PlanService`
+  (distribución respetando `dailyMinutes`, estados `today`/`upcoming`/
+  `missed`/`completed` — incluyendo que una lección completada *después*
+  de guardar el plan se refleja sin recalcular—, recálculo tras cambiar
+  meta, cálculo de `feasible` en ambos sentidos, y un plan vacío sin
+  lanzar error cuando ya no quedan lecciones pendientes).
+- E2E real (`tests/e2e/plan.spec.ts`), sembrando un curso con las mismas
+  clases de repositorio que usa la app: el calendario muestra "Hoy"/
+  "Próxima" correctamente, "Cambiar meta" con minutos diarios más altos
+  redistribuye todo a un solo día en la recarga, y "Ir a estudiar" entra
+  a Study Mode y confirma que el cambio de `dailyMinutes` hecho desde
+  Plan también afecta cómo Study Mode arma su propia sesión (la
+  desacoplación de la decisión #1 no significa que ignoren los mismos
+  datos del curso). Un curso ya completado no aparece en el listado de
+  Plan pero su plan (vacío) sigue siendo accesible directamente.

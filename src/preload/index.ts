@@ -16,6 +16,7 @@ import type {
   AttemptDetail
 } from '../shared/types/assessment'
 import type { CourseMastery } from '../shared/types/mastery'
+import type { RecalculatePlanInput, StudyPlan } from '../shared/types/plan'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -104,6 +105,11 @@ const studyos = {
   mastery: {
     getCourseMastery: (courseId: string): Promise<CourseMastery> =>
       ipcRenderer.invoke('mastery:getCourseMastery', courseId)
+  },
+  plan: {
+    get: (courseId: string): Promise<StudyPlan> => ipcRenderer.invoke('plan:get', courseId),
+    recalculate: (courseId: string, input?: RecalculatePlanInput): Promise<StudyPlan> =>
+      ipcRenderer.invoke('plan:recalculate', courseId, input)
   }
 }
 

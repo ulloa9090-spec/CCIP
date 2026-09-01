@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 8 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 9 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -65,7 +65,11 @@ que enseña (generados junto con sus lecciones y preguntas) y calcula tu
 dominio de cada uno a partir de tus quick checks en Study Mode y tus
 respuestas en los exámenes; el detalle del curso muestra ese dominio y,
 cuando detecta conceptos débiles, permite crear una sesión de recuperación
-enfocada en ellos. El resto de pantallas se implementan en su fase
+enfocada en ellos. Desde Fase 9, `/plan` muestra el calendario de cada
+curso: qué lecciones tocan cada día según tus minutos diarios, marca en
+rojo los días atrasados, y te deja cambiar la fecha objetivo o recalcular
+el plan cuando quieras — sin perder de vista que estudiar de verdad sigue
+pasando en `/study`. El resto de pantallas se implementan en su fase
 correspondiente.
 
 ## Desarrollo

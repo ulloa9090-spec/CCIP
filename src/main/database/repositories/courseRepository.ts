@@ -277,6 +277,21 @@ export class CourseRepository {
     }))
   }
 
+  /** Current status of each lesson, keyed by id — used to derive a plan day's status. */
+  getLessonStatuses(lessonIds: string[]): Map<string, LessonStatus> {
+    if (lessonIds.length === 0) return new Map()
+    const rows = this.db
+      .prepare(`SELECT id, status FROM lessons WHERE id IN (${lessonIds.map(() => '?').join(',')})`)
+      .all(...lessonIds) as { id: string; status: LessonStatus }[]
+    return new Map(rows.map((row) => [row.id, row.status]))
+  }
+
+  updateSchedule(courseId: string, targetDate: string, dailyMinutes: number): void {
+    this.db
+      .prepare('UPDATE courses SET target_date = ?, daily_minutes = ?, updated_at = ? WHERE id = ?')
+      .run(targetDate, dailyMinutes, new Date().toISOString(), courseId)
+  }
+
   /**
    * Marks a lesson completed and recomputes its module's status and the
    * course's overall progress/status in the same transaction — the

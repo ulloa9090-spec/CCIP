@@ -46,8 +46,12 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       de recuperación real (reutiliza Study Mode). _(completada — ver
       DECISIONS.md ADR-019; sin llamadas a IA en el ciclo de mastery en sí,
       solo hereda la limitación de red de Fase 5/7 para generar conceptos)_
-- [ ] **Fase 9 — Plan adaptativo**: schedule, fecha objetivo, minutos diarios,
-      manejo de sesiones perdidas, recálculo.
+- [x] **Fase 9 — Plan adaptativo**: calendario de lecciones pendientes por
+      día (bin-packing por minutos diarios), fecha objetivo y minutos
+      diarios editables ("Cambiar meta"), sesiones perdidas marcadas
+      automáticamente ("Atrasada"), recálculo explícito versionado.
+      _(completada — ver DECISIONS.md ADR-020; determinista, sin llamadas
+      a IA ni limitaciones de red)_
 - [ ] **Fase 10 — Flashcards**: decks, generación automática, scheduling SM-2-like,
       review.
 - [ ] **Fase 11 — Progreso**: dashboard, tendencias, mapa de conocimiento, historial

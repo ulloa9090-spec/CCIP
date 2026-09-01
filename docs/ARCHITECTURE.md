@@ -603,3 +603,65 @@ No requerido en primer prototipo personal.
 - Candado explícito para no crear una sesión de recuperación mientras otra
   sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
 
+### Fase 9 (completada)
+
+- SQLite: migración `0009_plan` agrega `study_plans` (DATA_MODEL.md §24) —
+  cada recálculo inserta una versión nueva, nunca sobreescribe la anterior.
+- `PlanRepository`: persistencia versionada por curso (`getLatest`/
+  `create`).
+- `PlanService`: `distribute()` reparte las lecciones pendientes del curso
+  (mismo orden que ya usa Study Mode) por presupuesto de `dailyMinutes`
+  entre hoy y la fecha objetivo (bin-packing voraz); `getPlan` reutiliza
+  el plan guardado si existe (recalculando el estado de cada día contra
+  las lecciones *actuales*, nunca una copia guardada) y solo crea uno
+  nuevo si no existía; `recalculate` opcionalmente actualiza
+  `courses.target_date`/`daily_minutes` (vía `CourseRepository.
+  updateSchedule`, nuevo) y siempre persiste una versión fresca. Sin
+  ninguna llamada a IA — determinista, igual que Study Mode/Mastery.
+  Deliberadamente desacoplado de `StudySessionService`: el plan es una
+  proyección de calendario, no el mecanismo que decide qué contiene una
+  sesión real. Ver ADR-020.
+- Estados por día (`today`/`upcoming`/`missed`/`completed`) derivados en
+  el momento de leer el plan, no persistidos — "manejo de sesiones
+  perdidas" es automático sin necesitar invalidación explícita.
+- IPC: `window.studyos.plan.{get,recalculate}`.
+- UI: `/plan` (reemplaza el placeholder "Plan de Estudio" — cursos
+  activos con "Ver plan"), `/plan/:courseId` (calendario como lista
+  cronológica de días con estado/duración/lecciones, "Cambiar meta" y
+  "Recalcular plan", enlace "Ir a estudiar" en el día de hoy). Botón
+  "Ver plan" añadido a `CourseDetailPage` junto a "Continuar".
+- Deliberadamente fuera de alcance (ADR-020): "reprogramar" una sesión
+  puntual a otro día, recalculo automático ante cada evento (solo
+  explícito desde la UI), grilla de calendario visual (se usa una lista
+  cronológica en su lugar).
+
+### Pendiente de concretar (fases siguientes)
+
+- Verificación de descarga real del modelo de embeddings y calidad de
+  búsqueda semántica con red disponible — no verificable en el contenedor de
+  desarrollo (ver ADR-012). Pendiente en el Mac de destino.
+- Verificación de una respuesta real generada por OpenAI (streaming real,
+  generación estructurada real, con clave de API real) — tampoco verificable
+  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018.
+  Pendiente en el Mac de destino.
+- Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
+  Course Engine real detrás desde esta fase; Asesor todavía no tiene nada
+  real detrás; Entrenador ya podría apoyarse en el Plan adaptativo
+  (Fase 9), pendiente de construirse cuando exista el selector.
+- Acciones de regeneración de IA en la tarjeta de estudio y en el Tutor
+  (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
+  todavía, ver ADR-014/017.
+- Preguntas/ejercicios/flashcards como tipos reales de `session_activities`
+  más allá de `lesson`/`review` — dependen de Flashcards (Fase 10).
+- Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
+  ligadas a un curso, ver ADR-017.
+- Exam Center completo, Custom Exam Builder, banco de preguntas
+  reutilizable — quedan fuera de alcance por ahora, ver ADR-018.
+- Presentación visual de `concept_sources` (citas por concepto) — ya se
+  generan y persisten desde esta fase, pero la UI del Mapa de Conocimiento
+  que las mostrará es Fase 11, ver ADR-019.
+- Candado explícito para no crear una sesión de recuperación mientras otra
+  sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
+- "Reprogramar" una sesión puntual, recálculo automático ante fallos
+  repetidos/dominio rápido, grilla visual de calendario — ver ADR-020.
+
