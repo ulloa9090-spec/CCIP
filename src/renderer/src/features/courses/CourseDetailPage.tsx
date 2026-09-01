@@ -66,6 +66,11 @@ export function CourseDetailPage(): React.JSX.Element {
                       Ver plan
                     </Button>
                   </Link>
+                  <Link to={`/flashcards/${course.id}`}>
+                    <Button size="sm" variant="ghost">
+                      Ver tarjetas
+                    </Button>
+                  </Link>
                   <Link to={`/study/${course.id}`}>
                     <Button size="sm">Continuar</Button>
                   </Link>

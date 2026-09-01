@@ -17,6 +17,13 @@ import type {
 } from '../shared/types/assessment'
 import type { CourseMastery } from '../shared/types/mastery'
 import type { RecalculatePlanInput, StudyPlan } from '../shared/types/plan'
+import type {
+  CreateFlashcardInput,
+  DeckSummary,
+  Flashcard,
+  FlashcardRating,
+  ReviewOutcome
+} from '../shared/types/flashcards'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -110,6 +117,19 @@ const studyos = {
     get: (courseId: string): Promise<StudyPlan> => ipcRenderer.invoke('plan:get', courseId),
     recalculate: (courseId: string, input?: RecalculatePlanInput): Promise<StudyPlan> =>
       ipcRenderer.invoke('plan:recalculate', courseId, input)
+  },
+  flashcards: {
+    generate: (courseId: string): Promise<Flashcard[]> =>
+      ipcRenderer.invoke('flashcards:generate', courseId),
+    createManual: (input: CreateFlashcardInput): Promise<Flashcard> =>
+      ipcRenderer.invoke('flashcards:createManual', input),
+    listDecks: (): Promise<DeckSummary[]> => ipcRenderer.invoke('flashcards:listDecks'),
+    getDeck: (courseId: string): Promise<Flashcard[]> =>
+      ipcRenderer.invoke('flashcards:getDeck', courseId),
+    getReviewQueue: (courseId: string): Promise<Flashcard[]> =>
+      ipcRenderer.invoke('flashcards:getReviewQueue', courseId),
+    submitReview: (flashcardId: string, rating: FlashcardRating): Promise<ReviewOutcome> =>
+      ipcRenderer.invoke('flashcards:submitReview', flashcardId, rating)
   }
 }
 

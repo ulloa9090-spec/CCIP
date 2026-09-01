@@ -16,6 +16,9 @@ import { QuizPlayerPage } from './features/exams/QuizPlayerPage'
 import { QuizResultsPage } from './features/exams/QuizResultsPage'
 import { PlanLandingPage } from './features/plan/PlanLandingPage'
 import { PlanDetailPage } from './features/plan/PlanDetailPage'
+import { FlashcardsLandingPage } from './features/flashcards/FlashcardsLandingPage'
+import { FlashcardDeckPage } from './features/flashcards/FlashcardDeckPage'
+import { FlashcardReviewPage } from './features/flashcards/FlashcardReviewPage'
 
 const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/library': <LibraryPage />,
@@ -23,7 +26,8 @@ const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/courses': <CoursesPage />,
   '/study': <StudyLandingPage />,
   '/exams': <ExamsLandingPage />,
-  '/plan': <PlanLandingPage />
+  '/plan': <PlanLandingPage />,
+  '/flashcards': <FlashcardsLandingPage />
 }
 
 function App(): React.JSX.Element {
@@ -45,6 +49,8 @@ function App(): React.JSX.Element {
           <Route path="/exams/results/:attemptId" element={<QuizResultsPage />} />
           <Route path="/exams/:attemptId" element={<QuizPlayerPage />} />
           <Route path="/plan/:courseId" element={<PlanDetailPage />} />
+          <Route path="/flashcards/:courseId/review" element={<FlashcardReviewPage />} />
+          <Route path="/flashcards/:courseId" element={<FlashcardDeckPage />} />
           <Route path={SETTINGS_NAV_ITEM.path} element={<SettingsPage />} />
         </Route>
       </Routes>

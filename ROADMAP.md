@@ -52,8 +52,13 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       automáticamente ("Atrasada"), recálculo explícito versionado.
       _(completada — ver DECISIONS.md ADR-020; determinista, sin llamadas
       a IA ni limitaciones de red)_
-- [ ] **Fase 10 — Flashcards**: decks, generación automática, scheduling SM-2-like,
-      review.
+- [x] **Fase 10 — Flashcards**: decks acumulativos por curso, generación
+      automática por IA con citas reales y conceptos vinculados, creación
+      manual, scheduling SM-2-like simplificado (interval/ease derivados
+      del historial de repasos, nunca guardados en la tarjeta), reproductor
+      de repaso (frente → revelar → calificar). _(completada — ver
+      DECISIONS.md ADR-021; determinista salvo la generación por IA, que
+      hereda la limitación de red de Fase 5/7/9)_
 - [ ] **Fase 11 — Progreso**: dashboard, tendencias, mapa de conocimiento, historial
       de exámenes.
 - [ ] **Fase 12 — Polish**: shortcuts, command palette, empty states,

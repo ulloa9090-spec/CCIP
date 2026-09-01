@@ -635,6 +635,40 @@ No requerido en primer prototipo personal.
   explícito desde la UI), grilla de calendario visual (se usa una lista
   cronológica en su lugar).
 
+### Fase 10 (completada)
+
+- SQLite: migración `0010_flashcards` agrega `flashcards` (course_id,
+  concept_id, front, back, hint, source_refs_json) y `flashcard_reviews`
+  (DATA_MODEL.md §20-21, append-only: rating, interval_days, ease_factor,
+  next_review_at) — mismo patrón append-only que `assessment_answers`
+  (Fase 7).
+- `flashcardGenerationSchema.ts`: contrato Zod para generación estructurada
+  (front/back/hint opcional/concepto opcional), mismo patrón que
+  `courseGenerationSchema.ts`/`quizGenerationSchema.ts`.
+- `spacedRepetition.ts`: `computeNextSchedule()`, SM-2 simplificado sin
+  contador de repeticiones explícito (se infiere de la magnitud del
+  intervalo anterior). Ver ADR-021 punto 3.
+- `FlashcardRepository`: `createMany` (acumulativo — nunca reemplaza el
+  deck existente, a diferencia de `QuestionRepository`), `create` (manual),
+  vencimiento (`dueToday`) derivado de la fila más reciente en
+  `flashcard_reviews` — nunca almacenado en la tarjeta misma.
+- `FlashcardService`: `generate()` reutiliza `buildSourceMaterial()`
+  (Fase 5) y adjunta citas reales vía `RetrievalService` (nunca generadas
+  por la IA); `createManual()` para el flujo "Create" del wireframe;
+  `listDecks()`/`getDeck()`/`getReviewQueue()`/`submitReview()`.
+- IPC: `window.studyos.flashcards.{generate,createManual,listDecks,
+  getDeck,getReviewQueue,submitReview}`.
+- UI: `/flashcards` (reemplaza el placeholder — decks existentes con
+  contador de vencidas, cursos sin deck con "Generar con IA"),
+  `/flashcards/:courseId` (lista de tarjetas, formulario "+ Nueva
+  tarjeta", "Generar más con IA", "Repasar ahora"), `/flashcards/
+  :courseId/review` (reproductor secuencial: frente → "Mostrar
+  respuesta" → dorso/pista → cuatro botones de calificación → "¡Repaso
+  completo!"). Botón "Ver tarjetas" añadido a `CourseDetailPage`.
+- Deliberadamente fuera de alcance (ADR-021): deduplicación de tarjetas
+  entre regeneraciones, tabla `decks` separada (un deck es simplemente
+  las tarjetas de un curso), integración con `MasteryService`.
+
 ### Pendiente de concretar (fases siguientes)
 
 - Verificación de descarga real del modelo de embeddings y calidad de
@@ -642,7 +676,7 @@ No requerido en primer prototipo personal.
   desarrollo (ver ADR-012). Pendiente en el Mac de destino.
 - Verificación de una respuesta real generada por OpenAI (streaming real,
   generación estructurada real, con clave de API real) — tampoco verificable
-  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018.
+  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018, ADR-021.
   Pendiente en el Mac de destino.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
   Course Engine real detrás desde esta fase; Asesor todavía no tiene nada
@@ -652,16 +686,20 @@ No requerido en primer prototipo personal.
   (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
   todavía, ver ADR-014/017.
 - Preguntas/ejercicios/flashcards como tipos reales de `session_activities`
-  más allá de `lesson`/`review` — dependen de Flashcards (Fase 10).
+  más allá de `lesson`/`review` — Flashcards (Fase 10) ya existe como
+  feature independiente, pero todavía no se integra como un tipo de
+  actividad dentro de una sesión de Study Mode.
 - Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
   ligadas a un curso, ver ADR-017.
 - Exam Center completo, Custom Exam Builder, banco de preguntas
   reutilizable — quedan fuera de alcance por ahora, ver ADR-018.
 - Presentación visual de `concept_sources` (citas por concepto) — ya se
-  generan y persisten desde esta fase, pero la UI del Mapa de Conocimiento
+  generan y persisten desde Fase 8, pero la UI del Mapa de Conocimiento
   que las mostrará es Fase 11, ver ADR-019.
 - Candado explícito para no crear una sesión de recuperación mientras otra
   sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
 - "Reprogramar" una sesión puntual, recálculo automático ante fallos
   repetidos/dominio rápido, grilla visual de calendario — ver ADR-020.
+- Deduplicación de tarjetas entre regeneraciones e integración de repasos
+  de Flashcards con `MasteryService` — ver ADR-021 puntos 5 y 7.
 

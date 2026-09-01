@@ -1074,3 +1074,97 @@ IA ni limitación de red que documentar. Se verificó de punta a punta:
   desacoplación de la decisión #1 no significa que ignoren los mismos
   datos del curso). Un curso ya completado no aparece en el listado de
   Plan pero su plan (vacío) sigue siendo accesible directamente.
+
+### ADR-021 — Alcance y decisiones de Flashcards (Fase 10)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §12 pide "decks, auto generation,
+SM-2-like scheduling, review". `DATA_MODEL.md` §20-21 define `flashcards`
+(course_id, concept_id, front, back, hint, source_refs_json) y
+`flashcard_reviews` (append-only: rating, interval_days, ease_factor,
+next_review_at). `UX_UI.md` §18 muestra tres vistas — Review, Decks,
+Create — con un wireframe de Review de pregunta → "Mostrar respuesta" →
+cuatro botones de calificación (Otra vez/Difícil/Bien/Fácil).
+
+**Decisiones:**
+
+1. **Los decks son acumulativos, nunca se reemplazan — a diferencia de
+   los quizzes de Assessment (Fase 7).** Cada llamada a `generate()`
+   inserta tarjetas nuevas (`FlashcardRepository.createMany`) sin tocar
+   las existentes. Un quiz es efímero por intento y puede regenerarse
+   libremente; una tarjeta de memoria acumula historial de repasos real
+   en `flashcard_reviews` que una regeneración destructiva perdería —
+   literalmente el propósito de un sistema de repetición espaciada. Esta
+   es la diferencia arquitectónica central de la fase frente al patrón
+   "regenerar reemplaza" ya usado para preguntas de examen.
+2. **El estado de repetición de una tarjeta nunca se guarda en la
+   tarjeta — se deriva de su fila más reciente en `flashcard_reviews`**,
+   exactamente el mismo patrón append-only que `assessment_answers`
+   (Fase 7). Una tarjeta con cero repasos es "vencida" (due) por
+   definición — no necesita una fila inicial sintética.
+3. **SM-2 simplificado: sin contador de repeticiones explícito.** El
+   SM-2 clásico usa un contador de repeticiones consecutivas correctas
+   para decidir el intervalo (1er repaso, 2do repaso, posteriores). Aquí
+   `computeNextSchedule()` infiere esa fase a partir de la *magnitud* del
+   intervalo anterior (0 → nueva, 1 → segunda, >1 → establecida) en lugar
+   de mantener un contador aparte — el intervalo anterior ya codifica
+   suficiente información para decidir el próximo paso sin una columna
+   adicional en `flashcard_reviews` que `DATA_MODEL.md` no pide. Una
+   respuesta "Otra vez" siempre resetea el intervalo a 1 día y penaliza
+   el ease factor (piso 1.3, igual que el SM-2 original); "Difícil"
+   penaliza menos sin resetear el intervalo; "Bien" no cambia el ease
+   factor; "Fácil" lo aumenta.
+4. **"Create" manual se construye aunque `ROADMAP_IMPLEMENTATION.md` no
+   lo pida explícitamente como viñeta.** `UX_UI.md` §18 sí lo lista como
+   una de las tres vistas del feature, y a diferencia del Custom Exam
+   Builder (Fase 7, ADR-018) o "reprogramar" en Plan (Fase 9, ADR-020) —
+   descartados por necesitar mecanismos nuevos no triviales — una tarjeta
+   manual es una operación CRUD de bajo costo que reutiliza el mismo
+   repositorio y no compite en alcance con la generación por IA. Se
+   incluye por relación costo/beneficio, no por lectura estricta del
+   roadmap.
+5. **Sin deduplicación entre la generación por IA y tarjetas
+   existentes.** Regenerar puede crear tarjetas con contenido similar o
+   repetido a las ya existentes en el deck — a diferencia de `concepts`
+   (deduplicados globalmente por `canonical_key` desde Fase 8), una
+   tarjeta es contenido libre (front/back) sin una clave canónica natural
+   para comparar. Documentado como simplificación consciente: si se
+   vuelve un problema en uso real, la mitigación más simple es que el
+   usuario no presione "Generar más" innecesariamente, no un mecanismo de
+   dedup semántico.
+6. **Reutiliza "citations by construction" de Tutor/Assessment/Mastery
+   (ADR-014/018/019).** La IA nunca genera `source_refs_json` — cada
+   tarjeta recién creada dispara una búsqueda real por su `front` vía
+   `RetrievalService.search()` (top-1) y solo si hay coincidencia se
+   adjunta la cita. Si la búsqueda falla (offline-first — sin modelo de
+   embeddings local disponible) la tarjeta igual se persiste sin cita,
+   nunca bloquea la generación.
+7. **`concept_id` reutiliza el dedup global de Fase 8** exactamente igual
+   que Assessment: la IA opcionalmente nombra un concepto por tarjeta,
+   `upsertConcept()` lo normaliza/dedupea por `canonical_key`. A
+   diferencia de Assessment, esta fase no alimenta `MasteryService` — el
+   roadmap de Fase 8 solo definió evidencia desde quick-checks y
+   preguntas de examen; extender Mastery a repasos de flashcards queda
+   fuera de alcance hasta que una fase futura lo pida explícitamente.
+8. **Sin tabla `decks` separada.** Un "deck" es simplemente el conjunto
+   de `flashcards` de un curso — `DeckSummary` se deriva agregando
+   `flashcards` por `course_id` (`FlashcardRepository.countsByCourse`),
+   sin persistir una entidad Deck aparte. Consistente con que
+   `DATA_MODEL.md` no define una tabla `decks`.
+
+**Verificación.** Igual que Fase 7/9, la generación real necesita
+`api.openai.com`, bloqueado en este contenedor — documentado y verificado
+con providers falsos + siembra directa por SQLite, no simulación de red:
+- Unit tests: `spacedRepetition.test.ts` (progresión 0→1→6→round(prev·ease)
+  para "Bien", piso de ease factor en 1.3, "Otra vez" siempre resetea a 1
+  día), `flashcardRepository.test.ts` (decks acumulativos, vencimiento por
+  fecha derivado de la última repetición, conteos por curso), y
+  `flashcardService.test.ts` (generación persiste + vincula conceptos +
+  adjunta citas, `NOT_FOUND` para curso inexistente, rechazo Zod de salida
+  malformada sin persistir nada, passthrough de `AppError`, validación de
+  `createManual`, `listDecks`/`getReviewQueue` filtrando correctamente).
+- E2E real (`tests/e2e/flashcards.spec.ts`), sembrando un curso con
+  tarjetas via `FlashcardRepository`: ver un deck sembrado, repasar de
+  punta a punta (frente → revelar → calificar → siguiente → "¡Repaso
+  completo!"), confirmar que calificar con "Bien"/"Fácil" saca la tarjeta
+  de la cola de vencidas, crear una tarjeta manual desde "+ Nueva
+  tarjeta", y el error normal de clave de OpenAI faltante al generar.

@@ -36,7 +36,7 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 9 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 10 completadas (ver `ROADMAP.md`). Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -69,8 +69,14 @@ enfocada en ellos. Desde Fase 9, `/plan` muestra el calendario de cada
 curso: qué lecciones tocan cada día según tus minutos diarios, marca en
 rojo los días atrasados, y te deja cambiar la fecha objetivo o recalcular
 el plan cuando quieras — sin perder de vista que estudiar de verdad sigue
-pasando en `/study`. El resto de pantallas se implementan en su fase
-correspondiente.
+pasando en `/study`. Desde Fase 10, `/flashcards` genera decks de tarjetas
+de memoria por curso (front/back/pista, con cita real a la página que las
+respalda cuando es posible) o te deja crearlas a mano; el deck es
+acumulativo — generar más nunca borra tus tarjetas ni tu historial de
+repasos — y `/flashcards/:courseId/review` te hace repasar las que ya
+vencen hoy con un scheduling estilo SM-2 (Otra vez/Difícil/Bien/Fácil
+ajustan cuándo vuelve a tocar cada una). El resto de pantallas se
+implementan en su fase correspondiente.
 
 ## Desarrollo
 

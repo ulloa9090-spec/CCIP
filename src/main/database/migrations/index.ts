@@ -8,6 +8,7 @@ import { migration0006Study } from './0006_study'
 import { migration0007Assessment } from './0007_assessment'
 import { migration0008Mastery } from './0008_mastery'
 import { migration0009Plan } from './0009_plan'
+import { migration0010Flashcards } from './0010_flashcards'
 import type { Migration } from './types'
 
 export type { Migration } from './types'
@@ -22,7 +23,8 @@ export const MIGRATIONS: Migration[] = [
   migration0006Study,
   migration0007Assessment,
   migration0008Mastery,
-  migration0009Plan
+  migration0009Plan,
+  migration0010Flashcards
 ]
 
 /**
