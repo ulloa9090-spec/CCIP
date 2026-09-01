@@ -38,6 +38,7 @@ export function NotesPanel({ courseId }: { courseId: string }): React.JSX.Elemen
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Escribe una nota rápida..."
+          aria-label="Nueva nota"
           className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm text-text-primary placeholder:text-text-muted"
         />
         <Button size="sm" onClick={handleSave} disabled={saving || draft.trim().length === 0}>

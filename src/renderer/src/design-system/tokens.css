@@ -77,6 +77,41 @@
   --topbar-height: 64px;
 }
 
+/*
+ * Light theme (Fase 12 — Polish). Dark navy/graphite stays the base
+ * identity (ADR-003) — this is the alternative a user can switch to from
+ * Settings, not a "system preference" auto mode. Only the tokens that
+ * actually differ are redeclared; spacing/radii/typography/motion are
+ * theme-independent. Toggled via `data-theme` on `<html>`
+ * (src/renderer/src/app/theme.ts), not a media query — the choice is
+ * explicit and persisted, not inferred from the OS.
+ */
+:root[data-theme='light'] {
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f1f5f9;
+  --color-border: rgba(15, 23, 42, 0.12);
+  --color-border-strong: rgba(15, 23, 42, 0.24);
+
+  --color-primary: #2563eb;
+  --color-primary-strong: #1d4ed8;
+  --color-secondary: #7c3aed;
+  --color-secondary-strong: #6d28d9;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  --color-text-primary: rgba(15, 23, 42, 0.92);
+  --color-text-secondary: rgba(51, 65, 85, 0.75);
+  --color-text-muted: rgba(100, 116, 139, 0.65);
+
+  --color-focus-ring: rgba(37, 99, 235, 0.5);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+}
+
 @theme {
   --color-background: var(--color-background);
   --color-surface: var(--color-surface);

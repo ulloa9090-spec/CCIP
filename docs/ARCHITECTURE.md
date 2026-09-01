@@ -702,41 +702,95 @@ No requerido en primer prototipo personal.
   fuente de datos real que mostrar sin inventar contenido); cruzar
   "ritmo" con el Plan adaptativo de Fase 9.
 
-### Pendiente de concretar (fases siguientes)
+### Fase 12 (completada) — última fase del roadmap principal
+
+- `CommandPalette` (nuevo, `src/renderer/src/app/`): Cmd/Ctrl+K abre una
+  lista de comandos (cada destino de navegación + "Nuevo curso"/
+  "Importar documento") filtrable y operable por completo con teclado
+  (flechas, Enter, Escape); montada condicionalmente por `AppShell` en
+  vez de recibir un prop `open`, para que cada apertura empiece con
+  estado fresco sin un `useEffect` que ajuste `setState` a partir de
+  props. Es el único atajo de teclado que define la app. Ver ADR-023.
+- Modo claro real: bloque `:root[data-theme='light']` en
+  `design-system/tokens.css` (dark sigue siendo la identidad base,
+  ADR-003), aplicado vía `data-theme` en `<html>`
+  (`src/renderer/src/app/theme.ts`) y persistido con
+  `SettingsRepository` (clave `'theme'`, genérica desde Fase 1, sin
+  consumidor hasta ahora). Toggle en `SettingsPage`.
+- `createBackup()` (nuevo, `src/main/backup/`): copia en caliente de la
+  base de datos (`db.backup()` de better-sqlite3, nunca un copy de
+  archivo a pelo) más la carpeta `documents/`, escrita en
+  `paths.backups()` (scaffolded desde Fase 0/1). "Ver copia" revela la
+  carpeta en el explorador de archivos del sistema
+  (`shell.showItemInFolder`).
+- `buildNotesMarkdown()` (nuevo, `src/main/notes/`): exporta todas las
+  notas de todos los cursos a un único archivo Markdown agrupado por
+  curso, escrito donde el usuario elija vía diálogo nativo de guardado
+  (`paths.exports()` como carpeta sugerida). `NoteRepository` gana
+  `listAll()` con el título del curso adjunto.
+- IPC + preload: `window.studyos.settings.{getTheme,setTheme,
+  createBackup,revealBackup,exportNotes}`.
+- Accesibilidad: `aria-label` en los ~8 campos de texto que dependían
+  solo de su `placeholder`, `aria-label="Navegación principal"` en el
+  `<nav>` del sidebar, semántica de diálogo completa en la paleta de
+  comandos. `:focus-visible` global y el Button del design system sin
+  variante icon-only ya venían desde Fase 0.
+- Empty states auditados en todas las pantallas de listado — ya
+  cumplían vía el componente `EmptyState` compartido, sin cambios
+  necesarios.
+- Packaging (electron-builder, configurado desde Fase 0) verificado con
+  `pnpm build:unpack` en este contenedor Linux; `.dmg`/`.exe` reales
+  quedan pendientes de verificar en sus sistemas operativos nativos.
+- Deliberadamente fuera de alcance (ADR-023): más comandos o atajos más
+  allá de Cmd/Ctrl+K, detección automática de `prefers-color-scheme`,
+  pedir carpeta destino por diálogo para el backup, exportar algo más
+  que notas (cursos, exámenes), firma/notarización real de macOS/Windows.
+
+### Pendiente de concretar (backlog futuro)
+
+Las Fases 0 a 12 de `ROADMAP_IMPLEMENTATION.md` están completas. Lo que
+sigue es intencionalmente backlog — nada de esto tiene un consumidor
+real todavía, ver `ROADMAP_IMPLEMENTATION.md` §15 y las decisiones ya
+tomadas fase a fase:
 
 - Verificación de descarga real del modelo de embeddings y calidad de
-  búsqueda semántica con red disponible — no verificable en el contenedor de
-  desarrollo (ver ADR-012). Pendiente en el Mac de destino.
-- Verificación de una respuesta real generada por OpenAI (streaming real,
-  generación estructurada real, con clave de API real) — tampoco verificable
-  aquí (`api.openai.com` bloqueado). Ver ADR-015, ADR-016, ADR-018, ADR-021.
-  Pendiente en el Mac de destino.
-- Pantalla "Inicio" (`/`) — dashboard de bienvenida con curso actual,
-  sesión de hoy, y gamificación (XP/nivel/racha visual) — nunca asignada
-  a una fase explícita; "racha" ya existe como número real en Progreso
-  (Fase 11), pero XP/nivel/logros (`achievements`/`user_achievements`)
-  siguen sin ningún consumidor. Ver ADR-002, ADR-022.
+  búsqueda semántica con red disponible, y de una respuesta real de
+  OpenAI (streaming, generación estructurada, clave real) — ninguna
+  verificable en este contenedor (`api.openai.com` y el CDN del modelo
+  bloqueados). Ver ADR-012, ADR-015, ADR-016, ADR-018, ADR-021.
+  Pendientes en el Mac de destino, junto con `.dmg`/`.exe` firmados
+  reales (ADR-023 punto 8).
+- Pantalla "Inicio" (`/`) con gamificación (XP/nivel/racha visual) —
+  nunca asignada a una fase explícita; "racha" ya existe como número
+  real en Progreso (Fase 11), pero XP/nivel/logros
+  (`achievements`/`user_achievements`) siguen sin consumidor. Ver
+  ADR-002, ADR-022.
 - Selector de modo (Profesor/Asesor/Entrenador) — Profesor ya tiene un
-  Course Engine real detrás desde esta fase; Asesor todavía no tiene nada
-  real detrás; Entrenador ya podría apoyarse en el Plan adaptativo
-  (Fase 9), pendiente de construirse cuando exista el selector.
+  Course Engine real detrás; Asesor no tiene nada real detrás; Entrenador
+  podría apoyarse en el Plan adaptativo (Fase 9) cuando exista el
+  selector.
 - Acciones de regeneración de IA en la tarjeta de estudio y en el Tutor
-  (Más simple/Ejemplo/Preguntar/Crear flashcard) — sin consumidor real
-  todavía, ver ADR-014/017.
+  (Más simple/Ejemplo/Preguntar/Crear flashcard) — ver ADR-014/017.
 - Preguntas/ejercicios/flashcards como tipos reales de `session_activities`
-  más allá de `lesson`/`review` — Flashcards (Fase 10) ya existe como
-  feature independiente, pero todavía no se integra como un tipo de
-  actividad dentro de una sesión de Study Mode.
+  más allá de `lesson`/`review` — Flashcards (Fase 10) existe como
+  feature independiente, sin integrarse todavía a Study Mode.
 - Navegador de notas independiente (`/notes`) — Fase 6 solo cubre notas
   ligadas a un curso, ver ADR-017.
 - Exam Center completo, Custom Exam Builder, banco de preguntas
-  reutilizable — quedan fuera de alcance por ahora, ver ADR-018.
+  reutilizable — ver ADR-018.
 - Candado explícito para no crear una sesión de recuperación mientras otra
-  sesión sigue activa — limitación conocida, ver ADR-019 punto 8.
+  sigue activa — ver ADR-019 punto 8.
 - "Reprogramar" una sesión puntual, recálculo automático ante fallos
   repetidos/dominio rápido, grilla visual de calendario — ver ADR-020.
 - Deduplicación de tarjetas entre regeneraciones e integración de repasos
   de Flashcards con `MasteryService` — ver ADR-021 puntos 5 y 7.
 - Modo "mapa visual" de grafo en el Mapa de Conocimiento, "definición"/
-  "errores" por concepto, XP/nivel/logros — ver ADR-022 puntos 7 y 8.
+  "errores" por concepto — ver ADR-022 puntos 7 y 8.
+- Exportar algo más que notas (cursos, historial de exámenes) — ver
+  ADR-023 punto 5.
+- Backlog futuro explícito de `ROADMAP_IMPLEMENTATION.md` §15: modelos
+  locales, Anthropic como segundo `AIProvider`, investigación externa,
+  import/export DOCX/EPUB, exportar a presentaciones, sync en la nube,
+  móvil, web, multi-usuario — todos fuera de alcance del MVP personal de
+  macOS por diseño (ver ADR-001).
 

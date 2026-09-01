@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AIKeyStatus, UserProfile } from '../shared/types/settings'
+import type {
+  AIKeyStatus,
+  BackupResult,
+  ExportNotesResult,
+  Theme,
+  UserProfile
+} from '../shared/types/settings'
 import type {
   DocumentDetail,
   DocumentProgressEvent,
@@ -39,7 +45,13 @@ const studyos = {
       ipcRenderer.invoke('settings:updateDisplayName', name),
     getAIKeyStatus: (): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:getAIKeyStatus'),
     setAIKey: (key: string): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:setAIKey', key),
-    clearAIKey: (): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:clearAIKey')
+    clearAIKey: (): Promise<AIKeyStatus> => ipcRenderer.invoke('settings:clearAIKey'),
+    getTheme: (): Promise<Theme> => ipcRenderer.invoke('settings:getTheme'),
+    setTheme: (theme: Theme): Promise<Theme> => ipcRenderer.invoke('settings:setTheme', theme),
+    createBackup: (): Promise<BackupResult> => ipcRenderer.invoke('settings:createBackup'),
+    revealBackup: (path: string): Promise<void> =>
+      ipcRenderer.invoke('settings:revealBackup', path),
+    exportNotes: (): Promise<ExportNotesResult> => ipcRenderer.invoke('settings:exportNotes')
   },
   documents: {
     import: (): Promise<LibraryDocument[]> => ipcRenderer.invoke('documents:import'),

@@ -88,4 +88,29 @@ describe('NoteRepository', () => {
     notes.delete(note.id)
     expect(notes.listByCourse(courseId)).toEqual([])
   })
+
+  it('listAll returns every note across courses with the course title attached', () => {
+    const documentId = documents.create({
+      title: 'Otro manual',
+      originalFilename: 'otro.pdf',
+      mimeType: 'application/pdf',
+      fileHash: 'h2'
+    }).id
+    const otherCourseId = courses.create({
+      objective: 'Otro',
+      documentIds: [documentId],
+      targetDate: null,
+      dailyMinutes: 30,
+      structure
+    }).id
+
+    notes.create({ body: 'Nota del curso 1', courseId })
+    notes.create({ body: 'Nota del curso 2', courseId: otherCourseId })
+    notes.create({ body: 'Nota sin curso' })
+
+    const all = notes.listAll()
+    expect(all).toHaveLength(3)
+    expect(all.find((n) => n.body === 'Nota del curso 1')?.courseTitle).toBe('Curso')
+    expect(all.find((n) => n.body === 'Nota sin curso')?.courseTitle).toBeNull()
+  })
 })

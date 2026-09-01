@@ -83,6 +83,7 @@ export function GlobalSearch(): React.JSX.Element {
         onChange={(event) => handleQueryChange(event.target.value)}
         onFocus={() => setOpen(true)}
         placeholder="Buscar en tu biblioteca..."
+        aria-label="Buscar en tu biblioteca"
         className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm text-text-primary placeholder:text-text-muted"
       />
       {showDropdown && (

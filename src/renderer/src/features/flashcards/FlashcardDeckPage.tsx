@@ -101,18 +101,21 @@ export function FlashcardDeckPage(): React.JSX.Element {
               value={front}
               onChange={(event) => setFront(event.target.value)}
               placeholder="Pregunta / término (front)"
+              aria-label="Pregunta o término de la tarjeta"
               className="h-9 rounded-md border border-border bg-background px-3 text-sm text-text-primary placeholder:text-text-muted"
             />
             <input
               value={back}
               onChange={(event) => setBack(event.target.value)}
               placeholder="Respuesta / definición (back)"
+              aria-label="Respuesta o definición de la tarjeta"
               className="h-9 rounded-md border border-border bg-background px-3 text-sm text-text-primary placeholder:text-text-muted"
             />
             <input
               value={hint}
               onChange={(event) => setHint(event.target.value)}
               placeholder="Pista (opcional)"
+              aria-label="Pista de la tarjeta (opcional)"
               className="h-9 rounded-md border border-border bg-background px-3 text-sm text-text-primary placeholder:text-text-muted"
             />
             <Button

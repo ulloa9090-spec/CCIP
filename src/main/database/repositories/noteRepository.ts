@@ -1,6 +1,6 @@
 import type { Database } from 'better-sqlite3'
 import { ulid } from '../ulid'
-import type { CreateNoteInput, Note } from '../../../shared/types/notes'
+import type { CreateNoteInput, Note, NoteWithCourseTitle } from '../../../shared/types/notes'
 
 interface NoteRow {
   id: string
@@ -68,5 +68,18 @@ export class NoteRepository {
 
   delete(id: string): void {
     this.db.prepare('DELETE FROM notes WHERE id = ?').run(id)
+  }
+
+  /** Every note across every course, for Fase 12's "Exportar notas" — `listByCourse` stays scoped for the in-course panel. */
+  listAll(): NoteWithCourseTitle[] {
+    const rows = this.db
+      .prepare(
+        `SELECT notes.*, courses.title as course_title
+         FROM notes
+         LEFT JOIN courses ON courses.id = notes.course_id
+         ORDER BY notes.created_at DESC, notes.id DESC`
+      )
+      .all() as (NoteRow & { course_title: string | null })[]
+    return rows.map((row) => ({ ...mapNote(row), courseTitle: row.course_title }))
   }
 }

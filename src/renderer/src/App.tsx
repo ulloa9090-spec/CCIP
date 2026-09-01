@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from './app/AppShell'
+import { applyTheme } from './app/theme'
 import { PlaceholderPage } from './app/PlaceholderPage'
 import { NAV_ITEMS, SETTINGS_NAV_ITEM } from './app/nav'
 import { SettingsPage } from './features/settings/SettingsPage'
@@ -35,6 +37,10 @@ const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
 }
 
 function App(): React.JSX.Element {
+  useEffect(() => {
+    window.studyos.settings.getTheme().then(applyTheme)
+  }, [])
+
   return (
     <HashRouter>
       <Routes>

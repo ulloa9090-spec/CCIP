@@ -9,6 +9,10 @@ export interface Note {
   updatedAt: string
 }
 
+export interface NoteWithCourseTitle extends Note {
+  courseTitle: string | null
+}
+
 export interface CreateNoteInput {
   title?: string | null
   body: string

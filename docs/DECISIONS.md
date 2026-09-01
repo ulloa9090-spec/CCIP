@@ -1276,3 +1276,124 @@ a IA, así que no hereda la limitación de red de este contenedor:
   en vez de un dashboard en ceros, y el Mapa de Conocimiento expande un
   concepto para revelar su fuente citada y arma una sesión de
   recuperación real desde "Estudiar ahora".
+
+### ADR-023 — Alcance y decisiones de Polish (Fase 12)
+
+**Contexto.** `ROADMAP_IMPLEMENTATION.md` §14 lista ocho ítems sin
+criterio de aceptación ("Done:") ni detalle de alcance: keyboard
+shortcuts, command palette, empty states, accessibility, dark mode,
+backups, export, packaging. ADR-003 ya había comprometido explícitamente
+el toggle claro/oscuro para esta fase ("los tokens se definen ya como
+*themable*... para que ese toggle sea trivial cuando llegue"). El
+checklist final de `ROADMAP_IMPLEMENTATION.md` §18 permite que el backup
+manual esté "disponible o documentado" — un listón más bajo que el que
+esta fase termina cumpliendo.
+
+**Decisiones:**
+
+1. **Command palette y keyboard shortcuts son la misma entrega.** El
+   único atajo de teclado que define la aplicación es Cmd/Ctrl+K, que
+   abre `CommandPalette` — una lista de comandos (cada destino de
+   `NAV_ITEMS`/`SETTINGS_NAV_ITEM` como "Ir a X", más "Nuevo curso" e
+   "Importar documento", que ya existían como botones en otras
+   pantallas) filtrable, navegable con flechas y Enter, cerrable con
+   Escape. No se construyó una pantalla de "atajos" aparte ni más
+   comandos — la paleta reutiliza acciones que ya existen, no añade
+   capacidades nuevas.
+2. **`CommandPalette` se monta condicionalmente en vez de recibir un
+   prop `open`.** `AppShell` solo lo renderiza mientras el estado está
+   abierto (`{paletteOpen && <CommandPalette .../>}`) en lugar de
+   pasarle `open` y dejar que la paleta decida cuándo mostrarse — así
+   cada apertura es un montaje fresco (query y selección en cero) sin
+   necesitar un `useEffect` que llame `setState` al cambiar `open`
+   (antipatrón que el propio linter de React marca como error, no solo
+   advertencia).
+3. **Modo oscuro sigue siendo la identidad base (ADR-003); el modo claro
+   es la alternativa explícita, no "seguir el sistema".** Se agregó un
+   bloque `:root[data-theme='light']` en `tokens.css` redeclarando solo
+   los tokens de color que cambian — spacing/radii/tipografía/motion son
+   independientes del tema. La preferencia se persiste con
+   `SettingsRepository` (clave `'theme'`, genérica desde Fase 1, sin
+   consumidor hasta ahora) en vez de `localStorage`, consistente con que
+   toda la app usa SQLite como fuente de verdad de lo persistido, no el
+   almacenamiento del navegador. Sin detección de `prefers-color-scheme`
+   — el propio ADR-003 ya especificó un toggle explícito, no automático.
+4. **Backup: una copia completa y restaurable, no solo el archivo
+   `.sqlite`.** `createBackup()` usa la API de backup en caliente de
+   better-sqlite3 (`db.backup()`) — nunca una copia de archivo a pelo,
+   que podría capturar un `.sqlite` a medio escribir — y además copia la
+   carpeta `documents/` completa (los PDFs importados), porque una copia
+   sin los PDFs originales no permite reconstruir la biblioteca. Escribe
+   en `paths.backups()` (ya scaffolded desde Fase 0/1, sin consumidor
+   hasta ahora) en vez de pedir una carpeta destino por diálogo nativo —
+   más simple, y "Ver copia" (`shell.showItemInFolder`) deja que el
+   usuario la mueva a donde quiera después.
+5. **Export se interpreta como "exportar notas a Markdown"**, la lectura
+   más simple y mantenible de un ítem de roadmap sin ningún detalle
+   adicional en `MASTER_SPEC.md`/`UX_UI.md` (la única pista es que
+   `DATA_MODEL.md` ya scaffoldea `paths.exports()` sin decir qué va
+   ahí). Notas (Fase 6) ya es una entidad con contenido de usuario
+   autocontenido y sin dependencias externas — a diferencia de exportar
+   un curso completo o un historial de examen, que necesitarían decidir
+   un formato de intercambio más elaborado sin que el roadmap lo pida.
+   Documentado explícitamente como decisión de alcance, no lectura
+   literal del roadmap — igual criterio que Fase 10 con "Create" manual
+   (ADR-021 punto 4) o Fase 11 con "dashboard" (ADR-022 punto 1).
+6. **Accesibilidad: auditoría real y acotada, no una reescritura
+   general.** Se agregó `aria-label` a los ~8 campos de texto que
+   dependían solo de su `placeholder` como nombre accesible (un
+   antipatrón conocido) en Notas, Configuración, Flashcards, Tutor y
+   Búsqueda global — **excepto** el campo "objetivo" del wizard de
+   Crear Curso, que ya tenía un `<label htmlFor>` real y al que
+   agregarle `aria-label` le habría *quitado* su nombre accesible real
+   (un `aria-label` gana sobre un `<label>` asociado), rompiendo además
+   el e2e existente que lo ubica por ese label — revertido tras
+   detectarlo en la primera corrida de la suite completa. También se
+   agregó `aria-label="Navegación principal"` al `<nav>` del sidebar y
+   semántica de diálogo (`role="dialog"`, `aria-modal`, `aria-label`)
+   a la paleta de comandos. El resto de la app ya cumplía razonablemente
+   bien: todo botón del design system exige texto visible como hijo (sin
+   variante icon-only en ningún lugar del código), y `:focus-visible` es
+   global desde Fase 0.
+7. **Empty states: auditados, sin cambios necesarios.** Cada pantalla de
+   listado real (Flashcards, Exámenes, Progreso, Mapa de Conocimiento,
+   Biblioteca, Cursos) ya usa el componente `EmptyState` del design
+   system. Paneles incrustados más pequeños (Notas dentro de un curso,
+   "Sin conceptos" en Mastery, "¡Repaso completo!" en Flashcards) usan
+   mensajes de texto simple en vez de `EmptyState` a propósito — son
+   sub-estados dentro de una pantalla ya cargada, no una pantalla vacía
+   por sí misma, y forzarlos a usar el componente pesado sería
+   sobre-construir sin beneficio real para el usuario.
+8. **Packaging: verificado en este contenedor, no en macOS/Windows
+   reales.** La configuración de `electron-builder` (mac/win/linux,
+   entitlements, `.dmg`) ya existía desde Fase 0 — esta fase la verifica
+   corriendo `pnpm build:unpack` (build sin empaquetar, sin firma) con
+   éxito en Linux. Un `.dmg`/`.exe` firmado y notarizado reales siguen
+   pendientes de verificar en sus sistemas operativos nativos, mismo
+   patrón que la descarga real del modelo de embeddings (ADR-012) y una
+   respuesta real de OpenAI (ADR-015/016/018/021) — ninguno verificable
+   dentro de este contenedor de desarrollo.
+
+**Verificación.** Determinista por completo — ningún ítem de esta fase
+depende de una llamada a IA:
+- Unit tests: `notesExport.test.ts` (agrupación por curso, "Sin curso"
+  como fallback, título vs. fecha formateada), `noteRepository.test.ts`
+  (`listAll` con el título del curso adjunto across cursos),
+  `CommandPalette.test.tsx` (lista de comandos por defecto, filtrado por
+  texto, "sin resultados", clic navega y cierra, flecha+Enter selecciona,
+  clic en el fondo cierra sin navegar, la acción "Importar documento"
+  dispara la IPC real). `backupService.ts` no tiene test unitario
+  dedicado — depende de `app.getPath()` de Electron, igual que
+  `documentStorage.ts` desde Fase 2, y se verifica solo vía e2e real,
+  mismo patrón ya establecido para ese tipo de dependencia.
+- E2E real (`tests/e2e/polish.spec.ts`): Ctrl+K abre la paleta, filtra,
+  Enter navega y cierra; Escape cierra sin navegar; el botón de la barra
+  superior también la abre; cambiar a modo claro aplica el tema de
+  inmediato y sobrevive a cerrar/reabrir la app; "Crear copia de
+  seguridad" produce una carpeta real con `studyos.sqlite` dentro;
+  "Exportar notas" (con el diálogo nativo de guardado interceptado en el
+  proceso principal, mismo patrón que el import de PDFs desde Fase 2)
+  escribe un archivo `.md` real con el contenido de la nota. Se detectó
+  y corrigió una condición de carrera real en la suite (Ctrl+K enviado
+  antes de que `AppShell` montara su listener) esperando explícitamente
+  el botón de la paleta antes de cada prueba.

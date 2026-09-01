@@ -188,6 +188,7 @@ export function TutorPage(): React.JSX.Element {
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             placeholder="Escribe una pregunta..."
+            aria-label="Escribe una pregunta para el tutor"
             disabled={sending}
             className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm text-text-primary placeholder:text-text-muted disabled:opacity-50"
           />

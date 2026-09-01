@@ -65,5 +65,10 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       (árbol de conceptos por curso con fuentes citadas y acceso directo a
       "Estudiar ahora"). _(completada — ver DECISIONS.md ADR-022;
       completamente determinista, sin llamadas a IA)_
-- [ ] **Fase 12 — Polish**: shortcuts, command palette, empty states,
-      accesibilidad, toggle claro/oscuro, backups, export, packaging.
+- [x] **Fase 12 — Polish**: paleta de comandos (Cmd/Ctrl+K) con navegación
+      y acciones rápidas, toggle de tema claro/oscuro persistido, copia de
+      seguridad real (base de datos + PDFs) con acceso directo desde el
+      explorador de archivos, exportar notas a Markdown, auditoría de
+      accesibilidad (aria-labels, navegación por teclado) y de empty
+      states, packaging verificado. _(completada — ver DECISIONS.md
+      ADR-023; completamente determinista, sin llamadas a IA)_

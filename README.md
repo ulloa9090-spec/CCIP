@@ -36,7 +36,8 @@ Ver `docs/DECISIONS.md` (ADR-005) para el razonamiento completo.
 
 ## Estado
 
-Fases 0 a 11 completadas (ver `ROADMAP.md`). Además de persistencia,
+Fases 0 a 12 completadas — todo el roadmap principal (ver `ROADMAP.md`).
+Además de persistencia,
 Configuración (Fase 1), la Biblioteca con viewer de PDF (Fase 2) y la
 indexación local de documentos (Fase 3), el Tutor (`/tutor`) responde
 preguntas basándose únicamente en la biblioteca del usuario: si no hay
@@ -82,8 +83,12 @@ historial de exámenes — todo calculado a partir de lo que ya hiciste en
 Study Mode, Exámenes, Mastery y Flashcards, sin ninguna llamada a IA; y
 `/knowledge-map` muestra, por curso, el árbol de conceptos con tu dominio
 de cada uno — tocar uno revela sus fuentes citadas y te deja saltar
-directo a una sesión de recuperación. El resto de pantallas se
-implementan en su fase correspondiente.
+directo a una sesión de recuperación. Desde Fase 12, Cmd/Ctrl+K abre una
+paleta de comandos para saltar a cualquier pantalla o disparar acciones
+rápidas sin soltar el teclado; `/settings` deja elegir entre modo oscuro
+(el predeterminado) y modo claro, crear una copia de seguridad real de tu
+base de datos y tus PDFs con un clic, y exportar todas tus notas a un
+archivo Markdown.
 
 ## Desarrollo
 
