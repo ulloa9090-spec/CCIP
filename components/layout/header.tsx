@@ -1,8 +1,10 @@
-import { Bell, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getGoals, getLifeAreas } from "@/features/goals/queries";
 import { getProjects } from "@/features/projects/queries";
+import { getNotifications } from "@/features/notifications/queries";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { evaluateAutomations } from "@/features/automations/evaluate";
 import { MobileNav } from "./mobile-nav";
 import { QuickAdd } from "./quick-add";
 import { ThemeToggle } from "./theme-toggle";
@@ -13,9 +15,12 @@ export async function Header() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [lifeAreas, goals, projects] = user
-    ? await Promise.all([getLifeAreas(), getGoals(), getProjects()])
-    : [[], [], []];
+
+  if (user) await evaluateAutomations();
+
+  const [lifeAreas, goals, projects, notifications] = user
+    ? await Promise.all([getLifeAreas(), getGoals(), getProjects(), getNotifications()])
+    : [[], [], [], []];
 
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-4">
@@ -39,14 +44,7 @@ export async function Header() {
 
       <div className="flex items-center gap-2">
         <QuickAdd lifeAreas={lifeAreas} projects={projects} goals={goals} />
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled
-          aria-label="Notifications (available in a later phase)"
-        >
-          <Bell className="h-4 w-4" />
-        </Button>
+        {user && <NotificationBell notifications={notifications} />}
         <ThemeToggle />
         {user?.email && <UserMenu email={user.email} />}
       </div>

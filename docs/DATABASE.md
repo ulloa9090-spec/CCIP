@@ -21,6 +21,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903161040` | `journal_ideas_decisions` | Creates `decisions`, `journal_entries`, `ideas` (in that order, since `journal_entries.decision_id` references `decisions`), full RLS with FK ownership checks from the start (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903163819` | `reviews` | Creates `weekly_reviews`, `monthly_reviews`, full RLS with an FK ownership check on `weekly_reviews.next_week_mio_task_id` (ADR 0005), indexes on `(user_id, week_start_date)` / `(user_id, month)`, `updated_at` triggers. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903211921` | `ai_layer` | Creates `ai_threads`, `ai_messages`, `ai_insights`, full RLS — `ai_messages` ownership-checked via join to its parent thread (no direct `user_id`), `ai_insights` FK-ownership-checked on `thread_id` (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260903215650` | `notifications_automations` | Creates `notifications`, `automations`, full RLS, `user_id`-only scoping (neither table has a FK to another owned table). `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -440,6 +441,42 @@ The one place a SUGGEST-tier AI action (blueprint §M.3) parks a proposed change
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `thread_id` (when set) belongs to a thread owned by that same user (ADR 0005).
 
+### `notifications`
+Blueprint §I.9. The Automation engine's sole action target this phase (`create_notification`) — see `automations` below — but the table itself is a general-purpose in-app notification, not automation-specific; a future phase can write to it from anywhere.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `type` | text | not null, check in (`critical`,`actionable`,`informational`,`silent_insight`) |
+| `title` | text | not null |
+| `body` | text | nullable |
+| `link` | text | nullable — an in-app path the notification's row links to |
+| `source` | text | nullable, e.g. `automation:task_overdue` |
+| `read_at` | timestamptz | nullable |
+| `created_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` only.
+
+### `automations`
+Blueprint §M.4 — declarative `Trigger → Condition → Action` rows. Two trigger types this phase (`trigger_type`'s check constraint), matching blueprint §M.4's own two worked examples exactly; one action type (`create_notification` — blueprint's `surface_on_dashboard`/`open_weekly_review_prompt` both collapse into this, since the Notification Center is visible from every page via Header). See ADR 0014 for why this is evaluated at read-time rather than by a background scheduler.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `name` | text | not null |
+| `trigger_type` | text | not null, check in (`task_overdue`,`weekly_schedule`) |
+| `trigger_config` | jsonb | not null, default `{}` — `{minDays}` or `{dayOfWeek, hour}` |
+| `condition` | jsonb | nullable — `{priorities: string[]}` for `task_overdue`; unused for `weekly_schedule` |
+| `action_type` | text | not null, default `create_notification`, check in (`create_notification`) |
+| `action_config` | jsonb | not null, default `{}` — reserved, unused this phase |
+| `enabled` | boolean | not null, default `true` |
+| `last_run_at` | timestamptz | nullable — the idempotency marker `features/automations/evaluate.ts` checks before doing any real query work |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` only — no FK to another owned table (`trigger_config`/`condition` are jsonb, evaluated in application code, not enforced by a foreign key).
+
 ## Domain tables (not yet built)
 
-`notifications`, `attachments` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.10-§I.11 and get created in Phase 11, following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`attachments` — full spec already exists in `PHASE_0_BLUEPRINT.md` §I.10 and gets created in a later phase, following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

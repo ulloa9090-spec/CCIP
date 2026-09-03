@@ -68,6 +68,30 @@ export async function logIn(_prev: ActionResult, formData: FormData): Promise<Ac
   redirect("/dashboard");
 }
 
+/** Passwordless sign-in (blueprint §C "Magic link auth", Phase 11) —
+ * `shouldCreateUser: false` so this is an alternate sign-in path for an
+ * existing account, not a backdoor around the real signup form. Like
+ * `requestPasswordReset` below, the result is intentionally not surfaced
+ * to the caller: always the same message, so a bad actor can't use this
+ * form to probe which emails have accounts. */
+export async function signInWithMagicLink(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    return { fieldErrors: flattenZodErrors(parsed.error) };
+  }
+
+  const supabase = await createClient();
+  await supabase.auth.signInWithOtp({
+    email: parsed.data.email,
+    options: {
+      shouldCreateUser: false,
+      emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=/dashboard`,
+    },
+  });
+
+  return { message: "If an account exists for that email, a sign-in link is on its way." };
+}
+
 export async function logOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

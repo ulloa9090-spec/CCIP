@@ -17,9 +17,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 10 — AI Intelligence Layer.** Real AI Coach (`/ai-coach`): Morning Brief, Evening Review, and Weekly Coach generate-on-demand cards, freeform chat, and a Context Engine (blueprint §M.2) that reuses the same data Dashboard and Weekly Review already assemble. Weekly Coach and Planning Assistant (from Goal/Project Detail) may propose a suggestion — a card the user must Approve, edit-then-Approve, or Ignore before anything actually changes; Approve always goes through the exact same Server Action a human edit would use. Decision Assistant (from an unresolved Decision) offers advisory perspective only. See [`AI_ARCHITECTURE.md`](./docs/AI_ARCHITECTURE.md).
+**Phase 11 — Integrations + Automation.** A real Automation engine (blueprint §M.4): `Trigger → Condition → Action` rows, two trigger types (overdue task, weekly schedule), evaluated on every page load rather than a background job (ADR 0014) and firing a real in-app notification. A Notification Center (Header bell) and Magic Link sign-in also went live. Google/Apple/Outlook Calendar sync and Social login are deferred entirely — they need real OAuth credentials this environment can't self-provision (ADR 0015).
 
-Phases 1-9 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer, Journal + Ideas + Decision Log, Reviews + Analytics) are complete. Phase 2's live end-to-end auth test, and Phase 10's live AI provider test, are both **pending** follow-ups (see below) — this sandbox has no real Supabase network access or AI provider key configured; unrelated to and unaffected by any other phase's work.
+Phases 1-10 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer, Journal + Ideas + Decision Log, Reviews + Analytics, AI Intelligence Layer) are complete. Phase 2's live end-to-end auth test and Phase 10's live AI provider test are both **pending** follow-ups (see below) — this sandbox has no real Supabase network access or AI provider key configured; unrelated to and unaffected by any other phase's work.
 
 ## Stack
 
@@ -44,7 +44,8 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    ```
    Open [http://localhost:3000](http://localhost:3000).
 4. **Verify the shell**
-   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, `/focus` to run a focus session, `/journal` to write an entry or log a decision, `/ideas` for the Idea Parking Lot, `/reviews` to start this week's or month's review, `/analytics` for trend charts once you have some activity, or `/ai-coach` for Morning Brief/Evening Review/Weekly Coach/freeform chat (with a real `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` configured — otherwise it still creates the conversation and shows "AI Coach is unavailable right now").
+   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, `/focus` to run a focus session, `/journal` to write an entry or log a decision, `/ideas` for the Idea Parking Lot, `/reviews` to start this week's or month's review, `/analytics` for trend charts once you have some activity, `/ai-coach` for Morning Brief/Evening Review/Weekly Coach/freeform chat (with a real `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` configured — otherwise it still creates the conversation and shows "AI Coach is unavailable right now"), or `/settings` to create an Automation and watch a real notification appear in the Header's bell icon on your next page load.
+   - `/login` also offers "Email me a sign-in link instead" for passwordless Magic Link sign-in (same underlying Supabase Auth mechanism as password reset).
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
    - `/dev/dashboard-preview?state=empty|populated|error` renders the real Dashboard widgets against fixture data (internal-only) — useful for visual/responsive QA without needing a logged-in session.
    - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
@@ -81,6 +82,11 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
     ```
     Verifies the FormData `approveInsight()` builds from an AI-proposed suggestion passes the same Zod validation a human's real form submission would.
 11. **Live AI provider test — PENDING, not yet run against a real key**: this repo's sandbox has no `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` configured, so an actual successful chat/structured completion (and the "AI Coach is unavailable right now" degraded UI in a real logged-in session) hasn't been exercised live — see `docs/AI_ARCHITECTURE.md` and ADR 0013. **If you run this locally with a real key configured, try `/ai-coach` → Generate on a Morning Brief and report the result.**
+12. **Automation matching test** (pure logic, no server or network needed):
+    ```bash
+    npx tsx tests/automation-match.ts
+    ```
+    Verifies the blueprint §M.4 Automation engine's trigger-matching and idempotency logic directly — overdue-day/priority matching, and the "has this week's/today's scheduled slot already fired" checks.
 
 ## Scripts
 
@@ -96,12 +102,12 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
 ```
 app/            Next.js App Router — routing + composition
 proxy.ts        Session refresh + protected-route redirects (Next.js 16's middleware convention)
-features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, ai, ...)
+features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, ai, automations, notifications, ...)
 components/ui/  Design-system primitives
-components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
+components/layout/  Sidebar, Header (NotificationBell + evaluateAutomations()), Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils, AI provider abstraction)
-supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions, weekly/monthly reviews, ai_threads/ai_messages/ai_insights — see docs/DATABASE.md)
-tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts, tests/execution-score.ts, tests/ai-context-format.ts, tests/ai-insight-write-path.ts (pure-logic correctness tests, run via tsx)
+supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions, weekly/monthly reviews, ai_threads/ai_messages/ai_insights, notifications/automations — see docs/DATABASE.md)
+tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts, tests/execution-score.ts, tests/ai-context-format.ts, tests/ai-insight-write-path.ts, tests/automation-match.ts (pure-logic correctness tests, run via tsx)
 docs/           Product, architecture, database, security, and decision records
 ```
 

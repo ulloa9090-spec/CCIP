@@ -2,6 +2,17 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 11 — Integrations + Automation
+
+- Database: `notifications`, `automations` — full RLS, `user_id`-only scoping (neither has a FK to another owned table). `get_advisors` clean on the first run.
+- **RLS isolation test across both new tables** — cross-user read/update/delete isolation and spoofed-`user_id` insert rejection, verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Automation engine (`features/automations/`, blueprint §M.4): two trigger types matching the blueprint's own worked examples — `task_overdue` and `weekly_schedule` — one action type (`create_notification`). **Evaluated at read-time on every page load** (`evaluateAutomations()`, called from `Header`) rather than by a background scheduler — generalizes Phase 8's Decision-due-for-review pattern (ADR 0014). Idempotent via each automation's own `last_run_at`. Verified by a dedicated correctness test (`tests/automation-match.ts`, 14 cases).
+- Notification Center (`features/notifications/`): a real `NotificationBell` dropdown in Header — unread badge, mark-one-read on open, mark-all-read. No dedicated nav entry, matching the blueprint's own primary-nav list (same reasoning as ADR 0008/0010).
+- Automations management UI: a new "Automations" card in Settings — list/toggle/delete existing automations, two creation modals for the two supported trigger kinds.
+- Magic Link sign-in (`features/auth/actions.ts`'s `signInWithMagicLink`): Supabase Auth's native passwordless flow, `shouldCreateUser: false` so it's an alternate sign-in for an existing account only; reuses `/auth/confirm`'s existing PKCE handler unchanged. Login page gets a password/magic-link mode toggle.
+- ADR 0014 (automations evaluated at read-time, not a background scheduler) and ADR 0015 (Calendar sync and Social login deferred entirely — no OAuth credentials to build against in this sandbox; Data Export stays Phase 12 per the codebase's own existing placeholder text).
+- `tests/dashboard-smoke.mjs` and every prior pure-logic test suite re-run with no regressions from this phase's changes.
+
 ## Phase 10 — AI Intelligence Layer
 
 - Database: `ai_threads`, `ai_messages`, `ai_insights` — full RLS, `ai_messages` ownership-checked via join to its parent thread (no direct `user_id`, same pattern as `habit_logs`/`challenge_days`), `ai_insights` FK-ownership check on `thread_id` (ADR 0005). `get_advisors` clean on the first run.

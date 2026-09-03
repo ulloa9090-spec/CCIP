@@ -1,7 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { createClient } from "@/lib/supabase/server";
 import { AiProviderForm } from "@/features/settings/components/ai-provider-form";
+import { getAutomations } from "@/features/automations/queries";
+import {
+  AutomationListItem,
+  NewTaskOverdueAutomationModal,
+  NewWeeklyScheduleAutomationModal,
+} from "@/features/automations/components";
 
 const otherGroups = [
   { title: "Working Hours", description: "Shapes suggested time-block slots." },
@@ -29,6 +36,8 @@ export default async function SettingsPage() {
   const { data: settings } = user
     ? await supabase.from("settings").select("ai_provider").eq("user_id", user.id).single()
     : { data: null };
+
+  const automations = user ? await getAutomations() : [];
 
   return (
     <div className="flex flex-col">
@@ -87,6 +96,35 @@ export default async function SettingsPage() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="px-6 pb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Automations</CardTitle>
+              <CardDescription>Trigger → Condition → Action — checked whenever you load a page, never a background job.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <NewTaskOverdueAutomationModal />
+              <NewWeeklyScheduleAutomationModal />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {automations.length === 0 ? (
+              <EmptyState
+                title="No automations yet"
+                description="Get notified when a task goes overdue, or on a weekly schedule."
+              />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {automations.map((a) => (
+                  <AutomationListItem key={a.id} automation={a} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
