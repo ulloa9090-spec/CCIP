@@ -8,7 +8,7 @@ Supabase Auth, email/password. Session stored as httpOnly cookies via `@supabase
 
 ## Authorization: Row Level Security
 
-Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. As of Phase 2: `profiles` and `settings`, both with `select`/`update` policies scoped to `(select auth.uid()) = user_id`, no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade).
+Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. `profiles`/`settings` (Phase 2): `select`/`update` only, scoped to `(select auth.uid()) = user_id` — no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade). `life_areas`/`goals`/`quarter_cycles`/`goal_metrics` (Phase 4): full CRUD, same `user_id` scoping — plus, per ADR 0005, `goals`' `insert`/`update` policies also verify `area_id` and `quarter_cycle_id` reference rows owned by the same user (see the finding below).
 
 **RLS is the only authorization boundary.** No Server Action or Route Handler trusts a client-supplied user id — every query re-derives the user from the authenticated session server-side, and the database enforces isolation independent of whatever the application layer does or forgets to do.
 
@@ -23,6 +23,14 @@ Tested directly against Postgres's RLS engine (not just reasoned about) using tw
 - User B, symmetrically, sees only their own row and can update it.
 
 This exercises the same policy engine PostgREST uses in production — it is not a mock.
+
+### Phase 4: a real finding, and the fix
+
+The same test methodology, extended to `life_areas`/`goals`/`quarter_cycles`/`goal_metrics`, initially **failed**: User A could `insert` a `goals` row with `user_id = A` but `area_id` pointing at one of User B's `life_areas` rows — the `goals_insert_own` policy checked `user_id` but never verified the referenced `area_id` (or nullable `quarter_cycle_id`) actually belonged to the same user. RLS on `life_areas` itself still prevented User A from *reading* User B's area data through the relation (PostgREST embedding respects the joined table's RLS), so this wasn't a read leak — but it was a real cross-tenant integrity hole: a foreign row a user doesn't own, referenced from a row they do, able to interfere with the other user's own data management via the `on delete restrict`/`on delete set null` FK behavior.
+
+Fixed in migration `goals_ownership_check`: `insert`/`update` on `goals` now also require `exists (select 1 from life_areas la where la.id = area_id and la.user_id = (select auth.uid()))` (and the equivalent for `quarter_cycle_id` when set). Re-ran the isolation test after the fix — the cross-user insert is now correctly rejected. ADR 0005 generalizes this as a checklist item for every future table with a FK to another owned table.
+
+This is the isolation testing process working as intended: the point of testing directly against Postgres's real RLS engine, rather than reasoning about policies on paper, is to catch exactly this kind of gap before it ships.
 
 ## Secrets
 

@@ -2,12 +2,13 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 3)
+## Current state (Phase 4)
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
 - **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`). `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
-- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) when signed in.
-- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table.
+- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and now `QuickAdd`'s Life Areas (for its live Goal tab) when signed in.
+- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()` and `getProgressData()` now run real queries (Phase 4) — the first Dashboard modules to graduate from empty stand-in to live data, proving the Phase 3 seam works as designed.
+- **Goals + 90-Day Plan:** `features/goals/` and `features/plan-90-days/` — real Life Areas, Goals (with an optional single metric), and 90-Day Cycles. See the dedicated section below.
 - **Theming:** `next-themes`, class-based, dark is the default. All color/spacing/radius values are CSS custom properties defined once in `app/globals.css` and mapped into Tailwind via `@theme inline`.
 - **Design system:** `components/ui/*` — Button (now supports `asChild` via `@radix-ui/react-slot`, for rendering as a styled `<Link>`), Input, Textarea, Select, Card, Modal, Badge, Dropdown Menu, Progress Bar (now takes an optional `ariaLabel` distinct from its visible `label`, so a bar never ships without an accessible name), Progress Ring, Skeleton, Empty State, Tooltip. Built on Radix UI primitives plus `class-variance-authority` for variants.
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
@@ -28,10 +29,22 @@ Living summary of the system as actually built, updated at the close of each pha
 
 **Dev-only demo fixtures** (`features/dashboard/demo/fixtures.ts` + `app/dev/dashboard-preview/page.tsx`): fixture `ModuleResult` data for empty/populated/error states, rendered through the real `*CardBody` components. Not imported by any production route, not linked from navigation, not protected by `proxy.ts` (nothing on the route touches auth or Supabase). Safe to delete both the `demo/` directory and the preview route without touching production behavior.
 
+## Goals + 90-Day Plan architecture (Phase 4)
+
+**Data**: `life_areas` (8 seeded defaults per user), `goals` (optionally linked to an area and a quarter cycle), `goal_metrics` (at most one per goal — `unique(goal_id)`, upserted), `quarter_cycles` (with an embedded `key_milestones` field, not the Project-scoped `milestones` table — ADR 0004). Full specs in `DATABASE.md`.
+
+**Progress engine** (`features/goals/progress.ts`, blueprint §K): `computeGoalProgress()` is metric-based — `(current - starting) / (target - starting)`, clamped 0–100, `null` when no metric exists yet (no projects exist either, so there's nothing else to average). `computeCycleProgress()` averages linked goals' progress, excluding goals with no computable progress rather than counting them as 0 (the §L.2 redistribution rule, reused here).
+
+**Server Actions**: `features/goals/actions.ts` (`createLifeArea`, `createGoal`, `updateGoal`, `archiveGoal` — soft delete via `deleted_at`) and `features/plan-90-days/actions.ts` (`createQuarterCycle`, `toggleCycleMilestone`). All Zod-validated (`lib/validation/goals.ts`), all derive the user from the session, never a client-supplied id. `ActionResult` (the `{error?, fieldErrors?, message?}` shape every `useActionState`-backed form returns) now lives in `lib/types/action-result.ts`, shared across `features/auth` and `features/goals` rather than duplicated.
+
+**Ownership verification (ADR 0005)**: the Phase 4 RLS isolation test found that `goals`' `insert`/`update` policies checked `user_id` but not that `area_id`/`quarter_cycle_id` actually belonged to that user — fixed in migration `goals_ownership_check`. Every future table with a FK to another owned table must include this check from its first migration, not bolt it on after a test catches it again.
+
+**Quick Add's Goal type went live** (`components/layout/quick-add.tsx`): the first Quick Add type to flip from disabled/phase-badged to a real Server Action-backed mini-form (title + Life Area, calling `createGoal` directly). Since `Header` — and therefore `QuickAdd` — persists across `(app)` route navigations (it's in the shared layout, not a page), a successful submission's `redirect()` to `/goals/[id]` doesn't unmount `QuickAdd`, so the modal closes itself by comparing the current pathname against the last-seen one during render (React's documented "adjust state when a prop changes" pattern) rather than via a `useEffect` (which the project's ESLint config flags for exactly this "setState synchronously in an effect" reason — see the same fix in `ThemeToggle`, Phase 1).
+
 ## Not yet decided / deferred
 
 - `PWA`/offline (Phase 12).
-- Domain tables (goals, projects, tasks, ...) — see `DATABASE.md` and ADR 0001. Each Dashboard module fetcher documents which phase will replace its empty stand-in.
+- Domain tables (projects, tasks, habits, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
 
 ## Environments
 
@@ -47,3 +60,7 @@ Two other Claude Code Remote cloud environments on this account (`Calculadora CC
 
 ADRs live in [`decisions/`](./decisions):
 - [0001](./decisions/0001-phase-2-schema-scope.md) — Phase 2 builds only the identity-scoped schema, not the full 28-table blueprint at once.
+- [0002](./decisions/0002-auth-forms-use-server-actions-not-rhf.md) — Auth forms use Server Actions + `useActionState`, not React Hook Form.
+- [0003](./decisions/0003-middleware-renamed-to-proxy.md) — Route protection lives in `proxy.ts` (Next.js 16's `middleware.ts` rename).
+- [0004](./decisions/0004-ninety-day-milestones-embedded.md) — 90-Day Cycle milestones are an embedded field, not the relational `milestones` table.
+- [0005](./decisions/0005-rls-must-verify-fk-ownership.md) — RLS policies must verify FK-referenced rows' ownership too, not just the row's own `user_id`.

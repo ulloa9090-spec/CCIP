@@ -2,6 +2,16 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 4 — Goals + Life Map + 90-Day Plan
+
+- Database: `life_areas` (8 defaults seeded per signup), `quarter_cycles`, `goals`, `goal_metrics` — full RLS, indexes, `updated_at` triggers. `get_advisors` clean after two migrations.
+- **RLS isolation test caught a real gap**: `goals`' insert/update policies didn't verify `area_id`/`quarter_cycle_id` ownership, only `user_id`. Fixed in a follow-up migration; ADR 0005 generalizes the fix as a requirement for every future FK to an owned table.
+- Progress engine (`features/goals/progress.ts`, blueprint §K): metric-based goal progress, cycle progress as the average of linked goals' progress (excluding goals with no computable progress, not counting them as 0).
+- Real `/goals` (list grouped by Life Area, create/edit, life area quick-add) and `/plan-90-days` (current cycle hero, 3 embedded milestones — ADR 0004 — linked goals, past cycles archive) replacing the Phase 1 placeholders.
+- Dashboard's `getNinetyDayGoalData()` and `getProgressData()` now run real queries — the first modules to graduate from Phase 3's empty stand-ins, proving that seam works without touching any widget.
+- Quick Add's Goal type went live (Server Action-backed, no longer disabled) — first Quick Add type to graduate from Phase 3's phase-badged placeholder.
+- `lib/types/action-result.ts`: the `ActionResult` shape moved out of `features/auth/actions.ts` into a shared location, now used by both `features/auth` and `features/goals`.
+
 ## Phase 3 — Dashboard Foundation
 
 - Data contracts (`features/dashboard/types.ts`): a `DashboardXData` shape + `ModuleResult<T>` per widget — the UI depends on these, never a raw table.

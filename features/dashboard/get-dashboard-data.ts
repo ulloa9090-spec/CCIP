@@ -1,6 +1,9 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { getGoals } from "@/features/goals/queries";
+import { computeCycleProgress, computeGoalProgress } from "@/features/goals/progress";
+import { getCurrentCycle } from "@/features/plan-90-days/queries";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -54,8 +57,20 @@ export async function getActiveProjectData(): Promise<DashboardActiveProjectData
 }
 
 export async function getNinetyDayGoalData(): Promise<DashboardNinetyDayGoalData> {
-  // Quarter cycles / goals don't exist yet (Phase 4).
-  return { cycle: null };
+  const cycle = await getCurrentCycle();
+  if (!cycle) return { cycle: null };
+
+  const linkedGoals = await getGoals({ quarterCycleId: cycle.id });
+  const progress = computeCycleProgress(cycle, linkedGoals);
+
+  return {
+    cycle: {
+      id: cycle.id,
+      name: cycle.name,
+      progress: progress ?? 0,
+      endDate: cycle.endDate,
+    },
+  };
 }
 
 export async function getWeeklyPrioritiesData(): Promise<DashboardWeeklyPrioritiesData> {
@@ -79,8 +94,14 @@ export async function getFocusData(): Promise<DashboardFocusData> {
 }
 
 export async function getProgressData(): Promise<DashboardProgressData> {
-  // Goal/project progress engine needs goals+projects (Phases 4-5).
-  return { goalProgress: [] };
+  // Project progress is still Phase 5 — this shows goal-metric progress only.
+  const goals = await getGoals();
+  const goalProgress = goals
+    .map((g) => ({ label: g.title, percent: computeGoalProgress(g) }))
+    .filter((g): g is { label: string; percent: number } => g.percent !== null)
+    .slice(0, 5);
+
+  return { goalProgress };
 }
 
 export async function getWeeklyScoreData(): Promise<DashboardWeeklyScoreData> {

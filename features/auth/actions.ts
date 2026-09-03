@@ -9,12 +9,9 @@ import {
 } from "@/lib/validation/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/utils/site-url";
+import type { ActionResult } from "@/lib/types/action-result";
 
-export interface ActionResult {
-  error?: string;
-  fieldErrors?: Record<string, string>;
-  message?: string;
-}
+export type { ActionResult } from "@/lib/types/action-result";
 
 /** Maps Supabase Auth error messages to plain-language, user-facing text (§O.7). */
 function friendlyAuthError(message: string): string {
