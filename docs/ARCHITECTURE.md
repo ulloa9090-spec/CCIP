@@ -15,8 +15,11 @@ Living summary of the system as actually built, updated at the close of each pha
 
 ## Not yet decided / deferred
 
-- `lib/supabase/middleware.ts` (session-refresh helper) and a root `middleware.ts` for protected routes: deferred to Phase 2, since nothing calls them yet.
-- Whether a live Supabase Development project has been provisioned: see the Phase 1 completion notes — this was left to the project owner rather than auto-provisioned.
+- `lib/supabase/middleware.ts` (session-refresh helper) and a root `middleware.ts` for protected routes: built in Phase 2 alongside authentication.
+
+## Environments
+
+A Development Supabase project (`atlas-os-development`) is provisioned and connected — see [`ENVIRONMENT.md`](./ENVIRONMENT.md) for details and local setup. Preview and Production are not yet provisioned.
 
 ## Decisions
 
