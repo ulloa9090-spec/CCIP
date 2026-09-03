@@ -3,6 +3,7 @@
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalTrigger } from "@/components/ui/modal";
@@ -10,14 +11,26 @@ import { cn } from "@/lib/utils/cn";
 
 type QuickAddType = "task" | "idea" | "note" | "project" | "goal" | "habit" | "event";
 
-const types: { value: QuickAddType; label: string; placeholder: string }[] = [
-  { value: "task", label: "Task", placeholder: "What needs to get done?" },
-  { value: "idea", label: "Idea", placeholder: "Capture the idea title" },
-  { value: "note", label: "Note", placeholder: "Quick note" },
-  { value: "project", label: "Project", placeholder: "Project name" },
-  { value: "goal", label: "Goal", placeholder: "Goal title" },
-  { value: "habit", label: "Habit", placeholder: "Habit name" },
-  { value: "event", label: "Event", placeholder: "Event title" },
+/**
+ * Every type is wired into the UI now (command registry pattern) but none
+ * can actually persist yet — none of their tables exist (Phase 3 §9: don't
+ * build functionality whose domain doesn't exist). `phase` is shown as a
+ * badge and drives the disabled submit button's caption; flipping a type to
+ * "live" once its table lands is a one-line change here, not a rebuild.
+ */
+const types: {
+  value: QuickAddType;
+  label: string;
+  placeholder: string;
+  phase: number;
+}[] = [
+  { value: "task", label: "Task", placeholder: "What needs to get done?", phase: 5 },
+  { value: "goal", label: "Goal", placeholder: "Goal title", phase: 4 },
+  { value: "project", label: "Project", placeholder: "Project name", phase: 5 },
+  { value: "event", label: "Event", placeholder: "Event title", phase: 6 },
+  { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7 },
+  { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8 },
+  { value: "note", label: "Note", placeholder: "Quick note", phase: 8 },
 ];
 
 export function QuickAdd() {
@@ -25,13 +38,13 @@ export function QuickAdd() {
   const [type, setType] = useState<QuickAddType>("task");
   const [title, setTitle] = useState("");
   const [showMore, setShowMore] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   function reset() {
     setTitle("");
     setShowMore(false);
-    setSubmitted(false);
   }
+
+  const active = types.find((t) => t.value === type)!;
 
   return (
     <Modal
@@ -74,12 +87,18 @@ export function QuickAdd() {
 
           {types.map((t) => (
             <TabsPrimitive.Content key={t.value} value={t.value} className="flex flex-col gap-3">
-              <Input
-                autoFocus={type === t.value}
-                placeholder={t.placeholder}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus={type === t.value}
+                  placeholder={t.placeholder}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="flex-1"
+                />
+                <Badge variant="neutral" className="shrink-0">
+                  Phase {t.phase}
+                </Badge>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowMore((v) => !v)}
@@ -90,7 +109,7 @@ export function QuickAdd() {
               {showMore && (
                 <p className="text-xs text-text-secondary">
                   Additional fields (description, due date, project link, tags…) appear here once
-                  the {t.label.toLowerCase()} data model is wired up in a later phase.
+                  the {t.label.toLowerCase()} data model is wired up in Phase {t.phase}.
                 </p>
               )}
             </TabsPrimitive.Content>
@@ -98,20 +117,11 @@ export function QuickAdd() {
         </TabsPrimitive.Root>
 
         <div className="mt-5 flex items-center justify-between gap-3">
-          {submitted ? (
-            <p className="text-xs text-warning">
-              Capture isn&apos;t persisted yet — Quick Add saves once accounts &amp; the database
-              are connected (Phase 2).
-            </p>
-          ) : (
-            <span />
-          )}
-          <Button
-            size="sm"
-            disabled={!title.trim()}
-            onClick={() => setSubmitted(true)}
-          >
-            Add {types.find((t) => t.value === type)?.label}
+          <p className="text-xs text-text-secondary">
+            {active.label} capture arrives in Phase {active.phase}.
+          </p>
+          <Button size="sm" disabled title={`Available in Phase ${active.phase}`}>
+            Add {active.label}
           </Button>
         </div>
       </ModalContent>

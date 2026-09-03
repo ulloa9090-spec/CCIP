@@ -22,13 +22,19 @@ Spacing uses Tailwind's default 4px-based scale directly (no custom spacing toke
 
 ## Components (`components/ui/`)
 
-Button · Input · Textarea · Select · Card (+ Header/Title/Description/Content/Footer) · Modal (Radix Dialog) · Badge · Progress Bar · Progress Ring · Skeleton · Empty State · Tooltip.
+Button (supports `asChild` via `@radix-ui/react-slot` — render as a styled `<Link>` without a nested `<button>`) · Input · Textarea · Select · Card (+ Header/Title/Description/Content/Footer) · Modal (Radix Dialog) · Badge · Dropdown Menu · Progress Bar (`label` for a visible caption, `ariaLabel` when a visible one would duplicate text already on screen — always has *some* accessible name, defaulting to "Progress") · Progress Ring · Skeleton · Empty State · Tooltip.
 
-Each interactive component implements: default, hover, focus-visible (ring, never outline removal), active, disabled, and — where applicable — loading and error states. Radix UI backs Select/Modal/Tooltip/Tabs for keyboard navigation and ARIA out of the box.
+Each interactive component implements: default, hover, focus-visible (ring, never outline removal), active, disabled, and — where applicable — loading and error states. Radix UI backs Select/Modal/Tooltip/Tabs/DropdownMenu for keyboard navigation and ARIA out of the box.
+
+Every `role="progressbar"` on the page must have an accessible name (checked by the axe scan in `tests/dashboard-smoke.mjs`) — pass `label` or `ariaLabel` at every call site; the component's own default only prevents a *missing* name, not a *generic* one.
 
 ## Layout components (`components/layout/`)
 
-`Sidebar` (desktop nav) · `MobileNav` (slide-over nav below `md`) · `Header` (search placeholder, Quick Add, notifications placeholder, theme toggle, profile) · `QuickAdd` (capture modal, 7 types, local-only in Phase 1) · `ThemeToggle` / `ThemeProvider` · `PageHeader` (per-page title/description/action) · `AppShell` (composes Sidebar + Header).
+`Sidebar` (desktop nav) · `MobileNav` (slide-over nav below `md`) · `Header` (async Server Component — real session, search placeholder, Quick Add, notifications placeholder, theme toggle, `UserMenu`) · `QuickAdd` (capture modal, 7 types, each tagged with the phase that makes it live; submit is disabled until then) · `ThemeToggle` / `ThemeProvider` · `PageHeader` (per-page title/description/action, used by every route except Dashboard) · `AppShell` (composes Sidebar + Header).
+
+## Dashboard widget components (`features/dashboard/components/`)
+
+`WidgetCard` (the Card-based shell every widget renders into — icon, title, optional header action), `WidgetSkeleton` (Suspense fallback, shaped like a resolved `WidgetCard` to avoid layout shift), `WidgetError` (inline module-failure fallback, never shows a raw error message), `DashboardGrid` (the responsive ordering shell — see `ARCHITECTURE.md`'s Dashboard section), `DashboardHeader` (real per-user greeting). The 11 module widgets (`TodayCard`, `ActiveProjectCard`, `NinetyDayGoalCard`, `WeeklyPrioritiesCard`, `HabitSnapshotCard`, `CalendarSnapshotCard`, `FocusSummaryCard`, `ProgressCard`, `WeeklyScoreCard`, `IdeaParkingCard`, `WeeklyReviewCard`) each split into a pure `<X>CardBody` (render only, given a `ModuleResult`) and an async `<X>Card` (fetch, then delegate) — see `features/dashboard/demo/fixtures.ts` for why.
 
 ## Icons
 

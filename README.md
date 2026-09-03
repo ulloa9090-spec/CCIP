@@ -16,7 +16,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 2 — Authentication + Database.** Email/password auth (signup, login, logout, password recovery), protected routes, session handling, and the identity-scoped schema (`profiles`, `settings`) with RLS. Domain tables (goals, projects, tasks, ...) arrive in Phases 4–9; AI in Phase 10.
+**Phase 3 — Dashboard Foundation.** The Dashboard is now real architecture, not a static mock: typed data contracts, a server-side data-access layer with per-module error isolation, 12 independently-streaming widgets, and mobile-priority responsive reordering. Every widget still resolves to an empty state today — no domain tables exist yet (goals/projects/tasks/habits/... arrive in Phases 4–9; AI in Phase 10) — but the seam for wiring real data in is built and documented (`docs/ARCHITECTURE.md`'s Dashboard section).
+
+Phase 2 (auth + database) is complete and provisionally approved; its live end-to-end auth test is a **pending** follow-up (see below) — the architecture itself is unaffected.
 
 ## Stack
 
@@ -43,13 +45,20 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
 4. **Verify the shell**
    - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard`.
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
+   - `/dev/dashboard-preview?state=empty|populated|error` renders the real Dashboard widgets against fixture data (internal-only) — useful for visual/responsive QA without needing a logged-in session.
    - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
-5. **Auth smoke test** (optional, requires real network access to your Supabase project):
+5. **Auth smoke test** — **PENDING, not yet run against real network access** (optional to run yourself; requires real network access to your Supabase project):
    ```bash
    npm run dev &
    node tests/auth-smoke.mjs
    ```
-   Drives signup → profile check → logout → protected-route redirect → login → session persistence → wrong-password handling through the real UI with Playwright. Could not be run inside the remote session that built Phase 2 (its egress policy blocks `*.supabase.co` — see `docs/ARCHITECTURE.md`); run it on a machine with normal network access.
+   Drives signup → profile check → logout → protected-route redirect → login → session persistence → wrong-password handling through the real UI with Playwright. Could not be run inside the remote session that built Phase 2 (its egress policy blocks `*.supabase.co`), nor in two alternate Claude Code Remote cloud environments tried afterward — see `docs/ARCHITECTURE.md` and `docs/SECURITY.md`. **Please run this locally and report the result** so Phase 2's live-auth validation can move from PENDING to confirmed.
+6. **Dashboard smoke test** (no real network access needed — uses the fixture preview route):
+   ```bash
+   npm run dev &
+   node tests/dashboard-smoke.mjs
+   ```
+   Protected-route check, empty/populated/error widget rendering, responsive mobile-priority reordering, keyboard focus, an axe-core accessibility scan, and a no-console-error check.
 
 ## Scripts
 
@@ -65,7 +74,7 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
 ```
 app/            Next.js App Router — routing + composition
 proxy.ts        Session refresh + protected-route redirects (Next.js 16's middleware convention)
-features/       Domain logic (goals, projects, tasks, habits, auth, ai, ...)
+features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, ai, ...)
 components/ui/  Design-system primitives
 components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils)
