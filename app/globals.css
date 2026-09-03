@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/*
+  Design tokens (Phase 0 blueprint §0.13 / §H).
+  Dark is the default theme; next-themes toggles the `.dark` class on <html>.
+  Never reference raw hex values in components — always the token below.
+*/
+:root {
+  --background: #ffffff;
+  --surface: #f6f7f9;
+  --surface-raised: #ffffff;
+  --border: #e3e5ea;
+  --text-primary: #14161a;
+  --text-secondary: #676c76;
+  --accent: #3d63dd;
+  --accent-foreground: #ffffff;
+  --success: #17845a;
+  --warning: #93650a;
+  --danger: #d1293d;
+  --info: #3d63dd;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+}
+
+.dark {
+  --background: #0a0b0d;
+  --surface: #131419;
+  --surface-raised: #1a1c22;
+  --border: #2a2d36;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9297a3;
+  --accent: #6690ff;
+  --accent-foreground: #0a0b0d;
+  --success: #3ecf8e;
+  --warning: #e2a33d;
+  --danger: #f2555f;
+  --info: #6690ff;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+  --radius-token-sm: var(--radius-sm);
+  --radius-token-md: var(--radius-md);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--color-border);
+}

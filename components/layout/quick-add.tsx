@@ -1,0 +1,413 @@
+"use client";
+
+import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { Plus } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useActionState, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Modal, ModalContent, ModalHeader, ModalTitle, ModalTrigger } from "@/components/ui/modal";
+import { createGoal } from "@/features/goals/actions";
+import type { LifeArea } from "@/features/goals/types";
+import { createTask } from "@/features/tasks/actions";
+import { createProject } from "@/features/projects/actions";
+import type { Project } from "@/features/projects/types";
+import { createEvent } from "@/features/calendar/actions";
+import { createHabit } from "@/features/habits/actions";
+import { HABIT_FREQUENCIES } from "@/lib/validation/habits";
+import { createIdea } from "@/features/ideas/actions";
+import { createJournalEntry } from "@/features/journal/actions";
+import type { ActionResult } from "@/lib/types/action-result";
+import { cn } from "@/lib/utils/cn";
+
+type QuickAddType = "task" | "idea" | "note" | "project" | "goal" | "habit" | "event";
+
+/**
+ * Every type is wired into the UI (command registry pattern). Most still
+ * can't persist — their tables don't exist yet (Phase 3 §9). `phase` drives
+ * the disabled submit button's caption for those; a type is flipped to
+ * "live" here the same phase its table lands (Goal went live in Phase 4).
+ */
+const types: {
+  value: QuickAddType;
+  label: string;
+  placeholder: string;
+  phase: number;
+  live?: boolean;
+}[] = [
+  { value: "task", label: "Task", placeholder: "What needs to get done?", phase: 5, live: true },
+  { value: "goal", label: "Goal", placeholder: "Goal title", phase: 4, live: true },
+  { value: "project", label: "Project", placeholder: "Project name", phase: 5, live: true },
+  { value: "event", label: "Event", placeholder: "Event title", phase: 6, live: true },
+  { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7, live: true },
+  { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8, live: true },
+  { value: "note", label: "Note", placeholder: "Quick note", phase: 8, live: true },
+];
+
+const initialState: ActionResult = {};
+
+function GoalQuickAddForm({ lifeAreas }: { lifeAreas: LifeArea[] }) {
+  const [state, formAction, pending] = useActionState(createGoal, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="timeframe" value="90day" />
+      <input type="hidden" name="status" value="planned" />
+      <Input name="title" placeholder="Goal title" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+
+      <Select name="areaId">
+        <SelectTrigger>
+          <SelectValue placeholder="Life Area" />
+        </SelectTrigger>
+        <SelectContent>
+          {lifeAreas.map((area) => (
+            <SelectItem key={area.id} value={area.id}>
+              {area.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.fieldErrors?.areaId && <p className="text-xs text-danger">{state.fieldErrors.areaId}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Goal
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function TaskQuickAddForm({ projects }: { projects: Project[] }) {
+  const [state, formAction, pending] = useActionState(createTask, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="status" value="inbox" />
+      <input type="hidden" name="priority" value="medium" />
+      <Input name="title" placeholder="What needs to get done?" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+
+      <Select name="projectId">
+        <SelectTrigger>
+          <SelectValue placeholder="Project (optional)" />
+        </SelectTrigger>
+        <SelectContent>
+          {projects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Task
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function ProjectQuickAddForm({ goals }: { goals: { id: string; title: string }[] }) {
+  const [state, formAction, pending] = useActionState(createProject, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="status" value="someday" />
+      <Input name="name" placeholder="Project name" autoFocus required />
+      {state.fieldErrors?.name && <p className="text-xs text-danger">{state.fieldErrors.name}</p>}
+
+      <Select name="goalId">
+        <SelectTrigger>
+          <SelectValue placeholder="Goal (optional)" />
+        </SelectTrigger>
+        <SelectContent>
+          {goals.map((g) => (
+            <SelectItem key={g.id} value={g.id}>
+              {g.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Project
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function EventQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createEvent, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="title" placeholder="Event title" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="qa-event-start" className="text-xs text-text-secondary">
+            Start
+          </label>
+          <Input id="qa-event-start" name="startAt" type="datetime-local" required />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="qa-event-end" className="text-xs text-text-secondary">
+            End
+          </label>
+          <Input id="qa-event-end" name="endAt" type="datetime-local" required />
+          {state.fieldErrors?.endAt && <p className="text-xs text-danger">{state.fieldErrors.endAt}</p>}
+        </div>
+      </div>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Event
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+const QUICK_ADD_FREQUENCIES = HABIT_FREQUENCIES.filter((f) => f !== "custom");
+const FREQUENCY_LABELS: Record<string, string> = {
+  daily: "Daily",
+  weekdays: "Weekdays",
+  weekly: "Weekly",
+};
+
+function HabitQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createHabit, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="name" placeholder="Habit name" autoFocus required />
+      {state.fieldErrors?.name && <p className="text-xs text-danger">{state.fieldErrors.name}</p>}
+
+      <Select name="frequency" defaultValue="daily">
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {QUICK_ADD_FREQUENCIES.map((f) => (
+            <SelectItem key={f} value={f}>
+              {FREQUENCY_LABELS[f]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Habit
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function IdeaQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createIdea, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="title" placeholder="Capture the idea title" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Idea
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function NoteQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createJournalEntry, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="category" value="free_note" />
+      <Input name="body" placeholder="Quick note" autoFocus required />
+      {state.fieldErrors?.body && <p className="text-xs text-danger">{state.fieldErrors.body}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Note
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function QuickAdd({
+  lifeAreas = [],
+  projects = [],
+  goals = [],
+}: {
+  lifeAreas?: LifeArea[];
+  projects?: Project[];
+  goals?: { id: string; title: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState<QuickAddType>("task");
+  const [title, setTitle] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  const pathname = usePathname();
+  const [lastPathname, setLastPathname] = useState(pathname);
+
+  // Header persists across (app) route changes, so a successful live-type
+  // submission (e.g. Goal's createGoal redirecting to /goals/[id]) would
+  // otherwise leave the modal open over the new page. Close it whenever
+  // navigation happens while it's open — adjusting state during render
+  // (React's documented pattern for "reset on prop change"), not in an
+  // effect, since a plain effect here would cause an extra render pass.
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    if (open) setOpen(false);
+  }
+
+  function reset() {
+    setTitle("");
+    setShowMore(false);
+    setType("task");
+  }
+
+  return (
+    <Modal
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) reset();
+      }}
+    >
+      <ModalTrigger asChild>
+        <Button size="sm" className="gap-1.5">
+          <Plus className="h-4 w-4" />
+          Quick Add
+        </Button>
+      </ModalTrigger>
+      <ModalContent>
+        <ModalHeader>
+          <ModalTitle className="text-sm font-semibold text-text-primary">Quick Add</ModalTitle>
+        </ModalHeader>
+
+        <TabsPrimitive.Root value={type} onValueChange={(v) => setType(v as QuickAddType)}>
+          <TabsPrimitive.List
+            aria-label="What are you adding?"
+            className="mb-4 flex flex-wrap gap-1 rounded-(--radius-token-sm) bg-surface p-1"
+          >
+            {types.map((t) => (
+              <TabsPrimitive.Trigger
+                key={t.value}
+                value={t.value}
+                className={cn(
+                  "rounded-(--radius-token-sm) px-2.5 py-1 text-xs font-medium text-text-secondary transition-colors",
+                  "data-[state=active]:bg-surface-raised data-[state=active]:text-text-primary",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                )}
+              >
+                {t.label}
+              </TabsPrimitive.Trigger>
+            ))}
+          </TabsPrimitive.List>
+
+          <TabsPrimitive.Content value="task">
+            <TaskQuickAddForm projects={projects} />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="goal">
+            <GoalQuickAddForm lifeAreas={lifeAreas} />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="project">
+            <ProjectQuickAddForm goals={goals} />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="event">
+            <EventQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="habit">
+            <HabitQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="idea">
+            <IdeaQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="note">
+            <NoteQuickAddForm />
+          </TabsPrimitive.Content>
+
+          {types
+            .filter((t) => !t.live)
+            .map((t) => (
+              <TabsPrimitive.Content key={t.value} value={t.value} className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    autoFocus={type === t.value}
+                    placeholder={t.placeholder}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Badge variant="neutral" className="shrink-0">
+                    Phase {t.phase}
+                  </Badge>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMore((v) => !v)}
+                  className="self-start text-xs font-medium text-text-secondary hover:text-text-primary"
+                >
+                  {showMore ? "Hide options" : "More options"}
+                </button>
+                {showMore && (
+                  <p className="text-xs text-text-secondary">
+                    Additional fields (description, due date, project link, tags…) appear here once
+                    the {t.label.toLowerCase()} data model is wired up in Phase {t.phase}.
+                  </p>
+                )}
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <p className="text-xs text-text-secondary">
+                    {t.label} capture arrives in Phase {t.phase}.
+                  </p>
+                  <Button size="sm" disabled title={`Available in Phase ${t.phase}`}>
+                    Add {t.label}
+                  </Button>
+                </div>
+              </TabsPrimitive.Content>
+            ))}
+        </TabsPrimitive.Root>
+      </ModalContent>
+    </Modal>
+  );
+}
