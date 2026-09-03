@@ -8,12 +8,15 @@ Full product and architecture context lives in [`docs/`](./docs):
 - [`docs/PHASE_0_BLUEPRINT.md`](./docs/PHASE_0_BLUEPRINT.md) — the full design blueprint (UX, data model, architecture) that governs every phase.
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) — living system architecture summary.
 - [`docs/DESIGN_SYSTEM.md`](./docs/DESIGN_SYSTEM.md) — design tokens and component inventory.
+- [`docs/DATABASE.md`](./docs/DATABASE.md) — live schema, migrations, RLS policies.
+- [`docs/SECURITY.md`](./docs/SECURITY.md) — auth, RLS isolation testing, secrets handling.
+- [`docs/ENVIRONMENT.md`](./docs/ENVIRONMENT.md) — Development/Preview/Production Supabase projects.
 
-This repository is built in phases; do not add functionality outside the phase currently in progress. See `PHASE_0_BLUEPRINT.md` §T for the roadmap and §U for Phase 1 acceptance criteria.
+This repository is built in phases; do not add functionality outside the phase currently in progress. See `PHASE_0_BLUEPRINT.md` §T for the roadmap.
 
 ## Status
 
-**Phase 1 — Product Foundation.** App shell, design system, navigation, and theming exist. No authentication, no database tables, no AI — those arrive in later phases.
+**Phase 2 — Authentication + Database.** Email/password auth (signup, login, logout, password recovery), protected routes, session handling, and the identity-scoped schema (`profiles`, `settings`) with RLS. Domain tables (goals, projects, tasks, ...) arrive in Phases 4–9; AI in Phase 10.
 
 ## Stack
 
@@ -27,20 +30,26 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    cd CCIP
    npm install
    ```
-2. **Environment variables** — copy the example file and fill in your own **Development** Supabase project's credentials (never share these, never use your Production project for local work):
+2. **Environment variables** — copy the example file and fill in your own **Development** Supabase project's credentials (never share these, never use your Production project for local work). See `docs/ENVIRONMENT.md` for the current Development project's ref/URL:
    ```bash
    cp .env.example .env.local
    ```
-   See `.env.example` for the full variable list. In Phase 1, Supabase vars are optional — the app runs and `/api/health` reports `not_configured` until you add them. `AI_*` variables are unused until Phase 10.
+   See `.env.example` for the full variable list. `AI_*` variables are unused until Phase 10.
 3. **Run the dev server**
    ```bash
    npm run dev
    ```
    Open [http://localhost:3000](http://localhost:3000).
 4. **Verify the shell**
-   - `/dashboard` and the rest of the sidebar routes render with empty states.
+   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard`.
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
-   - `/api/health` reports Supabase connectivity status.
+   - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
+5. **Auth smoke test** (optional, requires real network access to your Supabase project):
+   ```bash
+   npm run dev &
+   node tests/auth-smoke.mjs
+   ```
+   Drives signup → profile check → logout → protected-route redirect → login → session persistence → wrong-password handling through the real UI with Playwright. Could not be run inside the remote session that built Phase 2 (its egress policy blocks `*.supabase.co` — see `docs/ARCHITECTURE.md`); run it on a machine with normal network access.
 
 ## Scripts
 
@@ -55,12 +64,14 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
 
 ```
 app/            Next.js App Router — routing + composition
-features/       Domain logic (goals, projects, tasks, habits, ai, ...)
+proxy.ts        Session refresh + protected-route redirects (Next.js 16's middleware convention)
+features/       Domain logic (goals, projects, tasks, habits, auth, ai, ...)
 components/ui/  Design-system primitives
-components/layout/  Sidebar, Header, Quick Add, theme toggle
+components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils)
-supabase/       Migrations (empty until Phase 2)
-docs/           Product, architecture, and decision records
+supabase/       Migrations (profiles + settings so far — see docs/DATABASE.md)
+tests/          E2E smoke tests (Playwright)
+docs/           Product, architecture, database, security, and decision records
 ```
 
 Full rationale for this structure: `docs/PHASE_0_BLUEPRINT.md` §P.

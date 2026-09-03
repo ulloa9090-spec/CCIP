@@ -3,6 +3,7 @@ export * from "./input";
 export * from "./textarea";
 export * from "./select";
 export * from "./card";
+export * from "./dropdown-menu";
 export * from "./modal";
 export * from "./badge";
 export * from "./progress-bar";

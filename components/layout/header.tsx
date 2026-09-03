@@ -1,10 +1,17 @@
-import { Bell, Search, UserRound } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
 import { MobileNav } from "./mobile-nav";
 import { QuickAdd } from "./quick-add";
 import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 
-export function Header() {
+export async function Header() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-4">
       <MobileNav />
@@ -36,9 +43,7 @@ export function Header() {
           <Bell className="h-4 w-4" />
         </Button>
         <ThemeToggle />
-        <Button variant="ghost" size="icon" aria-label="Profile">
-          <UserRound className="h-4 w-4" />
-        </Button>
+        {user?.email && <UserMenu email={user.email} />}
       </div>
     </header>
   );
