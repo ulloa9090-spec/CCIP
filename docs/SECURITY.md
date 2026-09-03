@@ -8,7 +8,7 @@ Supabase Auth, email/password. Session stored as httpOnly cookies via `@supabase
 
 ## Authorization: Row Level Security
 
-Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. `profiles`/`settings` (Phase 2): `select`/`update` only, scoped to `(select auth.uid()) = user_id` — no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade). `life_areas`/`goals`/`quarter_cycles`/`goal_metrics` (Phase 4): full CRUD, same `user_id` scoping — plus, per ADR 0005, `goals`' `insert`/`update` policies also verify `area_id` and `quarter_cycle_id` reference rows owned by the same user (see the finding below). `projects`/`milestones`/`tasks`/`tags`/`task_tags`/`weekly_priorities` (Phase 5) and `calendar_events`/`time_blocks` (Phase 6): full CRUD, same `user_id` scoping (`milestones`/`task_tags` have no direct `user_id` column, so ownership is checked via a join through `projects`/`tasks`+`tags` instead) — every FK to an owned table (`projects.goal_id`, `tasks.project_id`/`goal_id`/`milestone_id`, `task_tags.task_id`+`tag_id`, `weekly_priorities.task_id`, `time_blocks.task_id`/`project_id`) was ownership-checked in `insert`/`update` policies from each migration's first draft, applying ADR 0005 proactively rather than after a test caught a gap.
+Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. `profiles`/`settings` (Phase 2): `select`/`update` only, scoped to `(select auth.uid()) = user_id` — no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade). `life_areas`/`goals`/`quarter_cycles`/`goal_metrics` (Phase 4): full CRUD, same `user_id` scoping — plus, per ADR 0005, `goals`' `insert`/`update` policies also verify `area_id` and `quarter_cycle_id` reference rows owned by the same user (see the finding below). `projects`/`milestones`/`tasks`/`tags`/`task_tags`/`weekly_priorities` (Phase 5), `calendar_events`/`time_blocks` (Phase 6), and `habits`/`habit_logs`/`challenges`/`challenge_days`/`focus_sessions` (Phase 7): full CRUD, same `user_id` scoping (`milestones`/`task_tags`/`habit_logs`/`challenge_days` have no direct `user_id` column, so ownership is checked via a join through their parent table instead) — every FK to an owned table (`projects.goal_id`, `tasks.project_id`/`goal_id`/`milestone_id`, `task_tags.task_id`+`tag_id`, `weekly_priorities.task_id`, `time_blocks.task_id`/`project_id`, `habits.goal_id`/`project_id`, `challenges.goal_id`, `focus_sessions.task_id`/`project_id`) was ownership-checked in `insert`/`update` policies from each migration's first draft, applying ADR 0005 proactively rather than after a test caught a gap.
 
 **RLS is the only authorization boundary.** No Server Action or Route Handler trusts a client-supplied user id — every query re-derives the user from the authenticated session server-side, and the database enforces isolation independent of whatever the application layer does or forgets to do.
 
@@ -54,6 +54,22 @@ Same methodology again, extended to `calendar_events` and `time_blocks`:
 - **`time_blocks`**: insert referencing User B's `task_id` rejected; insert referencing User B's `project_id` rejected; insert with a spoofed `user_id` rejected; insert with an owned `task_id`+`project_id` succeeds; update re-pointing an owned row's `task_id` at User B's task rejected; User A sees only their own row; cross-user update/delete affect 0 rows.
 
 Every case passed on the first run. Fixtures and both test users deleted afterward; development database confirmed empty of test data.
+
+### Phase 7: isolation test for habits, habit_logs, challenges, challenge_days, and focus_sessions, no findings
+
+Same methodology again, extended to all five tables this phase added:
+
+- **`habits`**: insert with `goal_id` pointing at User B's goal rejected; insert with `project_id` pointing at User B's project rejected; insert with own `goal_id`+`project_id` succeeds; update re-pointing an owned habit's `goal_id` at User B's goal rejected; User A sees only their own habit; cross-user update/delete affect 0 rows.
+- **`habit_logs`**: insert under User B's habit rejected (ownership via join through `habits`); insert under own habit succeeds; User A sees only their own habit's logs; cross-user update/delete affect 0 rows.
+- **`challenges`**: insert with `goal_id` pointing at User B's goal rejected; insert with own `goal_id` succeeds; User A sees only their own challenge; cross-user update/delete affect 0 rows.
+- **`challenge_days`**: insert under User B's challenge rejected (ownership via join through `challenges`); insert under own challenge succeeds; User A sees only their own challenge's days; cross-user update/delete affect 0 rows.
+- **`focus_sessions`**: insert referencing User B's `task_id` rejected; insert referencing User B's `project_id` rejected; insert with an owned `task_id`+`project_id` succeeds; User A sees only their own session; cross-user update/delete affect 0 rows.
+
+Every case passed on the first run. Fixtures and both test users deleted afterward; development database confirmed empty of test data.
+
+### Phase 7: streak/consistency engine correctness (blueprint §K.2)
+
+No unit-test framework is otherwise installed in this project (Playwright E2E only), and `features/habits/progress.ts` is pure server-side TypeScript with no database dependency, so `tests/habit-streak.ts` (run via `npx tsx tests/habit-streak.ts`) exercises the real module directly rather than driving the UI through a real login (which this sandbox still can't do — see Known Limitation below). Ten cases, all passing: a 5-day unbroken daily streak; a streak broken by a gap, counting only the trailing run; today unmarked not breaking yesterday's streak; a weekdays habit correctly ignoring weekends; a weekly habit's streak counted in weeks, including the current week not yet marked not breaking it and a past unmarked week breaking it; a paused habit's streak frozen at its pause date, ignoring later activity; 7-day consistency computed correctly; and consistency returning `null` (not a misleading `0%`) for a habit that hasn't started yet.
 
 ## Secrets
 

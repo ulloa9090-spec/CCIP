@@ -2,6 +2,17 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 7 — Habits + Challenges + Focus Timer
+
+- Database: `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions` — full RLS, FK ownership checks applied from the first migration draft (ADR 0005), child tables (`habit_logs`/`challenge_days`) ownership-checked via join to their parent. `get_advisors` clean on the first run.
+- **RLS isolation test across all 5 new tables** — cross-user read/update/delete isolation and FK-ownership rejection on insert/update, verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Streak/consistency engine (`features/habits/progress.ts`, blueprint §K.2): computed server-side in TypeScript against `profiles.timezone` — daily/weekdays/custom streaks walk day-by-day, weekly streaks walk week-by-week, a paused habit freezes its streak rather than resetting it. Verified by a dedicated correctness test (`tests/habit-streak.ts`, 10 cases, run via `npx tsx` — a new devDependency, since no unit-test framework was otherwise installed).
+- Real `/habits` (weekly tap-to-toggle grid, 30-day heatmap toggle, streak + consistency % per habit) and a 21-day Challenges sub-flow (`/habits/challenges/[id]`) — no separate nav entry, matching the blueprint's own primary-nav list (ADR 0008).
+- Real `/focus` (duration presets, task/project linking, start/pause/resume/finish, Save/Discard review step, today's session history) — the timer runs client-side only for this pass, no cross-route/refresh persistence (ADR 0009).
+- Dashboard's `getHabitData()` and `getFocusData()` now run real queries — the widgets needed no changes, since they already rendered against their Phase 3 contracts.
+- Quick Add's Habit type went live (Server Action-backed, no longer disabled).
+- `tests/dashboard-smoke.mjs` re-run with no regressions from this phase's data-layer changes.
+
 ## Phase 6 — Today + Calendar + Time Blocking
 
 - Database: `calendar_events`, `time_blocks` — full RLS, FK ownership checks (`time_blocks.task_id`/`project_id`) applied from the first migration draft (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on the first run — no follow-up index fix needed this time.

@@ -2,15 +2,16 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 6)
+## Current state (Phase 7)
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
-- **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`). `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
-- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Project/Event/Task tabs) when signed in.
-- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()`/`getProgressData()` (Phase 4) and `getTodayData()`/`getActiveProjectData()`/`getWeeklyPrioritiesData()` (Phase 5) were already live; `getCalendarData()` now runs a real query too (Phase 6) — only `habits`, `focus`, `weeklyScore`, `ideas`, and `weeklyReview` remain empty stand-ins, each documented with the phase that replaces it.
+- **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`), plus the secondary drill-down route `app/(app)/habits/challenges/[id]`. `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
+- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Project/Event/Task/Habit tabs) when signed in.
+- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()`/`getProgressData()` (Phase 4), `getTodayData()`/`getActiveProjectData()`/`getWeeklyPrioritiesData()` (Phase 5), and `getCalendarData()` (Phase 6) were already live; `getHabitData()`/`getFocusData()` now run real queries too (Phase 7) — only `weeklyScore`, `ideas`, and `weeklyReview` remain empty stand-ins, each documented with the phase that replaces it.
 - **Goals + 90-Day Plan:** `features/goals/` and `features/plan-90-days/` — real Life Areas, Goals (with an optional single metric), and 90-Day Cycles. See the dedicated section below.
 - **Projects + Tasks + Kanban:** `features/projects/` and `features/tasks/` — real Projects (with the Active Project rule), Milestones, Tasks, and a drag-and-drop Kanban board. See the dedicated section below.
 - **Today + Calendar + Time Blocking:** `features/today/` and `features/calendar/` — real `/today` (MIT, Top 3, agenda, overdue/critical, quick capture) and `/calendar` (hand-built Day/Week/Month grid). See the dedicated section below.
+- **Habits + Challenges + Focus Timer:** `features/habits/`, `features/challenges/`, `features/focus/` — real Habits (weekly grid, 30-day heatmap, streaks, consistency %), 21-day Challenges, and a Focus Timer. See the dedicated section below.
 - **Theming:** `next-themes`, class-based, dark is the default. All color/spacing/radius values are CSS custom properties defined once in `app/globals.css` and mapped into Tailwind via `@theme inline`.
 - **Design system:** `components/ui/*` — Button (now supports `asChild` via `@radix-ui/react-slot`, for rendering as a styled `<Link>`), Input, Textarea, Select, Card, Modal, Badge, Dropdown Menu, Progress Bar (now takes an optional `ariaLabel` distinct from its visible `label`, so a bar never ships without an accessible name), Progress Ring, Skeleton, Empty State, Tooltip. Built on Radix UI primitives plus `class-variance-authority` for variants.
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
@@ -69,12 +70,27 @@ Living summary of the system as actually built, updated at the close of each pha
 
 **Quick Add's Event type went live** (`components/layout/quick-add.tsx`): a compact `EventQuickAddForm` (title + start/end `datetime-local` inputs, no defaults prefilled — an SSR/client hydration mismatch risk with a computed "now" default, avoided by leaving the fields empty) calling `createEvent` directly, same pattern as Task/Project/Goal.
 
+## Habits + Challenges + Focus Timer architecture (Phase 7)
+
+**Data**: `habits` (optionally linked to a goal/project), `habit_logs` (one row per habit/day marked, no direct `user_id` — ownership via join), `challenges` + `challenge_days` (21 rows seeded per challenge), `focus_sessions` (optionally linked to a task/project). Full specs in `DATABASE.md`. Every FK to an owned table was ownership-checked in RLS from this migration's first draft (ADR 0005 applied proactively, as every migration since Phase 5 has done) — clean on the first `get_advisors` run.
+
+**Streak/consistency engine** (`features/habits/progress.ts`, blueprint §K.2): computed server-side in TypeScript, not a literal Postgres function — the blueprint's actual invariant ("never the client's local clock") holds regardless, since `progress.ts` only ever runs on the Next.js server (never imported by a Client Component), matching how Goal/Project progress are already computed. `todayInTimezone()` derives "today" from `profiles.timezone` via `Intl.DateTimeFormat`, not `new Date()`. Streak logic handles the three §K.2 cases directly: a daily/weekdays/custom streak walks backward day-by-day until a real gap (today not yet marked doesn't count as a gap — the day hasn't rolled over); a weekly streak walks backward week-by-week (one mark anywhere in the week counts); a paused habit (`is_active = false`) freezes its streak at `updated_at` rather than continuing to count missed days. Verified directly: `tests/habit-streak.ts` (run via `npx tsx`, no unit-test framework is otherwise installed) covers all of the above plus the grace/gap/window-edge cases — see `docs/SECURITY.md` for the actual run.
+
+**Habits UI** (`app/(app)/habits/page.tsx`): a weekly tap-to-toggle grid and a 30-day heatmap (view toggle, no URL state) share the same underlying data — `getHabits()` + `getHabitLogs()` fetch `STREAK_LOOKBACK_DAYS` (400 days) of history once, used both for the accurate streak/consistency numbers and for whichever days the active view happens to render.
+
+**Challenges** live under `/habits`, not their own nav entry — see ADR 0008 (the blueprint's own primary-nav list has no separate "Challenges" item). `createChallenge()` seeds all 21 `challenge_days` rows atomically at creation; `/habits/challenges/[id]` (secondary route, same pattern as Project Detail) renders the 21-day grid and, once the challenge is wrapped up, its final score and reflections.
+
+**Focus Timer** (`app/(app)/focus/page.tsx`, `features/focus/components/focus-timer.tsx`): runs entirely client-side with local `useState`/`useRef` — no global store, no cross-route or refresh persistence for an in-progress session (see ADR 0009 for why, and what a future persistent version would need). Finishing always lands on an in-page Save/Discard review step before anything is written, which is how this implementation satisfies blueprint Flow 9's "leaving mid-session prompts 'Save partial session?'" without relying on an unreliable `beforeunload` browser event.
+
+**Quick Add's Habit type went live** (`components/layout/quick-add.tsx`): same pattern as Task/Project/Goal/Event — a compact `HabitQuickAddForm` (name + a frequency select limited to daily/weekdays/weekly; `custom` needs the day-picker checkboxes only the full `/habits` form has) calling `createHabit` directly.
+
 ## Not yet decided / deferred
 
 - `PWA`/offline (Phase 12).
-- Remaining domain tables (habits, focus sessions, ideas, weekly reviews, journal, AI, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
-- Per-profile timezone conversion for Calendar/Time Blocks (ADR 0007) — `profiles.timezone` exists but isn't consulted yet.
+- Remaining domain tables (ideas, weekly reviews, journal, decisions, AI, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
+- Per-profile timezone conversion for Calendar/Time Blocks (ADR 0007) — `profiles.timezone` exists but isn't consulted yet. (Habits' streak engine *does* consult it — Phase 6's Calendar predates that pattern.)
 - Drag-to-schedule on the Calendar grid (ADR 0007) — click-to-create via modal covers the same outcome for now; `dnd-kit` is already a dependency if this is wanted later.
+- Cross-route/refresh-persistent Focus Timer (ADR 0009) — would need a small store (Zustand or `localStorage`-backed) plus a persistent indicator in `Header`.
 
 ## Environments
 
@@ -96,3 +112,5 @@ ADRs live in [`decisions/`](./decisions):
 - [0005](./decisions/0005-rls-must-verify-fk-ownership.md) — RLS policies must verify FK-referenced rows' ownership too, not just the row's own `user_id`.
 - [0006](./decisions/0006-dnd-kit-for-kanban.md) — `dnd-kit` for the Task Kanban board; drag-drop scope kept to a single status update, no within-column reordering yet.
 - [0007](./decisions/0007-calendar-grid-scope.md) — Hand-built Calendar grid confirmed; click-to-create over drag-to-create; no per-profile timezone conversion yet.
+- [0008](./decisions/0008-challenges-live-under-habits.md) — Challenges have no sidebar nav entry; reached from `/habits`, matching the blueprint's own primary-nav list.
+- [0009](./decisions/0009-focus-timer-client-only.md) — Focus Timer runs client-side only; no cross-route/refresh persistence yet.

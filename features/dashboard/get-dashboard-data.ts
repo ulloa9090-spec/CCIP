@@ -1,4 +1,5 @@
 import "server-only";
+import { addDays } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getGoals } from "@/features/goals/queries";
@@ -9,6 +10,9 @@ import { computeProjectProgress } from "@/features/projects/progress";
 import { getTodayTasks, getWeeklyPriorities } from "@/features/tasks/queries";
 import type { Task } from "@/features/tasks/types";
 import { getCalendarItems } from "@/features/calendar/queries";
+import { getHabitLogs, getHabitTimeSettings, getHabits } from "@/features/habits/queries";
+import { computeStreak, STREAK_LOOKBACK_DAYS, todayInTimezone, toDateStr } from "@/features/habits/progress";
+import { getTodaySessions } from "@/features/focus/queries";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -112,8 +116,28 @@ export async function getWeeklyPrioritiesData(): Promise<DashboardWeeklyPrioriti
 }
 
 export async function getHabitData(): Promise<DashboardHabitData> {
-  // Habits don't exist yet (Phase 7).
-  return { habits: [] };
+  const { timezone, weekStartsOn } = await getHabitTimeSettings();
+  const today = todayInTimezone(timezone);
+  const habits = await getHabits();
+  const rangeStart = addDays(today, -(STREAK_LOOKBACK_DAYS - 1));
+  const logs = await getHabitLogs(
+    habits.map((h) => h.id),
+    toDateStr(rangeStart),
+    toDateStr(today),
+  );
+  const todayStr = toDateStr(today);
+
+  return {
+    habits: habits.map((h) => {
+      const habitLogs = logs.filter((l) => l.habitId === h.id);
+      return {
+        id: h.id,
+        name: h.name,
+        streak: computeStreak(h, habitLogs, today, weekStartsOn),
+        completedToday: habitLogs.some((l) => l.logDate === todayStr && l.completed),
+      };
+    }),
+  };
 }
 
 export async function getCalendarData(): Promise<DashboardCalendarData> {
@@ -135,8 +159,11 @@ export async function getCalendarData(): Promise<DashboardCalendarData> {
 }
 
 export async function getFocusData(): Promise<DashboardFocusData> {
-  // Focus sessions don't exist yet (Phase 7).
-  return { sessionsToday: 0, minutesToday: 0 };
+  const sessions = await getTodaySessions();
+  return {
+    sessionsToday: sessions.length,
+    minutesToday: sessions.reduce((sum, s) => sum + s.actualMinutes, 0),
+  };
 }
 
 export async function getProgressData(): Promise<DashboardProgressData> {

@@ -21,6 +21,8 @@ import { createTask } from "@/features/tasks/actions";
 import { createProject } from "@/features/projects/actions";
 import type { Project } from "@/features/projects/types";
 import { createEvent } from "@/features/calendar/actions";
+import { createHabit } from "@/features/habits/actions";
+import { HABIT_FREQUENCIES } from "@/lib/validation/habits";
 import type { ActionResult } from "@/lib/types/action-result";
 import { cn } from "@/lib/utils/cn";
 
@@ -43,7 +45,7 @@ const types: {
   { value: "goal", label: "Goal", placeholder: "Goal title", phase: 4, live: true },
   { value: "project", label: "Project", placeholder: "Project name", phase: 5, live: true },
   { value: "event", label: "Event", placeholder: "Event title", phase: 6, live: true },
-  { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7 },
+  { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7, live: true },
   { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8 },
   { value: "note", label: "Note", placeholder: "Quick note", phase: 8 },
 ];
@@ -185,6 +187,45 @@ function EventQuickAddForm() {
   );
 }
 
+const QUICK_ADD_FREQUENCIES = HABIT_FREQUENCIES.filter((f) => f !== "custom");
+const FREQUENCY_LABELS: Record<string, string> = {
+  daily: "Daily",
+  weekdays: "Weekdays",
+  weekly: "Weekly",
+};
+
+function HabitQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createHabit, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="name" placeholder="Habit name" autoFocus required />
+      {state.fieldErrors?.name && <p className="text-xs text-danger">{state.fieldErrors.name}</p>}
+
+      <Select name="frequency" defaultValue="daily">
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {QUICK_ADD_FREQUENCIES.map((f) => (
+            <SelectItem key={f} value={f}>
+              {FREQUENCY_LABELS[f]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Habit
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function QuickAdd({
   lifeAreas = [],
   projects = [],
@@ -271,6 +312,10 @@ export function QuickAdd({
 
           <TabsPrimitive.Content value="event">
             <EventQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="habit">
+            <HabitQuickAddForm />
           </TabsPrimitive.Content>
 
           {types

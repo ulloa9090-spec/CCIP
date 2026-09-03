@@ -17,6 +17,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903061031` | `projects_tasks_kanban` | Creates `projects`, `milestones`, `tasks`, `tags`, `task_tags`, `weekly_priorities`, full RLS with FK ownership checks from the start (ADR 0005 applied proactively — clean on first `get_advisors` run, no follow-up fix needed), the Active Project partial unique index, and `updated_at` triggers. |
 | `20260903062608` | `tasks_kanban_missing_fk_indexes` | Adds the two FK-covering indexes (`task_tags.tag_id`, `weekly_priorities.task_id`) the performance advisor flagged as missing after the previous migration. |
 | `20260903080440` | `calendar_time_blocks` | Creates `calendar_events`, `time_blocks`, full RLS with FK ownership checks on `time_blocks.task_id`/`project_id` from the start (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260903111804` | `habits_challenges_focus` | Creates `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, full RLS with FK ownership checks from the start (ADR 0005); `habit_logs`/`challenge_days` (no direct `user_id`) ownership-checked via join to their parent. `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -230,6 +231,83 @@ A committed slot of time, optionally tied to a task/project. Rendered on the Cal
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `task_id` and `project_id` (each, when set) belong to rows owned by that same user (ADR 0005).
 
+### `habits`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `name`, `description`, `category` | text | `name` not null |
+| `frequency` | text | check in (`daily`,`weekdays`,`weekly`,`custom`), default `daily` |
+| `custom_days` | smallint[] | nullable — 0 (Sunday) .. 6 (Saturday), only meaningful when `frequency = 'custom'` |
+| `target` | int | default `1` — times per period the habit should be marked |
+| `preferred_time` | time | nullable |
+| `start_date` | date | not null, default `current_date` |
+| `is_active` | boolean | default `true` — pausing freezes the streak rather than resetting it (see below) |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `goal_id`/`project_id` (each, when set) belong to rows owned by that same user (ADR 0005).
+
+**Streak/consistency engine** (`features/habits/progress.ts`, blueprint §K.2): computed server-side in TypeScript against `profiles.timezone` — not a literal Postgres function as the blueprint's wording suggests, but the invariant the blueprint actually requires ("never the client's local clock") holds regardless, since this code only ever runs on the Next.js server, matching the same computed-at-read pattern already used for Goal/Project progress. See `docs/SECURITY.md` for the correctness tests (`tests/habit-streak.ts`).
+
+### `habit_logs`
+One row per (habit, day) marked. No direct `user_id`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `habit_id` | uuid | FK → `habits(id)`, `on delete cascade` |
+| `log_date` | date | not null |
+| `completed` | boolean | default `true` |
+| `note` | text | nullable |
+
+`unique (habit_id, log_date)`. **RLS**: every policy checks `exists (select 1 from habits h where h.id = habit_logs.habit_id and h.user_id = (select auth.uid()))`.
+
+### `challenges`
+21-day challenge tracker (blueprint §I.9). No sidebar nav entry of its own — reached from `/habits` (ADR 0008).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `title`, `daily_action`, `reflections` | text | `title` not null |
+| `start_date` | date | not null, default `current_date` |
+| `status` | text | check in (`active`,`completed`,`abandoned`), default `active` |
+| `final_score` | numeric | nullable |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `goal_id` (when set) belongs to a goal owned by that same user (ADR 0005).
+
+### `challenge_days`
+Exactly 21 rows per challenge, seeded at creation. No direct `user_id`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `challenge_id` | uuid | FK → `challenges(id)`, `on delete cascade` |
+| `day_number` | smallint | not null, check between 1 and 21 |
+| `completed` | boolean | default `false` |
+| `note` | text | nullable |
+
+`unique (challenge_id, day_number)`. **RLS**: every policy checks `exists (select 1 from challenges c where c.id = challenge_days.challenge_id and c.user_id = (select auth.uid()))`.
+
+### `focus_sessions`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `task_id` | uuid | FK → `tasks(id)`, nullable, `on delete set null` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `context`, `note` | text | nullable |
+| `planned_minutes` | int | nullable |
+| `actual_minutes` | int | not null — the real elapsed time, computed client-side by the timer, not just the preset |
+| `started_at` | timestamptz | not null, default `now()` |
+| `ended_at` | timestamptz | nullable |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `task_id`/`project_id` (each, when set) belong to rows owned by that same user (ADR 0005).
+
 ## Domain tables (not yet built)
 
-`habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, `journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (7–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (8–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
