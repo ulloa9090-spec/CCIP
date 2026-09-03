@@ -20,6 +20,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903111804` | `habits_challenges_focus` | Creates `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, full RLS with FK ownership checks from the start (ADR 0005); `habit_logs`/`challenge_days` (no direct `user_id`) ownership-checked via join to their parent. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903161040` | `journal_ideas_decisions` | Creates `decisions`, `journal_entries`, `ideas` (in that order, since `journal_entries.decision_id` references `decisions`), full RLS with FK ownership checks from the start (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903163819` | `reviews` | Creates `weekly_reviews`, `monthly_reviews`, full RLS with an FK ownership check on `weekly_reviews.next_week_mio_task_id` (ADR 0005), indexes on `(user_id, week_start_date)` / `(user_id, month)`, `updated_at` triggers. `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260903211921` | `ai_layer` | Creates `ai_threads`, `ai_messages`, `ai_insights`, full RLS — `ai_messages` ownership-checked via join to its parent thread (no direct `user_id`), `ai_insights` FK-ownership-checked on `thread_id` (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -47,7 +48,7 @@ One row per user, 1:1 with `profiles` (`user_id` PK/FK → `profiles(user_id)`, 
 |---|---|---|
 | `user_id` | uuid | PK, FK → `profiles(user_id)` |
 | `notification_prefs` | jsonb | default `{}` |
-| `ai_provider` | text | nullable — unused until Phase 10 |
+| `ai_provider` | text | nullable — per-user override of `AI_PROVIDER` (`anthropic`\|`openai`\|`local`), set via Settings; `null` falls back to the deployment default (Phase 10) |
 | `privacy` | jsonb | default `{}` |
 | `created_at` / `updated_at` | timestamptz | |
 
@@ -395,6 +396,50 @@ Monthly Review (blueprint §I.9), lighter than the weekly one — no locked scor
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` only — no FK to verify ownership of.
 
+### `ai_threads`
+A conversation (blueprint §M) — Morning Brief, Evening Review, Weekly Coach, Planning, Decision Assistant, or freeform. One row per conversation; `context_type` records which Context Engine builder (if any) seeded it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `title` | text | not null |
+| `context_type` | text | not null, check in (`morning_brief`,`evening_review`,`weekly_coach`,`planning`,`decision_assistant`,`freeform`) |
+| `archived` | boolean | not null, default `false` |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` only.
+
+### `ai_messages`
+No direct `user_id` (blueprint §I.9) — ownership is via join to the parent thread, same pattern as `habit_logs`/`challenge_days` (Phase 7).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `thread_id` | uuid | FK → `ai_threads(id)`, not null, `on delete cascade` |
+| `role` | text | not null, check in (`user`,`assistant`,`system`) |
+| `content` | text | not null |
+| `metadata` | jsonb | not null, default `{}` |
+| `created_at` | timestamptz | |
+
+**RLS**: select/insert/delete, each checking `exists (select 1 from ai_threads t where t.id = ai_messages.thread_id and t.user_id = (select auth.uid()))` — no update policy (messages are immutable once written).
+
+### `ai_insights`
+The one place a SUGGEST-tier AI action (blueprint §M.3) parks a proposed change — `payload` is one of two discriminated shapes (`PlanBreakdownPayload`, `SuggestReschedulePayload`; `features/ai/types.ts`). Never applied on its own; `approveInsight()` is the only path that turns `payload` into a real write, and it does so through the exact same Server Actions (`createTask`, `addMilestone`, `rescheduleTask`) a human edit would use.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `thread_id` | uuid | FK → `ai_threads(id)`, nullable, `on delete set null` |
+| `type` | text | not null, check in (`plan_breakdown`,`suggest_reschedule`) |
+| `payload` | jsonb | not null |
+| `status` | text | not null, default `pending`, check in (`pending`,`approved`,`rejected`,`expired`) |
+| `resolved_at` | timestamptz | nullable |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `thread_id` (when set) belongs to a thread owned by that same user (ADR 0005).
+
 ## Domain tables (not yet built)
 
-`notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9-§I.11 and get created by their respective phases (10-11), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`notifications`, `attachments` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.10-§I.11 and get created in Phase 11, following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

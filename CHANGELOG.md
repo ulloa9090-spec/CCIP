@@ -2,6 +2,20 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 10 — AI Intelligence Layer
+
+- Database: `ai_threads`, `ai_messages`, `ai_insights` — full RLS, `ai_messages` ownership-checked via join to its parent thread (no direct `user_id`, same pattern as `habit_logs`/`challenge_days`), `ai_insights` FK-ownership check on `thread_id` (ADR 0005). `get_advisors` clean on the first run.
+- **RLS isolation test across all 3 new tables** — cross-user read/update/delete isolation and FK-ownership rejection on insert, verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Provider abstraction (`lib/ai/provider.ts`, `features/ai/providers/`, blueprint §M.1): real `AnthropicAdapter` (`@anthropic-ai/sdk`) and `OpenAIAdapter` (`openai`), a stub `LocalModelAdapter` (blueprint §C: not in scope yet). Every adapter fails fast with `AIUnavailableError` when its key is missing, caught everywhere so AI Coach degrades to "unavailable right now" instead of crashing (blueprint §O.7).
+- Context Engine (`features/ai/context/`, blueprint §M.2): 5 builders (Morning Brief, Evening Review, Weekly Coach, Planning Assistant, Decision Assistant), split into a Supabase-fetching half and a pure, `tsx`-testable prompt formatter — Weekly Coach reuses Phase 9's `computeWeeklyMetrics()` rather than recomputing. Verified by a dedicated correctness test (`tests/ai-context-format.ts`, 24 cases).
+- Action Model (`features/ai/actions.ts`, blueprint §M.3): READ (Morning Brief, Evening Review, Decision Assistant, freeform chat) vs. SUGGEST (Weekly Coach, Planning Assistant — may write a `pending` `ai_insights` row) vs. WRITE (`approveInsight()` only, calling `createTask()`/`addMilestone()` (pre-existing) or a new `rescheduleTask()` — the exact same Server Action path a human edit uses, never an AI-privileged write). `tests/ai-insight-write-path.ts` verifies the FormData `approveInsight()` builds passes the same Zod validation a human's form would.
+- Real `/ai-coach` (generate-on-demand Morning Brief/Evening Review/Weekly Coach cards, freeform chat, recent threads) and `/ai-coach/[threadId]` (messages, pending suggestion cards with Approve/Modify/Ignore, follow-up chat input). "Ask AI to Break This Down" on Goal/Project Detail; "Ask AI for Perspective" on an unresolved Decision Detail.
+- Settings' AI Provider field went live — `features/settings/` (new), writing `settings.ai_provider` as a per-user override of the deployment's `AI_PROVIDER`.
+- ADR 0012 (AI uses Server Actions, not `app/api/ai/` Route Handlers — a documented deviation from the blueprint's illustrative tree) and ADR 0013 (Phase 10 scope: real Anthropic/OpenAI adapters, `ai_insights.type` limited to `plan_breakdown`/`suggest_reschedule`, Anti-Distraction Guard deferred).
+- New `docs/AI_ARCHITECTURE.md` (blueprint P.1: "activated in Phase 10").
+- `tests/dashboard-smoke.mjs` re-run with no regressions from this phase's changes.
+- **Live AI provider testing is PENDING** — no `ANTHROPIC_API_KEY`/`OPENAI_API_KEY` configured in this development sandbox, so an actual successful completion (and the degraded-mode UI in a live logged-in session) hasn't been exercised here — same honest status as Phase 2's auth E2E test. See `docs/SECURITY.md` and ADR 0013.
+
 ## Phase 9 — Reviews + Analytics
 
 - Database: `weekly_reviews`, `monthly_reviews` — full RLS, FK ownership check on `weekly_reviews.next_week_mio_task_id` applied from the first migration draft (ADR 0005); `unique(user_id, week_start_date)` / `unique(user_id, month)`. `get_advisors` clean on the first run.

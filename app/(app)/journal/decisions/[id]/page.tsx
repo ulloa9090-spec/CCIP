@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
 import { format } from "date-fns";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/layout/page-header";
 import { getDecisionById } from "@/features/decisions/queries";
 import { ResolveDecisionForm } from "@/features/decisions/components";
+import { startDecisionAssistant } from "@/features/ai/actions";
 
 export default async function DecisionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -95,7 +98,15 @@ export default async function DecisionDetailPage({ params }: { params: Promise<{
                 )}
               </div>
             ) : (
-              <ResolveDecisionForm decisionId={decision.id} />
+              <div className="flex flex-col gap-4">
+                <form action={startDecisionAssistant.bind(null, decision.id)}>
+                  <Button type="submit" size="sm" variant="secondary" className="gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Ask AI for Perspective
+                  </Button>
+                </form>
+                <ResolveDecisionForm decisionId={decision.id} />
+              </div>
             )}
           </CardContent>
         </Card>

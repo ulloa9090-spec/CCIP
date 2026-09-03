@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Sparkles, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { PageHeader } from "@/components/layout/page-header";
@@ -15,6 +16,7 @@ import {
   ProjectStatusBadge,
 } from "@/features/projects/components";
 import { TaskListItem } from "@/features/tasks/components";
+import { startPlanningAssistant } from "@/features/ai/actions";
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -55,6 +57,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {project.milestones.filter((m) => m.status === "done").length} /{" "}
               {project.milestones.length} milestones
             </p>
+            <form action={startPlanningAssistant.bind(null, "project", project.id)}>
+              <Button type="submit" size="sm" variant="secondary" className="gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Ask AI to Break This Down
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

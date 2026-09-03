@@ -2,10 +2,10 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 9)
+## Current state (Phase 10)
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
-- **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`), plus the secondary drill-down routes `app/(app)/habits/challenges/[id]`, `app/(app)/journal/decisions/[id]`, `app/(app)/reviews/weekly/[weekStartDate]`, and `app/(app)/reviews/monthly/[month]`. `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
+- **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`), plus the secondary drill-down routes `app/(app)/habits/challenges/[id]`, `app/(app)/journal/decisions/[id]`, `app/(app)/reviews/weekly/[weekStartDate]`, `app/(app)/reviews/monthly/[month]`, and `app/(app)/ai-coach/[threadId]`. `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
 - **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Project/Event/Task/Habit/Idea/Note tabs) when signed in.
 - **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()`/`getProgressData()` (Phase 4), `getTodayData()`/`getActiveProjectData()`/`getWeeklyPrioritiesData()` (Phase 5), `getCalendarData()` (Phase 6), `getHabitData()`/`getFocusData()` (Phase 7), and `getIdeaData()` (Phase 8) were already live; `getWeeklyScoreData()` and `getWeeklyReviewData()` now run real queries too (Phase 9) — every Dashboard module fetcher is real as of this phase.
 - **Goals + 90-Day Plan:** `features/goals/` and `features/plan-90-days/` — real Life Areas, Goals (with an optional single metric), and 90-Day Cycles. See the dedicated section below.
@@ -19,7 +19,7 @@ Living summary of the system as actually built, updated at the close of each pha
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
 - **Auth:** Supabase Auth, email/password. `features/auth/actions.ts` — Server Actions (`signUp`, `logIn`, `logOut`, `requestPasswordReset`, `updatePassword`) validated with Zod (`lib/validation/auth.ts`), mapping Supabase error messages to plain-language text. Forms use React 19's `useActionState` directly against these Server Actions (no client-side form library) — see ADR 0002.
 - **Route protection:** `proxy.ts` (Next.js 16's renamed `middleware.ts` convention — see ADR 0003) calls `updateSession()` on every request. Unauthenticated users hitting a protected route are redirected to `/login`; authenticated users hitting `/login` or `/signup` are redirected to `/dashboard`. Uses `getUser()` (revalidates the token against Supabase Auth), never `getSession()` alone.
-- **AI layer:** Not implemented. `features/ai/providers/` exists as an empty placeholder directory; the `AIProvider` interface and adapters are built in Phase 10.
+- **AI layer:** `lib/ai/provider.ts` + `features/ai/` — real `AnthropicAdapter`/`OpenAIAdapter`, a 5-builder Context Engine, and the READ/SUGGEST/WRITE Action Model, all wired to real `/ai-coach` UI. See [`AI_ARCHITECTURE.md`](./AI_ARCHITECTURE.md) and the dedicated section below.
 - **State management:** No global client store yet.
 
 ## Dashboard architecture (Phase 3)
@@ -112,11 +112,29 @@ Living summary of the system as actually built, updated at the close of each pha
 
 **Dashboard's Weekly Score and Weekly Review widgets went live**: `getWeeklyScoreData()` surfaces the most recent *completed* (locked) week's `execution_score`; `getWeeklyReviewData()` reports whether the current week's review still needs starting (`reviewDueNow`) and, if not due, when the last one was completed. `WeeklyReviewCardBody`'s branch order was corrected in this phase to check `reviewDueNow` before `lastReviewCompletedAt === null` — a first-time user with a review due now sees the Start CTA immediately, not an empty state, even though they've never completed one.
 
+## AI Intelligence Layer architecture (Phase 10)
+
+Full detail lives in [`AI_ARCHITECTURE.md`](./AI_ARCHITECTURE.md) (blueprint §M) — this section is the short version.
+
+**Provider abstraction** (`lib/ai/provider.ts`, `features/ai/providers/`): a two-method `AIProvider` interface (`chatCompletion`, `structuredCompletion<T>`) with real `AnthropicAdapter`/`OpenAIAdapter` implementations and a stub `LocalModelAdapter` (blueprint §C: local models explicitly not in scope yet). `getAIProvider()` is the one instantiation point; every adapter throws `AIUnavailableError` immediately if its API key is missing, caught by every AI entry point so a missing/failed provider degrades to "AI Coach is unavailable right now" (blueprint §O.7) rather than crashing anything.
+
+**Context Engine** (`features/ai/context/`): 5 builders (Morning Brief, Evening Review, Weekly Coach, Planning Assistant, Decision Assistant), each split into a `server-only` Supabase-fetching half (`build.ts`, reusing Phases 3–9's existing queries wherever the same data is already assembled — Weekly Coach in particular reuses `computeWeeklyMetrics()` from Phase 9's `aggregate.ts` rather than recomputing) and a pure, `tsx`-testable formatting half (`format.ts`). Verified directly: `tests/ai-context-format.ts`, 24 cases.
+
+**Action Model** (blueprint §M.3, `features/ai/actions.ts`): READ (Morning Brief, Evening Review, Decision Assistant, freeform chat — a stored reply, nothing more) vs. SUGGEST (Weekly Coach, Planning Assistant — a `structuredCompletion` call that may write a `pending` `ai_insights` row) vs. WRITE (only `approveInsight()`, which calls the exact same Server Action a human edit would use — `createTask()`/`addMilestone()` for a `plan_breakdown`, the new `rescheduleTask()` for a `suggest_reschedule` — never a privileged AI-only write path). `InsightCard` (`features/ai/components/`) renders a pending insight with Approve (optionally after inline edits — the blueprint's "Modify") / Ignore.
+
+**AI Coach UI**: `/ai-coach` (generate-on-demand Morning Brief/Evening Review/Weekly Coach cards, a freeform "New Conversation" form, recent threads) and `/ai-coach/[threadId]` (message list, any pending insight cards, a chat input so any thread supports follow-up). Planning Assistant and Decision Assistant are reached from entry points on Goal/Project Detail and Decision Detail respectively, not from the AI Coach page itself.
+
+**Server Actions, not `app/api/ai/` Route Handlers** (ADR 0012): every AI mutation is a Server Action, called directly from a `<form>` or as a plain function from a Client Component — the same two patterns every other domain already uses, rather than introducing a second request shape for AI alone. A deliberate, documented deviation from the blueprint's illustrative repository tree.
+
+**Scope this phase, deferred to a later one** (ADR 0013): the Anti-Distraction Guard (proactive detection doesn't fit this phase's read-on-demand/approve-a-suggestion shapes — closer to §M.4's Automation engine, itself "design only, not built until Phase 11"); a configurable per-user weekly focus-time target; live provider testing against a real Anthropic/OpenAI key (no key is configured in this development sandbox — PENDING, same honest status as Phase 2's auth E2E test).
+
 ## Not yet decided / deferred
 
 - `PWA`/offline (Phase 12).
-- Remaining domain tables (notifications, attachments, AI) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in (none remain as of Phase 9 — AI Coach is a new Dashboard-adjacent surface, not an existing stand-in).
-- A configurable per-user weekly focus-time target (ADR 0011) — `DEFAULT_WEEKLY_FOCUS_TARGET_MINUTES` is fixed at 300 for every user until Settings grows a field for it.
+- Remaining domain tables (notifications, attachments) — see `DATABASE.md` and ADR 0001. Each Dashboard module fetcher is real as of Phase 9; AI Coach (Phase 10) is a new surface, not a former stand-in.
+- A configurable per-user weekly focus-time target (ADR 0011) — `DEFAULT_WEEKLY_FOCUS_TARGET_MINUTES` is fixed at 300 for every user until Settings grows a field for it; Weekly Coach's AI context uses the same fixed target.
+- The Anti-Distraction Guard (blueprint §D.2/§C) and the Automation engine (§M.4) — both explicitly design-only/deferred; see ADR 0013.
+- Local/self-hosted LLM support (`LocalModelAdapter` is a stub) and live testing against a real Anthropic/OpenAI provider key (this sandbox has neither configured).
 - Per-profile timezone conversion for Calendar/Time Blocks (ADR 0007) — `profiles.timezone` exists but isn't consulted yet. (Habits' streak engine *does* consult it — Phase 6's Calendar predates that pattern.)
 - Drag-to-schedule on the Calendar grid (ADR 0007) — click-to-create via modal covers the same outcome for now; `dnd-kit` is already a dependency if this is wanted later.
 - Cross-route/refresh-persistent Focus Timer (ADR 0009) — would need a small store (Zustand or `localStorage`-backed) plus a persistent indicator in `Header`.
@@ -145,3 +163,5 @@ ADRs live in [`decisions/`](./decisions):
 - [0009](./decisions/0009-focus-timer-client-only.md) — Focus Timer runs client-side only; no cross-route/refresh persistence yet.
 - [0010](./decisions/0010-decisions-live-under-journal.md) — Decisions have no sidebar nav entry; reached from `/journal`, matching the blueprint's own primary-nav list (generalizes ADR 0008's pattern).
 - [0011](./decisions/0011-fixed-weekly-focus-target.md) — Weekly Execution Score's FocusTimeRatio uses a fixed 300-minute weekly target, not a per-user Settings field; Recharts confirmed for Analytics trend charts.
+- [0012](./decisions/0012-ai-uses-server-actions-not-route-handlers.md) — AI Coach uses Server Actions throughout, not the `app/api/ai/` Route Handlers the blueprint's illustrative tree names.
+- [0013](./decisions/0013-phase-10-ai-scope.md) — Phase 10 AI scope: real Anthropic/OpenAI adapters, `ai_insights.type` limited to `plan_breakdown`/`suggest_reschedule`, and the Anti-Distraction Guard deferred.

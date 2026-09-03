@@ -123,6 +123,21 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   revalidateTaskViews();
 }
 
+/** Sets a task's due date directly — used by the AI Coach's Approve path
+ * on a `suggest_reschedule` insight (blueprint §M.3: the write happens
+ * through the exact same mutation path a human edit would use, nothing
+ * AI-privileged). */
+export async function rescheduleTask(taskId: string, newDueDate: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDueDate)) return;
+
+  const supabase = await createClient();
+  await requireUserId(supabase);
+
+  await supabase.from("tasks").update({ due_date: newDueDate }).eq("id", taskId);
+
+  revalidateTaskViews();
+}
+
 export async function toggleTaskDone(taskId: string, done: boolean) {
   const supabase = await createClient();
   await requireUserId(supabase);

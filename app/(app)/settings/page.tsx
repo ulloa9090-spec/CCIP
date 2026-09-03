@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import { createClient } from "@/lib/supabase/server";
+import { AiProviderForm } from "@/features/settings/components/ai-provider-form";
 
 const otherGroups = [
   { title: "Working Hours", description: "Shapes suggested time-block slots." },
   { title: "Theme", description: "Dark or light — toggle from the header for now." },
   { title: "Notification Preferences", description: "Critical, actionable, informational, silent." },
-  { title: "AI Provider", description: "Choose the assistant backing AI Coach (Phase 10)." },
   { title: "Privacy", description: "Control what Atlas OS is allowed to use as AI context." },
   { title: "Data Export", description: "JSON/CSV/PDF export and full backup (Phase 12)." },
   { title: "Archived Content", description: "Everything you've archived instead of deleted." },
@@ -24,6 +24,10 @@ export default async function SettingsPage() {
         .select("full_name, timezone, week_start_day, theme")
         .eq("user_id", user.id)
         .single()
+    : { data: null };
+
+  const { data: settings } = user
+    ? await supabase.from("settings").select("ai_provider").eq("user_id", user.id).single()
     : { data: null };
 
   return (
@@ -59,6 +63,16 @@ export default async function SettingsPage() {
               <span className="text-text-primary">Week starts:</span>{" "}
               {profile?.week_start_day === 0 ? "Sunday" : "Monday"}
             </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Provider</CardTitle>
+            <CardDescription>Choose the assistant backing AI Coach.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AiProviderForm currentProvider={settings?.ai_provider ?? null} />
           </CardContent>
         </Card>
 
