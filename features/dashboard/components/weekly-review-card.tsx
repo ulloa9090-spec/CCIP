@@ -16,11 +16,6 @@ export function WeeklyReviewCardBody({
     <WidgetCard title="Weekly Review" icon={<ClipboardList className="h-4 w-4" />}>
       {result.status === "error" ? (
         <WidgetError />
-      ) : result.data.lastReviewCompletedAt === null ? (
-        <EmptyState
-          title="Nothing to review yet"
-          description="Your first weekly review will appear here."
-        />
       ) : result.data.reviewDueNow ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm text-text-primary">This week&apos;s review is ready.</p>
@@ -28,10 +23,15 @@ export function WeeklyReviewCardBody({
             <Link href="/reviews">Start Weekly Review</Link>
           </Button>
         </div>
-      ) : (
+      ) : result.data.lastReviewCompletedAt !== null ? (
         <p className="text-sm text-text-secondary">
-          Last reviewed {new Date(result.data.lastReviewCompletedAt).toLocaleDateString()}.
+          Last reviewed week of {new Date(`${result.data.lastReviewCompletedAt}T00:00:00`).toLocaleDateString()}.
         </p>
+      ) : (
+        <EmptyState
+          title="Nothing to review yet"
+          description="Your first weekly review will appear here."
+        />
       )}
     </WidgetCard>
   );

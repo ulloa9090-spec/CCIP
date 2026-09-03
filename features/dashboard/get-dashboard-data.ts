@@ -7,13 +7,14 @@ import { computeCycleProgress, computeGoalProgress } from "@/features/goals/prog
 import { getCurrentCycle } from "@/features/plan-90-days/queries";
 import { getActiveProject } from "@/features/projects/queries";
 import { computeProjectProgress } from "@/features/projects/progress";
-import { getTodayTasks, getWeeklyPriorities } from "@/features/tasks/queries";
+import { getTodayTasks, getWeeklyPriorities, weekStartDate } from "@/features/tasks/queries";
 import type { Task } from "@/features/tasks/types";
 import { getCalendarItems } from "@/features/calendar/queries";
 import { getHabitLogs, getHabitTimeSettings, getHabits } from "@/features/habits/queries";
 import { computeStreak, STREAK_LOOKBACK_DAYS, todayInTimezone, toDateStr } from "@/features/habits/progress";
 import { getTodaySessions } from "@/features/focus/queries";
 import { getIdeas } from "@/features/ideas/queries";
+import { getWeeklyReviews } from "@/features/reviews/queries";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -179,8 +180,9 @@ export async function getProgressData(): Promise<DashboardProgressData> {
 }
 
 export async function getWeeklyScoreData(): Promise<DashboardWeeklyScoreData> {
-  // Weekly Execution Score (blueprint §L) needs tasks/habits/focus/reviews (Phase 9).
-  return { score: null };
+  const reviews = await getWeeklyReviews();
+  const lastCompleted = reviews.find((r) => r.status === "completed" && r.executionScore !== null);
+  return { score: lastCompleted?.executionScore ?? null };
 }
 
 export async function getIdeaData(): Promise<DashboardIdeaData> {
@@ -190,8 +192,14 @@ export async function getIdeaData(): Promise<DashboardIdeaData> {
 }
 
 export async function getWeeklyReviewData(): Promise<DashboardWeeklyReviewData> {
-  // Weekly reviews don't exist yet (Phase 9).
-  return { lastReviewCompletedAt: null, reviewDueNow: false };
+  const reviews = await getWeeklyReviews(); // getWeeklyReviews() orders week_start_date desc
+  const lastCompleted = reviews.find((r) => r.status === "completed");
+  const currentWeekReview = reviews.find((r) => r.weekStartDate === weekStartDate());
+
+  return {
+    lastReviewCompletedAt: lastCompleted?.weekStartDate ?? null,
+    reviewDueNow: currentWeekReview?.status !== "completed",
+  };
 }
 
 export async function getUserData(

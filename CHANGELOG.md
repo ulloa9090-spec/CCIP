@@ -2,6 +2,18 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 9 — Reviews + Analytics
+
+- Database: `weekly_reviews`, `monthly_reviews` — full RLS, FK ownership check on `weekly_reviews.next_week_mio_task_id` applied from the first migration draft (ADR 0005); `unique(user_id, week_start_date)` / `unique(user_id, month)`. `get_advisors` clean on the first run.
+- **RLS isolation test across both new tables** — cross-user read/update/delete isolation and FK-ownership rejection on insert/update (including on `update`, not just `insert`), verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Shared aggregation engine (`features/reviews/aggregate.ts`, blueprint §L): `computeWeeklyMetrics()`/`computeMonthlySummary()` are the one place every weekly/monthly rollup is computed — Reviews' `auto_summary` and Analytics' weekly metrics read from the same shape, so they can't diverge.
+- Weekly Execution Score (`features/reviews/execution-score.ts`, blueprint §L.1–L.2): 5 weighted components with an exclusion + weight-redistribution rule for components with no denominator, and a `null` ("not enough data") guard instead of a misleading 0. Computed once and locked at review completion. Verified by a dedicated correctness test (`tests/execution-score.ts`, 11 cases, run via `npx tsx`).
+- Real `/reviews` (Weekly/Monthly tabs, past reviews list, Start/Continue This Week's/Month's Review) with session screens at `/reviews/weekly/[weekStartDate]` and `/reviews/monthly/[month]` — a read-only auto-summary, a 7-question (weekly) or 4-question (monthly) reflection form built on two `useActionState` hooks sharing one `<form>` via per-button `formAction` (Save Draft vs. Complete Review), and a next-week Most Important Outcome handoff that pre-populates `weekly_priorities` for the following week.
+- Real `/analytics` — 7 fixed metric cards (Task Completion Rate, Weekly Priority Completion, Habit Consistency, Focus Minutes, Overdue Tasks, Created vs Completed, Weekly Score Trend) with Recharts trend charts across 7/30/90/365-day ranges (ADR 0011 confirms Recharts, matching blueprint §O). Overdue Tasks is reconstructed per historical day from tasks' current `due_date`/`completed_at` fields rather than a stored snapshot.
+- Dashboard's `getWeeklyScoreData()` and `getWeeklyReviewData()` now run real queries — the last two Dashboard modules to graduate from Phase 3's empty stand-ins. `WeeklyReviewCardBody`'s branch order was corrected so a review due now always shows the Start CTA, even for a user who has never completed one.
+- `DEFAULT_WEEKLY_FOCUS_TARGET_MINUTES = 300` is a fixed constant standing in for a per-user configurable focus-time target Settings doesn't have a field for yet (ADR 0011).
+- `tests/dashboard-smoke.mjs` re-run with no regressions from this phase's data-layer changes.
+
 ## Phase 8 — Journal + Ideas + Decision Log
 
 - Database: `decisions`, `journal_entries`, `ideas` — full RLS, FK ownership checks applied from the first migration draft (ADR 0005); `decisions` created before `journal_entries` since the latter references it. `get_advisors` clean on the first run.

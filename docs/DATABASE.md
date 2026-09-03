@@ -19,6 +19,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903080440` | `calendar_time_blocks` | Creates `calendar_events`, `time_blocks`, full RLS with FK ownership checks on `time_blocks.task_id`/`project_id` from the start (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903111804` | `habits_challenges_focus` | Creates `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, full RLS with FK ownership checks from the start (ADR 0005); `habit_logs`/`challenge_days` (no direct `user_id`) ownership-checked via join to their parent. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903161040` | `journal_ideas_decisions` | Creates `decisions`, `journal_entries`, `ideas` (in that order, since `journal_entries.decision_id` references `decisions`), full RLS with FK ownership checks from the start (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260903163819` | `reviews` | Creates `weekly_reviews`, `monthly_reviews`, full RLS with an FK ownership check on `weekly_reviews.next_week_mio_task_id` (ADR 0005), indexes on `(user_id, week_start_date)` / `(user_id, month)`, `updated_at` triggers. `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -360,6 +361,40 @@ Idea Parking Lot (blueprint §I.7). Status flow: `new → review_later → evalu
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `promoted_project_id` (when set) belongs to a project owned by that same user (ADR 0005).
 
+### `weekly_reviews`
+Weekly Review session (blueprint §I.9/Flow 12). One row per user per ISO week (`week_start_date` is the Monday the week starts on, matching `weekly_priorities.week_start_date` from Phase 5 so the two always align). `auto_summary` is a `WeeklyMetrics` JSON snapshot (`features/reviews/aggregate.ts`) recomputed on every open/save while `status='in_progress'`, then frozen at `status='completed'`. `execution_score` (blueprint §L) is computed once, at completion, and never recomputed afterward — editing past data can't retroactively change a locked week's score.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `week_start_date` | date | not null |
+| `status` | text | not null, default `in_progress`, check in (`in_progress`,`completed`) |
+| `auto_summary` | jsonb | not null, default `{}` — see `WeeklyMetrics` |
+| `reflection_completed` / `reflection_missed` / `reflection_why` / `reflection_progress` / `reflection_time_wasted` / `reflection_stop_doing` / `reflection_learned` | text | nullable — the 7 reflection questions |
+| `next_week_mio_task_id` | uuid | FK → `tasks(id)`, nullable, `on delete set null` — completing the review upserts this task as next week's Most Important Outcome in `weekly_priorities` |
+| `execution_score` | numeric | nullable — locked (never recomputed) once `status='completed'`; `null` means "not enough data" (blueprint §L.2), never a misleading 0 |
+| `created_at` / `updated_at` | timestamptz | |
+| | | `unique (user_id, week_start_date)` |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `next_week_mio_task_id` (when set) belongs to a task owned by that same user (ADR 0005).
+
+### `monthly_reviews`
+Monthly Review (blueprint §I.9), lighter than the weekly one — no locked score, no MIO handoff, just an auto-aggregated summary plus 4 reflection fields.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `month` | date | not null — first-of-month |
+| `status` | text | not null, default `in_progress`, check in (`in_progress`,`completed`) |
+| `auto_summary` | jsonb | not null, default `{}` — see `MonthlyAutoSummary` |
+| `wins` / `failures` / `lessons` / `next_month_priorities` | text | nullable |
+| `created_at` / `updated_at` | timestamptz | |
+| | | `unique (user_id, month)` |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` only — no FK to verify ownership of.
+
 ## Domain tables (not yet built)
 
-`weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (9-11), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9-§I.11 and get created by their respective phases (10-11), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

@@ -16,9 +16,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 8 — Journal + Ideas + Decision Log.** Real `/journal` (reverse-chronological entries, category filters, an embedded Decision Log with due-for-review surfacing) and `/ideas` (a 6-column Idea Parking Lot Kanban with optional impact/effort/urgency scoring and promote-to-project). The Dashboard's Idea widget now runs a real query. Quick Add's Idea and Note types are live, alongside Goal/Project/Task/Event/Habit.
+**Phase 9 — Reviews + Analytics.** Real `/reviews` (Weekly/Monthly tabs, past reviews list, an auto-aggregated session screen with a 7-question reflection form and next-week MIO handoff) and `/analytics` (7 fixed metric cards with Recharts trend charts across 7/30/90/365-day ranges). The Weekly Execution Score (blueprint §L) is computed and locked at review completion. The Dashboard's Weekly Score and Weekly Review widgets now run real queries — every Dashboard module is real as of this phase.
 
-Phases 1-7 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by any phase's work since.
+Phases 1-8 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer, Journal + Ideas + Decision Log) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by any phase's work since.
 
 ## Stack
 
@@ -43,7 +43,7 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    ```
    Open [http://localhost:3000](http://localhost:3000).
 4. **Verify the shell**
-   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, `/focus` to run a focus session, `/journal` to write an entry or log a decision, or `/ideas` for the Idea Parking Lot.
+   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, `/focus` to run a focus session, `/journal` to write an entry or log a decision, `/ideas` for the Idea Parking Lot, `/reviews` to start this week's or month's review, or `/analytics` for trend charts once you have some activity.
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
    - `/dev/dashboard-preview?state=empty|populated|error` renders the real Dashboard widgets against fixture data (internal-only) — useful for visual/responsive QA without needing a logged-in session.
    - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
@@ -64,6 +64,11 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    npx tsx tests/habit-streak.ts
    ```
    Verifies the blueprint §K.2 streak/consistency engine directly — gap handling, weekday/weekly units, the paused-habit freeze, and the trailing-window consistency percentage.
+8. **Weekly Execution Score test** (pure logic, no server or network needed):
+   ```bash
+   npx tsx tests/execution-score.ts
+   ```
+   Verifies the blueprint §L.1–L.2 scoring formula directly — component exclusion vs. counted-as-0, weight redistribution, the FocusTimeRatio cap, and the "not enough data" `null` guard.
 
 ## Scripts
 
@@ -83,8 +88,8 @@ features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, a
 components/ui/  Design-system primitives
 components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils)
-supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions — see docs/DATABASE.md)
-tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts (pure-logic correctness test, run via tsx)
+supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions, weekly/monthly reviews — see docs/DATABASE.md)
+tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts, tests/execution-score.ts (pure-logic correctness tests, run via tsx)
 docs/           Product, architecture, database, security, and decision records
 ```
 
