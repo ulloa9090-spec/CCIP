@@ -24,7 +24,11 @@ Living summary of the system as actually built, updated at the close of each pha
 
 A Development Supabase project (`atlas-os-development`) is provisioned and connected — see [`ENVIRONMENT.md`](./ENVIRONMENT.md). Preview and Production are not yet provisioned.
 
-**Known constraint of this remote session**: outbound network access to `*.supabase.co` (and most hosts other than a small allowlist) is denied by this session's egress policy — confirmed via the proxy's own diagnostics (`recentRelayFailures` showing a `403` gateway denial for the project's host). This means the Next.js app's *own* runtime, running inside this sandbox, cannot complete a live signup/login round trip here, even though the `mcp__Supabase__*` tools (a separate, privileged channel) work fine and were used for all schema/RLS verification. This is a constraint of this particular remote session, not of the code or of a normal local/Vercel environment — see `docs/ENVIRONMENT.md` and the Phase 2 completion report for what was and wasn't verifiable here.
+**Known constraint of this remote session**: outbound network access to `*.supabase.co` (and most hosts other than a small allowlist) is denied by this session's egress policy — confirmed via the proxy's own diagnostics (`recentRelayFailures` showing a `403` gateway denial for the project's host). This means the Next.js app's *own* runtime, running inside this sandbox, cannot complete a live signup/login round trip here, even though the `mcp__Supabase__*` tools (a separate, privileged channel) work fine and were used for all schema/RLS verification. This is a constraint of this particular remote session, not of the code or of a normal local/Vercel environment.
+
+### Live auth E2E status: PENDING
+
+Two other Claude Code Remote cloud environments on this account (`Calculadora CCIP`, `StudyOS`) were tried as alternates. `Calculadora CCIP` actually ran and confirmed the identical `*.supabase.co` egress block — same account-level restriction, not specific to this one session. `StudyOS` never got past its own confirmation gate. Neither produced a live result. **`tests/auth-smoke.mjs` has not been run against real network access as of the close of Phase 2 — its pass/fail is PENDING, not assumed, until run from the project owner's local machine.** Phase 2 is provisionally approved on schema/RLS verification alone (see `docs/SECURITY.md`); the code itself was not changed to work around this constraint. Update this section once the local run's result is in.
 
 ## Decisions
 
