@@ -1,22 +1,51 @@
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
+import { getCalendarItems, getEvents, getTimeBlocks } from "@/features/calendar/queries";
+import { getViewRange, parseDateParam, parseViewParam } from "@/features/calendar/lib/date-range";
+import { CalendarToolbar, MonthGrid, QuickCreateButtons, TimeGrid } from "@/features/calendar/components";
+import { getTasks } from "@/features/tasks/queries";
+import { getProjects } from "@/features/projects/queries";
 
-export default function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; date?: string }>;
+}) {
+  const params = await searchParams;
+  const view = parseViewParam(params.view);
+  const anchor = parseDateParam(params.date);
+  const range = getViewRange(view, anchor);
+
+  const [items, timeBlocks, events, tasks, projects] = await Promise.all([
+    getCalendarItems(range),
+    getTimeBlocks(range),
+    getEvents(range),
+    getTasks(),
+    getProjects(),
+  ]);
+
   return (
     <div className="flex flex-col">
       <PageHeader
         title="Calendar"
-        description="Task due dates, scheduled tasks, time blocks, and events — Day / Week / Month."
+        description="Time Blocks, Calendar Events, and task due dates on one grid."
+        action={<QuickCreateButtons tasks={tasks} projects={projects} />}
       />
-      <div className="p-6">
-        <EmptyState
-          icon={<CalendarIcon className="h-8 w-8" />}
-          title="Nothing scheduled"
-          description="Schedule a task or add a time block to see it here."
-          action={<Button size="sm">Add Time Block</Button>}
-        />
+
+      <CalendarToolbar range={range} />
+
+      <div className="flex-1 p-6">
+        {view === "month" ? (
+          <MonthGrid days={range.days} items={items} monthAnchor={range.anchor} />
+        ) : (
+          <TimeGrid
+            days={range.days}
+            items={items}
+            timeBlocks={timeBlocks}
+            events={events}
+            tasks={tasks}
+            projects={projects}
+          />
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,17 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 6 — Today + Calendar + Time Blocking
+
+- Database: `calendar_events`, `time_blocks` — full RLS, FK ownership checks (`time_blocks.task_id`/`project_id`) applied from the first migration draft (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on the first run — no follow-up index fix needed this time.
+- **RLS isolation test across both new tables** — cross-user read/update/delete isolation and FK-ownership rejection on insert/update, verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Hand-built Day/Week/Month Calendar grid (`date-fns`, no calendar library — blueprint §O.6, confirmed by ADR 0007), merging Time Blocks, Calendar Events, and task due/scheduled dates into one rendering-layer view without merging them in the data model. Click-to-create (empty hour cell → modal) and click-to-edit for Time Blocks/Events, replacing the blueprint's drag-from-a-tray description for this first pass (ADR 0007).
+- Real `/today` (Most Important Task card, Top 3, today's agenda strip, collapsed Overdue & Critical section, always-visible Quick Capture) composed entirely from Phase 5/6 data — no new table of its own. Habits deliberately left out until Phase 7.
+- Dashboard's `getCalendarData()` now runs a real query — the widget needed no changes, since it already rendered against its Phase 3 contract.
+- Quick Add's Event type went live (Server Action-backed, no longer disabled).
+- `tests/dashboard-smoke.mjs` re-run with no regressions from this phase's data-layer changes.
+- Known simplification, documented in ADR 0007: Calendar/Time Block times aren't converted through `profiles.timezone` yet — wall-clock browser time is treated as UTC.
+
 ## Phase 5 — Projects + Tasks + Kanban
 
 - Database: `projects`, `milestones`, `tasks`, `tags`, `task_tags`, `weekly_priorities` — full RLS, ownership checks on every FK to an owned table applied proactively from the first migration draft (ADR 0005), Active Project partial unique index, indexes, `updated_at` triggers. `get_advisors` clean on the security pass immediately; two missing FK-covering indexes flagged by the performance advisor fixed in a same-day follow-up migration.

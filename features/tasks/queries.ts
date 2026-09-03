@@ -125,3 +125,22 @@ export async function getTodayTasks(): Promise<Task[]> {
   if (error) throw error;
   return (data ?? []).map((row) => mapTaskRow(row as unknown as TaskRow));
 }
+
+/** Overdue (due before today) or Critical-priority open tasks — the
+ * Today screen's collapsed "Overdue & Critical" section (blueprint §F). */
+export async function getOverdueAndCriticalTasks(): Promise<Task[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .is("deleted_at", null)
+    .neq("status", "done")
+    .neq("status", "cancelled")
+    .or(`due_date.lt.${today},priority.eq.critical`)
+    .order("due_date", { ascending: true });
+
+  if (error) throw error;
+  return (data ?? []).map((row) => mapTaskRow(row as unknown as TaskRow));
+}

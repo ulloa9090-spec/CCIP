@@ -2,14 +2,15 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 5)
+## Current state (Phase 6)
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
 - **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`). `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
-- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Task/Project tabs) when signed in.
-- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()` and `getProgressData()` went live in Phase 4; `getTodayData()`, `getActiveProjectData()`, and `getWeeklyPrioritiesData()` now run real queries too (Phase 5) — only `habits`, `calendar`, `focus`, `weeklyScore`, `ideas`, and `weeklyReview` remain empty stand-ins, each documented with the phase that replaces it.
+- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Project/Event/Task tabs) when signed in.
+- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()`/`getProgressData()` (Phase 4) and `getTodayData()`/`getActiveProjectData()`/`getWeeklyPrioritiesData()` (Phase 5) were already live; `getCalendarData()` now runs a real query too (Phase 6) — only `habits`, `focus`, `weeklyScore`, `ideas`, and `weeklyReview` remain empty stand-ins, each documented with the phase that replaces it.
 - **Goals + 90-Day Plan:** `features/goals/` and `features/plan-90-days/` — real Life Areas, Goals (with an optional single metric), and 90-Day Cycles. See the dedicated section below.
 - **Projects + Tasks + Kanban:** `features/projects/` and `features/tasks/` — real Projects (with the Active Project rule), Milestones, Tasks, and a drag-and-drop Kanban board. See the dedicated section below.
+- **Today + Calendar + Time Blocking:** `features/today/` and `features/calendar/` — real `/today` (MIT, Top 3, agenda, overdue/critical, quick capture) and `/calendar` (hand-built Day/Week/Month grid). See the dedicated section below.
 - **Theming:** `next-themes`, class-based, dark is the default. All color/spacing/radius values are CSS custom properties defined once in `app/globals.css` and mapped into Tailwind via `@theme inline`.
 - **Design system:** `components/ui/*` — Button (now supports `asChild` via `@radix-ui/react-slot`, for rendering as a styled `<Link>`), Input, Textarea, Select, Card, Modal, Badge, Dropdown Menu, Progress Bar (now takes an optional `ariaLabel` distinct from its visible `label`, so a bar never ships without an accessible name), Progress Ring, Skeleton, Empty State, Tooltip. Built on Radix UI primitives plus `class-variance-authority` for variants.
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
@@ -56,10 +57,24 @@ Living summary of the system as actually built, updated at the close of each pha
 
 **Quick Add's Task and Project types went live** (`components/layout/quick-add.tsx`): same pattern as Goal in Phase 4 — compact mini-forms (`TaskQuickAddForm`, `ProjectQuickAddForm`) calling `createTask`/`createProject` directly, hidden inputs supplying the required-but-not-user-facing fields (`status`, and for tasks `priority`). `createTask` doesn't redirect (it returns a success message and, per React 19's documented behavior, the uncontrolled form fields reset themselves after a successful action) so the modal stays open for fast repeated capture; `createProject` redirects to `/projects/[id]` like `createGoal` does, closing the modal via the same pathname-comparison mechanism.
 
+## Today + Calendar + Time Blocking architecture (Phase 6)
+
+**Data**: `calendar_events` (standalone, unrelated to task execution) and `time_blocks` (optionally linked to a task/project, colored by `focus_context`) — both new tables. Task due dates and `scheduled_date` (Phase 5) are the third source. All three stay distinct rows in the database (blueprint §I.5); `features/calendar/queries.ts`'s `getCalendarItems()` is the only place that merges them into one rendering-layer `CalendarItem[]` shape for the grid — never in the data model. A task with both a `due_date` and a `scheduled_date` in range renders once, at whichever is more specific (`scheduled_date`, falling back to `due_date`).
+
+**Calendar grid** (`app/(app)/calendar/page.tsx`, `features/calendar/components/{month-grid,time-grid}.tsx`): hand-built with `date-fns` (`features/calendar/lib/date-range.ts` does the Day/Week/Month math), not a calendar library — blueprint §O.6's recommendation, confirmed rather than revisited (ADR 0007). View/date state lives in the URL (`?view=&date=`), so the toolbar is server-rendered `Link`s, not client state. Time Blocks and Events are click-to-edit (a modal, pre-filled, with Delete); task due-date chips are display-only. New items are created by clicking an empty hour cell (Day/Week) or the toolbar's New Time Block/Event buttons — see ADR 0007 for why this is click-to-create rather than the blueprint's drag-from-a-tray description, and for the known timezone simplification (no `profiles.timezone` conversion yet).
+
+**Today screen** (`app/(app)/today/page.tsx`, `features/today/`): pure composition over Phase 5/6 data, no table of its own — `getTodayScreenData()` combines `getTodayTasks()`/`getOverdueAndCriticalTasks()` (`features/tasks/queries.ts`) with `getCalendarItems()` scoped to today. MIT gets a large card with inline complete/clear controls; Top 3 and Overdue & Critical reuse `TaskListItem` (now with an optional `allowMit` star-to-promote button); Quick Capture is an always-visible inline `createTask` form at the bottom of the page. Habits ("due today" checklist, blueprint §F) are deliberately left out until Phase 7 rather than shown as a non-functional section.
+
+**Dashboard's Calendar widget went live**: `getCalendarData()` now calls `getCalendarItems()` for today's range instead of returning an empty stand-in — the widget component (`CalendarSnapshotCardBody`) needed no changes, since it already rendered against the `{id, title, startAt, kind}` contract from Phase 3.
+
+**Quick Add's Event type went live** (`components/layout/quick-add.tsx`): a compact `EventQuickAddForm` (title + start/end `datetime-local` inputs, no defaults prefilled — an SSR/client hydration mismatch risk with a computed "now" default, avoided by leaving the fields empty) calling `createEvent` directly, same pattern as Task/Project/Goal.
+
 ## Not yet decided / deferred
 
 - `PWA`/offline (Phase 12).
-- Remaining domain tables (habits, calendar/time-blocking, focus sessions, ideas, weekly reviews, journal, AI, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
+- Remaining domain tables (habits, focus sessions, ideas, weekly reviews, journal, AI, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
+- Per-profile timezone conversion for Calendar/Time Blocks (ADR 0007) — `profiles.timezone` exists but isn't consulted yet.
+- Drag-to-schedule on the Calendar grid (ADR 0007) — click-to-create via modal covers the same outcome for now; `dnd-kit` is already a dependency if this is wanted later.
 
 ## Environments
 
@@ -80,3 +95,4 @@ ADRs live in [`decisions/`](./decisions):
 - [0004](./decisions/0004-ninety-day-milestones-embedded.md) — 90-Day Cycle milestones are an embedded field, not the relational `milestones` table.
 - [0005](./decisions/0005-rls-must-verify-fk-ownership.md) — RLS policies must verify FK-referenced rows' ownership too, not just the row's own `user_id`.
 - [0006](./decisions/0006-dnd-kit-for-kanban.md) — `dnd-kit` for the Task Kanban board; drag-drop scope kept to a single status update, no within-column reordering yet.
+- [0007](./decisions/0007-calendar-grid-scope.md) — Hand-built Calendar grid confirmed; click-to-create over drag-to-create; no per-profile timezone conversion yet.

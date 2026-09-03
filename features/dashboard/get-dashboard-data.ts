@@ -8,6 +8,7 @@ import { getActiveProject } from "@/features/projects/queries";
 import { computeProjectProgress } from "@/features/projects/progress";
 import { getTodayTasks, getWeeklyPriorities } from "@/features/tasks/queries";
 import type { Task } from "@/features/tasks/types";
+import { getCalendarItems } from "@/features/calendar/queries";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -116,8 +117,21 @@ export async function getHabitData(): Promise<DashboardHabitData> {
 }
 
 export async function getCalendarData(): Promise<DashboardCalendarData> {
-  // Calendar events / time blocks don't exist yet (Phase 6).
-  return { items: [] };
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  const items = await getCalendarItems({ start, end });
+
+  return {
+    items: items.map((item) => ({
+      id: item.sourceId,
+      title: item.title,
+      startAt: item.startAt,
+      kind: item.kind,
+    })),
+  };
 }
 
 export async function getFocusData(): Promise<DashboardFocusData> {

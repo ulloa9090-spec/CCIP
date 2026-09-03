@@ -16,6 +16,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903055200` | `goals_ownership_check` | Fixes a real gap the Phase 4 RLS isolation test caught: `goals_insert_own`/`goals_update_own` now also verify `area_id` and `quarter_cycle_id` belong to the same user, not just `user_id` — see ADR 0005. |
 | `20260903061031` | `projects_tasks_kanban` | Creates `projects`, `milestones`, `tasks`, `tags`, `task_tags`, `weekly_priorities`, full RLS with FK ownership checks from the start (ADR 0005 applied proactively — clean on first `get_advisors` run, no follow-up fix needed), the Active Project partial unique index, and `updated_at` triggers. |
 | `20260903062608` | `tasks_kanban_missing_fk_indexes` | Adds the two FK-covering indexes (`task_tags.tag_id`, `weekly_priorities.task_id`) the performance advisor flagged as missing after the previous migration. |
+| `20260903080440` | `calendar_time_blocks` | Creates `calendar_events`, `time_blocks`, full RLS with FK ownership checks on `time_blocks.task_id`/`project_id` from the start (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -198,6 +199,37 @@ Join table, composite PK `(task_id, tag_id)`, no `user_id` column of its own.
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert` verifies `task_id` belongs to a task owned by that same user (ADR 0005).
 
+### `calendar_events`
+Standalone events (meetings, appointments), unrelated to task execution. Rendered on the Calendar grid as a solid block (blueprint §I.5).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `title` | text | not null |
+| `start_at` / `end_at` | timestamptz | not null, check `end_at > start_at` |
+| `all_day` | boolean | default `false` |
+| `location`, `notes` | text | nullable |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id`.
+
+### `time_blocks`
+A committed slot of time, optionally tied to a task/project. Rendered on the Calendar grid as a filled block colored by `focus_context` (blueprint §I.5). Overlapping blocks are allowed by design — a soft UI warning, not a DB constraint (Flow 8, the user's call).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `task_id` | uuid | FK → `tasks(id)`, nullable, `on delete set null` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `title` | text | not null |
+| `start_at` / `end_at` | timestamptz | not null, check `end_at > start_at` |
+| `focus_context` | text | nullable, check in (`deep_work`,`study`,`planning`,`family`,`exercise`,`admin`,`other`) |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `task_id` and `project_id` (each, when set) belong to rows owned by that same user (ADR 0005).
+
 ## Domain tables (not yet built)
 
-`calendar_events`, `time_blocks`, `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, `journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (6–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, `journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (7–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

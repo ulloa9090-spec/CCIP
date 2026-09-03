@@ -20,6 +20,7 @@ import type { LifeArea } from "@/features/goals/types";
 import { createTask } from "@/features/tasks/actions";
 import { createProject } from "@/features/projects/actions";
 import type { Project } from "@/features/projects/types";
+import { createEvent } from "@/features/calendar/actions";
 import type { ActionResult } from "@/lib/types/action-result";
 import { cn } from "@/lib/utils/cn";
 
@@ -41,7 +42,7 @@ const types: {
   { value: "task", label: "Task", placeholder: "What needs to get done?", phase: 5, live: true },
   { value: "goal", label: "Goal", placeholder: "Goal title", phase: 4, live: true },
   { value: "project", label: "Project", placeholder: "Project name", phase: 5, live: true },
-  { value: "event", label: "Event", placeholder: "Event title", phase: 6 },
+  { value: "event", label: "Event", placeholder: "Event title", phase: 6, live: true },
   { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7 },
   { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8 },
   { value: "note", label: "Note", placeholder: "Quick note", phase: 8 },
@@ -149,6 +150,41 @@ function ProjectQuickAddForm({ goals }: { goals: { id: string; title: string }[]
   );
 }
 
+function EventQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createEvent, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="title" placeholder="Event title" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="qa-event-start" className="text-xs text-text-secondary">
+            Start
+          </label>
+          <Input id="qa-event-start" name="startAt" type="datetime-local" required />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="qa-event-end" className="text-xs text-text-secondary">
+            End
+          </label>
+          <Input id="qa-event-end" name="endAt" type="datetime-local" required />
+          {state.fieldErrors?.endAt && <p className="text-xs text-danger">{state.fieldErrors.endAt}</p>}
+        </div>
+      </div>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Event
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function QuickAdd({
   lifeAreas = [],
   projects = [],
@@ -231,6 +267,10 @@ export function QuickAdd({
 
           <TabsPrimitive.Content value="project">
             <ProjectQuickAddForm goals={goals} />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="event">
+            <EventQuickAddForm />
           </TabsPrimitive.Content>
 
           {types
