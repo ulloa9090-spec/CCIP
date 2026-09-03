@@ -23,6 +23,8 @@ import type { Project } from "@/features/projects/types";
 import { createEvent } from "@/features/calendar/actions";
 import { createHabit } from "@/features/habits/actions";
 import { HABIT_FREQUENCIES } from "@/lib/validation/habits";
+import { createIdea } from "@/features/ideas/actions";
+import { createJournalEntry } from "@/features/journal/actions";
 import type { ActionResult } from "@/lib/types/action-result";
 import { cn } from "@/lib/utils/cn";
 
@@ -46,8 +48,8 @@ const types: {
   { value: "project", label: "Project", placeholder: "Project name", phase: 5, live: true },
   { value: "event", label: "Event", placeholder: "Event title", phase: 6, live: true },
   { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7, live: true },
-  { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8 },
-  { value: "note", label: "Note", placeholder: "Quick note", phase: 8 },
+  { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8, live: true },
+  { value: "note", label: "Note", placeholder: "Quick note", phase: 8, live: true },
 ];
 
 const initialState: ActionResult = {};
@@ -226,6 +228,45 @@ function HabitQuickAddForm() {
   );
 }
 
+function IdeaQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createIdea, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <Input name="title" placeholder="Capture the idea title" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Idea
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function NoteQuickAddForm() {
+  const [state, formAction, pending] = useActionState(createJournalEntry, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="category" value="free_note" />
+      <Input name="body" placeholder="Quick note" autoFocus required />
+      {state.fieldErrors?.body && <p className="text-xs text-danger">{state.fieldErrors.body}</p>}
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Note
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function QuickAdd({
   lifeAreas = [],
   projects = [],
@@ -316,6 +357,14 @@ export function QuickAdd({
 
           <TabsPrimitive.Content value="habit">
             <HabitQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="idea">
+            <IdeaQuickAddForm />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="note">
+            <NoteQuickAddForm />
           </TabsPrimitive.Content>
 
           {types

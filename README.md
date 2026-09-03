@@ -16,9 +16,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 7 — Habits + Challenges + Focus Timer.** Real `/habits` (weekly tap-to-toggle grid, 30-day heatmap, streaks and consistency %, a 21-day Challenges sub-flow) and `/focus` (timer with duration presets, task/project linking, session history). The Dashboard's Habit and Focus widgets now run real queries. Quick Add's Habit type is live, alongside Goal/Project/Task/Event.
+**Phase 8 — Journal + Ideas + Decision Log.** Real `/journal` (reverse-chronological entries, category filters, an embedded Decision Log with due-for-review surfacing) and `/ideas` (a 6-column Idea Parking Lot Kanban with optional impact/effort/urgency scoring and promote-to-project). The Dashboard's Idea widget now runs a real query. Quick Add's Idea and Note types are live, alongside Goal/Project/Task/Event/Habit.
 
-Phases 1-6 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by any phase's work since.
+Phases 1-7 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by any phase's work since.
 
 ## Stack
 
@@ -43,7 +43,7 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    ```
    Open [http://localhost:3000](http://localhost:3000).
 4. **Verify the shell**
-   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, or `/focus` to run a focus session.
+   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, `/tasks` for the Kanban board, `/today` for your daily view, `/calendar` to schedule a Time Block or Event, `/habits` to build a habit or start a 21-day challenge, `/focus` to run a focus session, `/journal` to write an entry or log a decision, or `/ideas` for the Idea Parking Lot.
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
    - `/dev/dashboard-preview?state=empty|populated|error` renders the real Dashboard widgets against fixture data (internal-only) — useful for visual/responsive QA without needing a logged-in session.
    - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
@@ -83,7 +83,7 @@ features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, a
 components/ui/  Design-system primitives
 components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils)
-supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus — see docs/DATABASE.md)
+supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions — see docs/DATABASE.md)
 tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts (pure-logic correctness test, run via tsx)
 docs/           Product, architecture, database, security, and decision records
 ```

@@ -18,6 +18,7 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903062608` | `tasks_kanban_missing_fk_indexes` | Adds the two FK-covering indexes (`task_tags.tag_id`, `weekly_priorities.task_id`) the performance advisor flagged as missing after the previous migration. |
 | `20260903080440` | `calendar_time_blocks` | Creates `calendar_events`, `time_blocks`, full RLS with FK ownership checks on `time_blocks.task_id`/`project_id` from the start (ADR 0005), indexed on `(user_id, start_at)`. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903111804` | `habits_challenges_focus` | Creates `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, full RLS with FK ownership checks from the start (ADR 0005); `habit_logs`/`challenge_days` (no direct `user_id`) ownership-checked via join to their parent. `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260903161040` | `journal_ideas_decisions` | Creates `decisions`, `journal_entries`, `ideas` (in that order, since `journal_entries.decision_id` references `decisions`), full RLS with FK ownership checks from the start (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
 
 `get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
@@ -308,6 +309,57 @@ Exactly 21 rows per challenge, seeded at creation. No direct `user_id`.
 
 **RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `task_id`/`project_id` (each, when set) belong to rows owned by that same user (ADR 0005).
 
+### `decisions`
+No sidebar nav entry of its own — reached from `/journal` (ADR 0010). Created before `journal_entries` since that table references it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `task_id` | uuid | FK → `tasks(id)`, nullable, `on delete set null` |
+| `title`, `context`, `chosen_option`, `reasoning`, `expected_outcome`, `actual_outcome`, `lesson` | text | `title` not null; `actual_outcome`/`lesson` nullable until reviewed |
+| `options` | jsonb | not null, default `[]` — array of option strings considered |
+| `decided_at` | timestamptz | not null, default `now()` |
+| `review_date` | date | nullable |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `goal_id`/`project_id`/`task_id` (each, when set) belong to rows owned by that same user (ADR 0005).
+
+**Due for review** (`features/decisions/queries.ts`'s `getDueForReview()`, blueprint §I.6): a pure read-time query — `review_date <= today AND actual_outcome IS NULL` — not a stored notification. Filling in `actual_outcome` is what removes a decision from this list, which is what makes "surfaced once, not repeatedly" hold without a separate dismissal mechanism.
+
+### `journal_entries`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `category` | text | not null, default `free_note`, check in (`daily_reflection`,`learning`,`win`,`problem`,`observation`,`free_note`) |
+| `body` | text | not null |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `task_id` | uuid | FK → `tasks(id)`, nullable, `on delete set null` |
+| `decision_id` | uuid | FK → `decisions(id)`, nullable, `on delete set null` |
+| `created_at` / `updated_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `goal_id`/`project_id`/`task_id`/`decision_id` (each, when set) belong to rows owned by that same user (ADR 0005).
+
+### `ideas`
+Idea Parking Lot (blueprint §I.7). Status flow: `new → review_later → evaluating → promoted | rejected → archived` — `rejected`/`archived` are terminal but not deleted (soft state, not soft-deleted; `deleted_at` exists for an actual future delete flow, unused so far since Phase 8 doesn't need one).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `title`, `description`, `category`, `notes` | text | `title` not null |
+| `status` | text | not null, default `new`, check in (`new`,`review_later`,`evaluating`,`promoted`,`rejected`,`archived`) |
+| `impact` / `effort` / `urgency` | smallint | nullable, check between 1 and 5 — scoring is opt-in, never required to capture |
+| `review_date` | date | nullable |
+| `promoted_project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` — set when promoted |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `promoted_project_id` (when set) belongs to a project owned by that same user (ADR 0005).
+
 ## Domain tables (not yet built)
 
-`journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (8–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (9-11), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

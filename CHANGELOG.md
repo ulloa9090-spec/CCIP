@@ -2,6 +2,16 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 8 — Journal + Ideas + Decision Log
+
+- Database: `decisions`, `journal_entries`, `ideas` — full RLS, FK ownership checks applied from the first migration draft (ADR 0005); `decisions` created before `journal_entries` since the latter references it. `get_advisors` clean on the first run.
+- **RLS isolation test across all 3 new tables** — cross-user read/update/delete isolation and FK-ownership rejection on insert/update, verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Real `/journal` (reverse-chronological entries, category filters, "+ New Entry") with an embedded Decision Log section (due-for-review list, full log, "+ New Decision") — Decisions have no separate nav entry, matching the blueprint's own primary-nav list (ADR 0010, generalizing ADR 0008's pattern for Challenges). Decision Detail lives at `/journal/decisions/[id]`.
+- Real `/ideas` — a 6-column `dnd-kit` Kanban board (New/Review Later/Evaluating/Promoted/Rejected/Archived), optional 1-5 impact/effort/urgency scoring, and a promote-to-project flow that creates a real project from an idea's title/description.
+- Dashboard's `getIdeaData()` now runs a real query — the widget needed no changes, since it already rendered against its Phase 3 contract.
+- Quick Add's Idea and Note types went live — Idea maps to `createIdea`; Note (no table of its own in the blueprint's data model) maps to `createJournalEntry` with `category: 'free_note'`.
+- `tests/dashboard-smoke.mjs` re-run with no regressions from this phase's data-layer changes.
+
 ## Phase 7 — Habits + Challenges + Focus Timer
 
 - Database: `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions` — full RLS, FK ownership checks applied from the first migration draft (ADR 0005), child tables (`habit_logs`/`challenge_days`) ownership-checked via join to their parent. `get_advisors` clean on the first run.

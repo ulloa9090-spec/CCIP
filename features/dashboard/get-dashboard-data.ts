@@ -13,6 +13,7 @@ import { getCalendarItems } from "@/features/calendar/queries";
 import { getHabitLogs, getHabitTimeSettings, getHabits } from "@/features/habits/queries";
 import { computeStreak, STREAK_LOOKBACK_DAYS, todayInTimezone, toDateStr } from "@/features/habits/progress";
 import { getTodaySessions } from "@/features/focus/queries";
+import { getIdeas } from "@/features/ideas/queries";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -183,8 +184,9 @@ export async function getWeeklyScoreData(): Promise<DashboardWeeklyScoreData> {
 }
 
 export async function getIdeaData(): Promise<DashboardIdeaData> {
-  // Idea Parking Lot doesn't exist yet (Phase 8).
-  return { ideas: [] };
+  const ideas = await getIdeas();
+  const active = ideas.filter((i) => i.status === "new" || i.status === "review_later" || i.status === "evaluating");
+  return { ideas: active.slice(0, 5).map((i) => ({ id: i.id, title: i.title })) };
 }
 
 export async function getWeeklyReviewData(): Promise<DashboardWeeklyReviewData> {
