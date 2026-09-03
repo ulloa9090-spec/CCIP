@@ -17,6 +17,9 @@ import {
 import { Modal, ModalContent, ModalHeader, ModalTitle, ModalTrigger } from "@/components/ui/modal";
 import { createGoal } from "@/features/goals/actions";
 import type { LifeArea } from "@/features/goals/types";
+import { createTask } from "@/features/tasks/actions";
+import { createProject } from "@/features/projects/actions";
+import type { Project } from "@/features/projects/types";
 import type { ActionResult } from "@/lib/types/action-result";
 import { cn } from "@/lib/utils/cn";
 
@@ -35,9 +38,9 @@ const types: {
   phase: number;
   live?: boolean;
 }[] = [
-  { value: "task", label: "Task", placeholder: "What needs to get done?", phase: 5 },
+  { value: "task", label: "Task", placeholder: "What needs to get done?", phase: 5, live: true },
   { value: "goal", label: "Goal", placeholder: "Goal title", phase: 4, live: true },
-  { value: "project", label: "Project", placeholder: "Project name", phase: 5 },
+  { value: "project", label: "Project", placeholder: "Project name", phase: 5, live: true },
   { value: "event", label: "Event", placeholder: "Event title", phase: 6 },
   { value: "habit", label: "Habit", placeholder: "Habit name", phase: 7 },
   { value: "idea", label: "Idea", placeholder: "Capture the idea title", phase: 8 },
@@ -80,7 +83,81 @@ function GoalQuickAddForm({ lifeAreas }: { lifeAreas: LifeArea[] }) {
   );
 }
 
-export function QuickAdd({ lifeAreas = [] }: { lifeAreas?: LifeArea[] }) {
+function TaskQuickAddForm({ projects }: { projects: Project[] }) {
+  const [state, formAction, pending] = useActionState(createTask, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="status" value="inbox" />
+      <input type="hidden" name="priority" value="medium" />
+      <Input name="title" placeholder="What needs to get done?" autoFocus required />
+      {state.fieldErrors?.title && <p className="text-xs text-danger">{state.fieldErrors.title}</p>}
+
+      <Select name="projectId">
+        <SelectTrigger>
+          <SelectValue placeholder="Project (optional)" />
+        </SelectTrigger>
+        <SelectContent>
+          {projects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+      {state.message && <p className="text-xs text-success">{state.message}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Task
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function ProjectQuickAddForm({ goals }: { goals: { id: string; title: string }[] }) {
+  const [state, formAction, pending] = useActionState(createProject, initialState);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="status" value="someday" />
+      <Input name="name" placeholder="Project name" autoFocus required />
+      {state.fieldErrors?.name && <p className="text-xs text-danger">{state.fieldErrors.name}</p>}
+
+      <Select name="goalId">
+        <SelectTrigger>
+          <SelectValue placeholder="Goal (optional)" />
+        </SelectTrigger>
+        <SelectContent>
+          {goals.map((g) => (
+            <SelectItem key={g.id} value={g.id}>
+              {g.title}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {state.error && <p className="text-xs text-danger">{state.error}</p>}
+
+      <div className="mt-2 flex justify-end">
+        <Button type="submit" size="sm" loading={pending}>
+          Add Project
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+export function QuickAdd({
+  lifeAreas = [],
+  projects = [],
+  goals = [],
+}: {
+  lifeAreas?: LifeArea[];
+  projects?: Project[];
+  goals?: { id: string; title: string }[];
+}) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<QuickAddType>("task");
   const [title, setTitle] = useState("");
@@ -144,8 +221,16 @@ export function QuickAdd({ lifeAreas = [] }: { lifeAreas?: LifeArea[] }) {
             ))}
           </TabsPrimitive.List>
 
+          <TabsPrimitive.Content value="task">
+            <TaskQuickAddForm projects={projects} />
+          </TabsPrimitive.Content>
+
           <TabsPrimitive.Content value="goal">
             <GoalQuickAddForm lifeAreas={lifeAreas} />
+          </TabsPrimitive.Content>
+
+          <TabsPrimitive.Content value="project">
+            <ProjectQuickAddForm goals={goals} />
           </TabsPrimitive.Content>
 
           {types

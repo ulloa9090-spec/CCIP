@@ -16,9 +16,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 4 — Goals + Life Map + 90-Day Plan.** Real Life Areas (8 seeded per signup), Goals (optionally metric-tracked), and 90-Day Cycles, on `/goals` and `/plan-90-days`. The Dashboard's 90-Day Goal and Progress widgets now run real queries — the first to graduate from Phase 3's empty stand-ins. Quick Add's Goal type is live. Milestones stay Project-scoped and arrive in Phase 5 (ADR 0004); a 90-Day Cycle's "3 major milestones" are a lightweight embedded field in the meantime.
+**Phase 5 — Projects + Tasks + Kanban.** Real Projects (with the DB-enforced Active Project rule), Milestones, and Tasks, on `/projects` and a drag-and-drop Kanban board (`dnd-kit`) on `/tasks`. The Dashboard's Today, Active Project, and Weekly Priorities widgets now run real queries. Quick Add's Task and Project types are live, alongside Goal (Phase 4).
 
-Phase 3 (Dashboard architecture) and Phase 2 (auth + database) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by this phase's work.
+Phases 1-4 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan) are complete. Phase 2's live end-to-end auth test is a **pending** follow-up (see below) — unrelated to and unaffected by any phase's work since.
 
 ## Stack
 
@@ -43,7 +43,7 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
    ```
    Open [http://localhost:3000](http://localhost:3000).
 4. **Verify the shell**
-   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, or `/plan-90-days` to start a cycle.
+   - Visiting any `(app)` route while signed out redirects to `/login`; sign up, and you land on `/dashboard` with 8 default Life Areas already seeded — visit `/goals` to create your first goal, `/plan-90-days` to start a cycle, `/projects` to create a project, or `/tasks` for the Kanban board.
    - `/dev/components` renders every design-system primitive for visual QA (internal-only, not linked from navigation).
    - `/dev/dashboard-preview?state=empty|populated|error` renders the real Dashboard widgets against fixture data (internal-only) — useful for visual/responsive QA without needing a logged-in session.
    - `/api/health` reports Supabase connectivity status (note: only proves env vars/client construction, not a live network round trip — see caveat below).
@@ -78,7 +78,7 @@ features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, a
 components/ui/  Design-system primitives
 components/layout/  Sidebar, Header, Quick Add, theme toggle, user menu
 lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils)
-supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles — see docs/DATABASE.md)
+supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban — see docs/DATABASE.md)
 tests/          E2E smoke tests (Playwright)
 docs/           Product, architecture, database, security, and decision records
 ```

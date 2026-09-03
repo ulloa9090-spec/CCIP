@@ -2,6 +2,17 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 5 — Projects + Tasks + Kanban
+
+- Database: `projects`, `milestones`, `tasks`, `tags`, `task_tags`, `weekly_priorities` — full RLS, ownership checks on every FK to an owned table applied proactively from the first migration draft (ADR 0005), Active Project partial unique index, indexes, `updated_at` triggers. `get_advisors` clean on the security pass immediately; two missing FK-covering indexes flagged by the performance advisor fixed in a same-day follow-up migration.
+- **Comprehensive RLS isolation test across all 6 new tables** — cross-user read/update/delete isolation, FK-ownership rejection on insert/update, and the Active Project uniqueness constraint, all verified directly against Postgres. Every case passed on the first run; see `docs/SECURITY.md`.
+- Progress engine (`features/projects/progress.ts`, blueprint §K): 50% milestone completion + 50% task completion, with a manual override taking precedence.
+- Active Project rule: DB-enforced via partial unique index, with a UI conflict-resolution flow (Replace / Make Secondary / Cancel) when a second project is set primary.
+- Real `/projects` (list grouped by status, Primary Active Project hero, create/edit, detail page with milestones and linked tasks) and `/tasks` (drag-and-drop Kanban board, `dnd-kit` — ADR 0006) replacing the Phase 1 placeholders.
+- Dashboard's `getTodayData()`, `getActiveProjectData()`, and `getWeeklyPrioritiesData()` now run real queries — graduating from Phase 3's empty stand-ins the same way `getNinetyDayGoalData()`/`getProgressData()` did in Phase 4.
+- Quick Add's Task and Project types went live (Server Action-backed, no longer disabled).
+- `tests/dashboard-smoke.mjs` re-run against the fixture preview route with no regressions from this phase's data-layer changes.
+
 ## Phase 4 — Goals + Life Map + 90-Day Plan
 
 - Database: `life_areas` (8 defaults seeded per signup), `quarter_cycles`, `goals`, `goal_metrics` — full RLS, indexes, `updated_at` triggers. `get_advisors` clean after two migrations.

@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getGoals } from "@/features/goals/queries";
 import { computeCycleProgress, computeGoalProgress } from "@/features/goals/progress";
 import { getCurrentCycle } from "@/features/plan-90-days/queries";
+import { getActiveProject } from "@/features/projects/queries";
+import { computeProjectProgress } from "@/features/projects/progress";
+import { getTodayTasks, getWeeklyPriorities } from "@/features/tasks/queries";
+import type { Task } from "@/features/tasks/types";
 import type {
   DashboardActiveProjectData,
   DashboardCalendarData,
@@ -19,7 +23,17 @@ import type {
   DashboardWeeklyReviewData,
   DashboardWeeklyScoreData,
   ModuleResult,
+  TaskSummary,
 } from "./types";
+
+function toTaskSummary(task: Task): TaskSummary {
+  return {
+    id: task.id,
+    title: task.title,
+    dueDate: task.dueDate,
+    projectName: task.projectName,
+  };
+}
 
 /**
  * Wraps a module fetch so one domain's failure can never crash the whole
@@ -47,13 +61,31 @@ export async function safeModule<T>(fn: () => Promise<T>): Promise<ModuleResult<
 // ---------------------------------------------------------------------------
 
 export async function getTodayData(): Promise<DashboardTodayData> {
-  // Tasks don't exist yet (Phase 5) — nothing to query.
-  return { mostImportantTask: null, topThree: [] };
+  const tasks = await getTodayTasks();
+  const mostImportantTask = tasks.find((t) => t.isMit) ?? null;
+  const topThree = tasks.filter((t) => t.id !== mostImportantTask?.id).slice(0, 3);
+
+  return {
+    mostImportantTask: mostImportantTask ? toTaskSummary(mostImportantTask) : null,
+    topThree: topThree.map(toTaskSummary),
+  };
 }
 
 export async function getActiveProjectData(): Promise<DashboardActiveProjectData> {
-  // Projects don't exist yet (Phase 5).
-  return { project: null };
+  const project = await getActiveProject();
+  if (!project) return { project: null };
+
+  const nextMilestone = project.milestones.find((m) => m.status !== "done") ?? null;
+
+  return {
+    project: {
+      id: project.id,
+      name: project.name,
+      progress: computeProjectProgress(project),
+      nextMilestone: nextMilestone?.title ?? null,
+      targetDate: project.deadline,
+    },
+  };
 }
 
 export async function getNinetyDayGoalData(): Promise<DashboardNinetyDayGoalData> {
@@ -74,8 +106,8 @@ export async function getNinetyDayGoalData(): Promise<DashboardNinetyDayGoalData
 }
 
 export async function getWeeklyPrioritiesData(): Promise<DashboardWeeklyPrioritiesData> {
-  // Weekly priorities are a flag on tasks (Phase 5) — nothing to query yet.
-  return { priorities: [] };
+  const rows = await getWeeklyPriorities();
+  return { priorities: rows.map((row) => toTaskSummary(row.task)) };
 }
 
 export async function getHabitData(): Promise<DashboardHabitData> {

@@ -14,8 +14,10 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903034919` | `optimize_rls_initplan` | Rewrites all four RLS policies to `(select auth.uid())` per Supabase's performance advisor, so `auth.uid()` is evaluated once per query, not once per row. |
 | `20260903054116` | `goals_life_areas_cycles` | Creates `life_areas`, `quarter_cycles`, `goals`, `goal_metrics`, full RLS, indexes, `updated_at` triggers; extends `handle_new_user()` to seed 8 default Life Areas per signup. |
 | `20260903055200` | `goals_ownership_check` | Fixes a real gap the Phase 4 RLS isolation test caught: `goals_insert_own`/`goals_update_own` now also verify `area_id` and `quarter_cycle_id` belong to the same user, not just `user_id` — see ADR 0005. |
+| `20260903061031` | `projects_tasks_kanban` | Creates `projects`, `milestones`, `tasks`, `tags`, `task_tags`, `weekly_priorities`, full RLS with FK ownership checks from the start (ADR 0005 applied proactively — clean on first `get_advisors` run, no follow-up fix needed), the Active Project partial unique index, and `updated_at` triggers. |
+| `20260903062608` | `tasks_kanban_missing_fk_indexes` | Adds the two FK-covering indexes (`task_tags.tag_id`, `weekly_priorities.task_id`) the performance advisor flagged as missing after the previous migration. |
 
-`get_advisors` (security and performance) reports zero findings as of the last migration.
+`get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
 ## Tables
 
@@ -111,6 +113,91 @@ At most one per goal (`unique(goal_id)`), so the app can `upsert` with `on confl
 
 **RLS**: no direct `user_id` column — every policy checks `exists (select 1 from goals g where g.id = goal_metrics.goal_id and g.user_id = (select auth.uid()))`.
 
+### `projects`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `name`, `description`, `notes` | text | `name` not null |
+| `status` | text | check in (`active`,`secondary`,`waiting`,`someday`,`completed`,`archived`), default `someday` |
+| `is_primary_active` | boolean | default `false` — see the Active Project rule below |
+| `priority` | smallint | nullable |
+| `start_date` / `deadline` | date | nullable |
+| `progress_override` | numeric | nullable — manual override for `computeProjectProgress()` (blueprint §K) |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**Active Project rule** (blueprint §D.2/§0.6): `projects_primary_active_key` is a partial unique index — `unique (user_id) where is_primary_active = true` — so the database itself, not just the UI, guarantees at most one primary-active project per user. The app's conflict-resolution flow (`attemptSetPrimary` → Replace/Make Secondary/Cancel in `PrimaryProjectControl`) exists because a naive `update ... set is_primary_active = true` would otherwise hit this constraint and fail; "Send to Parking Lot" isn't offered yet since Ideas don't exist until Phase 8.
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `goal_id` (when set) belongs to a goal owned by that same user (ADR 0005).
+
+### `milestones`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `project_id` | uuid | FK → `projects(id)`, `on delete cascade` |
+| `title` | text | not null |
+| `target_date` | date | nullable |
+| `status` | text | check in (`pending`,`in_progress`,`done`), default `pending` |
+| `sort_order` | int | default `0` |
+
+**RLS**: no direct `user_id` column — every policy checks `exists (select 1 from projects p where p.id = milestones.project_id and p.user_id = (select auth.uid()))`.
+
+### `tasks`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `project_id` | uuid | FK → `projects(id)`, nullable, `on delete set null` |
+| `goal_id` | uuid | FK → `goals(id)`, nullable, `on delete set null` |
+| `milestone_id` | uuid | FK → `milestones(id)`, nullable, `on delete set null` |
+| `title`, `description`, `context` | text | `title` not null |
+| `status` | text | check in (`inbox`,`next`,`today`,`in_progress`,`waiting`,`done`,`cancelled`), default `inbox` — the Kanban board's columns are a subset (`inbox`,`next`,`today`,`in_progress`,`done`) |
+| `priority` | text | check in (`critical`,`high`,`medium`,`low`), default `medium` |
+| `due_date` / `scheduled_date` | date | nullable |
+| `estimated_minutes` / `actual_minutes` | int | nullable |
+| `energy_level` | text | nullable, check in (`low`,`medium`,`high`) |
+| `is_mit` | boolean | default `false` — at most one true per user, enforced at the app layer (`setMostImportantTask` clears any other first) |
+| `recurrence_rule` | jsonb | nullable — reserved, unused until a later phase |
+| `completed_at` | timestamptz | nullable |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz | soft delete |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert`/`update` verify `project_id`, `goal_id`, and `milestone_id` (each, when set) belong to rows owned by that same user — `milestone_id` ownership is checked via a join through `projects` (ADR 0005).
+
+### `tags`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `name` | text | unique per user |
+| `created_at` | timestamptz | |
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id`.
+
+### `task_tags`
+Join table, composite PK `(task_id, tag_id)`, no `user_id` column of its own.
+
+| Column | Type | Notes |
+|---|---|---|
+| `task_id` | uuid | FK → `tasks(id)`, `on delete cascade` |
+| `tag_id` | uuid | FK → `tags(id)`, `on delete cascade` |
+
+**RLS**: every policy verifies ownership of **both** sides — `exists (... from tasks where id = task_id and user_id = (select auth.uid()))` and the equivalent for `tags` — so a user can't link their own task to someone else's tag, or vice versa (ADR 0005).
+
+### `weekly_priorities`
+| Column | Type | Notes |
+|---|---|---|
+| `id` | uuid | PK |
+| `user_id` | uuid | FK → `auth.users(id)` |
+| `task_id` | uuid | FK → `tasks(id)`, `on delete cascade` |
+| `week_start_date` | date | Monday-start ISO date |
+| `is_most_important_outcome` | boolean | default `false` |
+| `created_at` | timestamptz | |
+
+`unique (user_id, week_start_date, task_id)` prevents duplicate rows for the same task/week. The "at most 3 per week" cap (blueprint §D.3/§0.7) is enforced at the application layer (`addWeeklyPriority` counts existing rows before inserting), not a DB constraint — a user's own count is a business rule, not a security boundary.
+
+**RLS**: full CRUD, `(select auth.uid()) = user_id` **plus** `insert` verifies `task_id` belongs to a task owned by that same user (ADR 0005).
+
 ## Domain tables (not yet built)
 
-`projects`, `milestones`, `weekly_priorities`, `tasks`, `tags`/`task_tags`, `calendar_events`, `time_blocks`, `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, `journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (5–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.
+`calendar_events`, `time_blocks`, `habits`, `habit_logs`, `challenges`, `challenge_days`, `focus_sessions`, `journal_entries`, `ideas`, `decisions`, `weekly_reviews`, `monthly_reviews`, `notifications`, `attachments`, `ai_threads`, `ai_messages`, `ai_insights` — full specs already exist in `PHASE_0_BLUEPRINT.md` §I.9 and get created by their respective phases (6–9), each following the same pattern established here: RLS enabled in the same migration that creates the table, `(select auth.uid())` in every policy from the start, ownership verified for every FK to another owned table (ADR 0005), `get_advisors` run immediately after applying.

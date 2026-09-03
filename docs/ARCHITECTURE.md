@@ -2,13 +2,14 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 4)
+## Current state (Phase 5)
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
 - **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`). `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (both signup confirmation and password recovery).
-- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and now `QuickAdd`'s Life Areas (for its live Goal tab) when signed in.
-- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()` and `getProgressData()` now run real queries (Phase 4) — the first Dashboard modules to graduate from empty stand-in to live data, proving the Phase 3 seam works as designed.
+- **Layout:** `components/layout/app-shell.tsx` composes `Sidebar` + `Header`. `Header` is an async Server Component reading the session and rendering `UserMenu` (email + logout) and `QuickAdd`'s Life Areas/Goals/Projects (for its live Goal/Task/Project tabs) when signed in.
+- **Dashboard:** `features/dashboard/` — see the dedicated section below. Widgets stream independently via per-widget Suspense boundaries; every widget renders against a typed contract (`features/dashboard/types.ts`), not a raw table. `getNinetyDayGoalData()` and `getProgressData()` went live in Phase 4; `getTodayData()`, `getActiveProjectData()`, and `getWeeklyPrioritiesData()` now run real queries too (Phase 5) — only `habits`, `calendar`, `focus`, `weeklyScore`, `ideas`, and `weeklyReview` remain empty stand-ins, each documented with the phase that replaces it.
 - **Goals + 90-Day Plan:** `features/goals/` and `features/plan-90-days/` — real Life Areas, Goals (with an optional single metric), and 90-Day Cycles. See the dedicated section below.
+- **Projects + Tasks + Kanban:** `features/projects/` and `features/tasks/` — real Projects (with the Active Project rule), Milestones, Tasks, and a drag-and-drop Kanban board. See the dedicated section below.
 - **Theming:** `next-themes`, class-based, dark is the default. All color/spacing/radius values are CSS custom properties defined once in `app/globals.css` and mapped into Tailwind via `@theme inline`.
 - **Design system:** `components/ui/*` — Button (now supports `asChild` via `@radix-ui/react-slot`, for rendering as a styled `<Link>`), Input, Textarea, Select, Card, Modal, Badge, Dropdown Menu, Progress Bar (now takes an optional `ariaLabel` distinct from its visible `label`, so a bar never ships without an accessible name), Progress Ring, Skeleton, Empty State, Tooltip. Built on Radix UI primitives plus `class-variance-authority` for variants.
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
@@ -41,10 +42,24 @@ Living summary of the system as actually built, updated at the close of each pha
 
 **Quick Add's Goal type went live** (`components/layout/quick-add.tsx`): the first Quick Add type to flip from disabled/phase-badged to a real Server Action-backed mini-form (title + Life Area, calling `createGoal` directly). Since `Header` — and therefore `QuickAdd` — persists across `(app)` route navigations (it's in the shared layout, not a page), a successful submission's `redirect()` to `/goals/[id]` doesn't unmount `QuickAdd`, so the modal closes itself by comparing the current pathname against the last-seen one during render (React's documented "adjust state when a prop changes" pattern) rather than via a `useEffect` (which the project's ESLint config flags for exactly this "setState synchronously in an effect" reason — see the same fix in `ThemeToggle`, Phase 1).
 
+## Projects + Tasks + Kanban architecture (Phase 5)
+
+**Data**: `projects` (optionally linked to a goal, with the Active Project rule — see below), `milestones` (project-scoped, no direct `user_id`), `tasks` (optionally linked to a project/goal/milestone), `tags`/`task_tags` (many-to-many, both sides ownership-checked), `weekly_priorities` (a flag row linking a user+task+week, capped at 3/week by the app layer). Full specs in `DATABASE.md`. Every FK to an owned table was ownership-checked in RLS from this migration's first draft (ADR 0005 applied proactively) — `get_advisors` came back clean the first time, no follow-up security fix needed (a change from Phase 4, where the same gap had to be caught and fixed after the fact).
+
+**Active Project rule** (blueprint §D.2/§0.6): enforced at the database level by a partial unique index (`unique (user_id) where is_primary_active = true`), not just app logic. `attemptSetPrimary(projectId)` tries the update; if another project is already primary, it returns a `conflict` result instead of letting the index reject it, and `PrimaryProjectControl` (client component) shows a modal offering **Replace Current Primary** or **Make This Secondary Instead** — no "Send to Parking Lot" option, since Ideas don't exist until Phase 8.
+
+**Progress engine** (`features/projects/progress.ts`, blueprint §K): `computeProjectProgress()` is 50% milestone completion + 50% task completion (each independently `null`-safe when that half has zero total), with `progress_override` taking precedence when the app or user sets it — not every project decomposes cleanly into tasks (e.g. "write a book").
+
+**Kanban board** (`app/(app)/tasks/page.tsx`, `features/tasks/components/kanban-*.tsx`): `dnd-kit`-based, see ADR 0006 for the library choice and scope (five columns, no within-column reordering yet, optimistic local state updated via a directly-called Server Action on drop).
+
+**Server Actions**: `features/projects/actions.ts` (`createProject`, `updateProject`, `archiveProject`, `addMilestone`, `toggleMilestoneStatus`, `attemptSetPrimary`/`resolveReplacePrimary`/`resolveMakeSecondary`) and `features/tasks/actions.ts` (`createTask`, `updateTask`, `updateTaskStatus`, `toggleTaskDone`, `archiveTask`, `setMostImportantTask`/`clearMostImportantTask`, `addWeeklyPriority`/`removeWeeklyPriority`). All Zod-validated (`lib/validation/projects.ts`, `lib/validation/tasks.ts`), all derive the user from the session.
+
+**Quick Add's Task and Project types went live** (`components/layout/quick-add.tsx`): same pattern as Goal in Phase 4 — compact mini-forms (`TaskQuickAddForm`, `ProjectQuickAddForm`) calling `createTask`/`createProject` directly, hidden inputs supplying the required-but-not-user-facing fields (`status`, and for tasks `priority`). `createTask` doesn't redirect (it returns a success message and, per React 19's documented behavior, the uncontrolled form fields reset themselves after a successful action) so the modal stays open for fast repeated capture; `createProject` redirects to `/projects/[id]` like `createGoal` does, closing the modal via the same pathname-comparison mechanism.
+
 ## Not yet decided / deferred
 
 - `PWA`/offline (Phase 12).
-- Domain tables (projects, tasks, habits, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
+- Remaining domain tables (habits, calendar/time-blocking, focus sessions, ideas, weekly reviews, journal, AI, ...) — see `DATABASE.md` and ADR 0001. Each remaining Dashboard module fetcher documents which phase will replace its empty stand-in.
 
 ## Environments
 
@@ -64,3 +79,4 @@ ADRs live in [`decisions/`](./decisions):
 - [0003](./decisions/0003-middleware-renamed-to-proxy.md) — Route protection lives in `proxy.ts` (Next.js 16's `middleware.ts` rename).
 - [0004](./decisions/0004-ninety-day-milestones-embedded.md) — 90-Day Cycle milestones are an embedded field, not the relational `milestones` table.
 - [0005](./decisions/0005-rls-must-verify-fk-ownership.md) — RLS policies must verify FK-referenced rows' ownership too, not just the row's own `user_id`.
+- [0006](./decisions/0006-dnd-kit-for-kanban.md) — `dnd-kit` for the Task Kanban board; drag-drop scope kept to a single status update, no within-column reordering yet.

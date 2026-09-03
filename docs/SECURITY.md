@@ -8,7 +8,7 @@ Supabase Auth, email/password. Session stored as httpOnly cookies via `@supabase
 
 ## Authorization: Row Level Security
 
-Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. `profiles`/`settings` (Phase 2): `select`/`update` only, scoped to `(select auth.uid()) = user_id` — no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade). `life_areas`/`goals`/`quarter_cycles`/`goal_metrics` (Phase 4): full CRUD, same `user_id` scoping — plus, per ADR 0005, `goals`' `insert`/`update` policies also verify `area_id` and `quarter_cycle_id` reference rows owned by the same user (see the finding below).
+Every user-owned table has RLS enabled **in the same migration that creates it** — never added later. `profiles`/`settings` (Phase 2): `select`/`update` only, scoped to `(select auth.uid()) = user_id` — no `insert`/`delete` policy (rows are managed only by the signup trigger and the `auth.users` cascade). `life_areas`/`goals`/`quarter_cycles`/`goal_metrics` (Phase 4): full CRUD, same `user_id` scoping — plus, per ADR 0005, `goals`' `insert`/`update` policies also verify `area_id` and `quarter_cycle_id` reference rows owned by the same user (see the finding below). `projects`/`milestones`/`tasks`/`tags`/`task_tags`/`weekly_priorities` (Phase 5): full CRUD, same `user_id` scoping (`milestones`/`task_tags` have no direct `user_id` column, so ownership is checked via a join through `projects`/`tasks`+`tags` instead) — every FK to an owned table (`projects.goal_id`, `tasks.project_id`/`goal_id`/`milestone_id`, `task_tags.task_id`+`tag_id`, `weekly_priorities.task_id`) was ownership-checked in `insert`/`update` policies from this migration's first draft, applying ADR 0005 proactively rather than after a test caught a gap.
 
 **RLS is the only authorization boundary.** No Server Action or Route Handler trusts a client-supplied user id — every query re-derives the user from the authenticated session server-side, and the database enforces isolation independent of whatever the application layer does or forgets to do.
 
@@ -32,6 +32,20 @@ Fixed in migration `goals_ownership_check`: `insert`/`update` on `goals` now als
 
 This is the isolation testing process working as intended: the point of testing directly against Postgres's real RLS engine, rather than reasoning about policies on paper, is to catch exactly this kind of gap before it ships.
 
+### Phase 5: comprehensive isolation test across all six new tables, no findings
+
+Same methodology (two real `auth.users` rows, `set local role authenticated` + `set_config('request.jwt.claim.sub', ...)` via `mcp__Supabase__execute_sql`), extended to cover `projects`, `milestones`, `tasks`, `tags`, `task_tags`, and `weekly_priorities` — every table this phase added. For each: User A sees only their own rows; a cross-user `update`/`delete` affects 0 rows; an `insert` referencing another user's parent row (or spoofing another user's `user_id`) is rejected. Specifically verified:
+
+- **`projects`**: insert with `goal_id` pointing at User B's goal rejected; insert with own `goal_id` succeeds; update re-pointing an owned project's `goal_id` at User B's goal rejected; cross-user update/delete affect 0 rows.
+- **Active Project uniqueness**: setting a second project `is_primary_active = true` for the same user while one is already primary raises `unique_violation` against the `projects_primary_active_key` partial index — the database constraint holds independent of the application's conflict-resolution UI.
+- **`milestones`**: insert under User B's project rejected (ownership via join through `projects`); insert under own project succeeds; cross-user update/delete affect 0 rows.
+- **`tasks`**: insert with `project_id`, `goal_id`, or `milestone_id` each independently pointing at a User B-owned row rejected; insert with all three pointing at own rows succeeds; update re-pointing `project_id` at User B's project rejected; cross-user update/delete affect 0 rows.
+- **`tags`**: insert with a spoofed `user_id` (User B's) rejected; cross-user update/delete affect 0 rows.
+- **`task_tags`**: insert linking an owned task to User B's tag rejected; insert linking User B's task to an owned tag rejected (both FK sides independently ownership-checked); insert linking an owned task to an owned tag succeeds; User A sees only their own link rows; cross-user delete affects 0 rows.
+- **`weekly_priorities`**: insert referencing User B's `task_id` rejected; insert with a spoofed `user_id` rejected; insert with an owned `task_id` succeeds; cross-user delete affects 0 rows.
+
+Every case passed on the first run — no fix required, unlike Phase 4's `goals` finding. All fixture rows and both test users were deleted at the end of the test run (`delete from auth.users where id in (...)`, cascading through every owned row); the development database was confirmed empty of test data afterward.
+
 ## Secrets
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`: safe to ship to the browser by Supabase's own design (RLS is the real boundary, not key secrecy), but still supplied only via env vars, never hardcoded.
@@ -41,10 +55,12 @@ This is the isolation testing process working as intended: the point of testing 
 
 ## Database hardening (via `get_advisors`)
 
-Both `security` and `performance` advisors report zero findings as of the last migration. Fixed during Phase 2:
+`security` advisor reports zero findings as of the last migration. Fixed during Phase 2:
 - `set_updated_at()` had a mutable `search_path` — pinned to `public`.
 - `handle_new_user()` (a `security definer` function) was callable directly via PostgREST RPC by `anon`/`authenticated` — `EXECUTE` revoked from both, and from the trigger-only `set_updated_at()` too. Neither function should ever be called directly; both still work as triggers, since trigger invocation bypasses `EXECUTE` grants.
 - All four RLS policies re-evaluated `auth.uid()` per row — rewritten to `(select auth.uid())` so Postgres evaluates it once per query.
+
+`performance` advisor flagged two missing FK-covering indexes after the Phase 5 migration (`task_tags.tag_id`, `weekly_priorities.task_id` — the composite PK/unique index each table already had doesn't lead with that column, so a lookup by it alone still scans); fixed immediately in a follow-up migration (`tasks_kanban_missing_fk_indexes`). Remaining `performance` findings are informational "unused index" notices, expected on a fresh dev database with no query traffic history — not a real problem.
 
 ## Known limitation of this development session
 

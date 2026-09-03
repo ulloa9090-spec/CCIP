@@ -1,7 +1,8 @@
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
-import { getLifeAreas } from "@/features/goals/queries";
+import { getGoals, getLifeAreas } from "@/features/goals/queries";
+import { getProjects } from "@/features/projects/queries";
 import { MobileNav } from "./mobile-nav";
 import { QuickAdd } from "./quick-add";
 import { ThemeToggle } from "./theme-toggle";
@@ -12,7 +13,9 @@ export async function Header() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const lifeAreas = user ? await getLifeAreas() : [];
+  const [lifeAreas, goals, projects] = user
+    ? await Promise.all([getLifeAreas(), getGoals(), getProjects()])
+    : [[], [], []];
 
   return (
     <header className="flex h-14 items-center gap-3 border-b border-border bg-background px-4">
@@ -35,7 +38,7 @@ export async function Header() {
       </div>
 
       <div className="flex items-center gap-2">
-        <QuickAdd lifeAreas={lifeAreas} />
+        <QuickAdd lifeAreas={lifeAreas} projects={projects} goals={goals} />
         <Button
           variant="ghost"
           size="icon"
