@@ -12,3 +12,6 @@ fi
 
 claude plugin marketplace add obra/superpowers-marketplace
 claude plugin install superpowers@superpowers-marketplace --scope project --yes
+
+claude plugin marketplace add anthropics/claude-plugins-official
+claude plugin install figma@claude-plugins-official --scope project --yes
