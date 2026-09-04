@@ -131,6 +131,22 @@ Every case passed on the first run. Fixtures (two `auth.users` rows, one notific
 
 `signInWithMagicLink()` (`features/auth/actions.ts`) always returns the same message regardless of whether the submitted email has an account — mirroring `requestPasswordReset`'s existing pattern exactly (the code doesn't even branch on the Supabase call's result). `shouldCreateUser: false` ensures this path can only authenticate an existing account, never silently create one, keeping real account creation solely through the reviewed signup flow.
 
+### Phase 12: project-wide security/RLS re-audit, no findings
+
+No new user-owned tables this phase (only an index-only migration — see Database hardening below). `get_advisors` (security) was re-run against the whole project, not just the latest migration, closing out the phase — zero findings. Every table's RLS policy set from Phases 2–11 remains exactly as each phase's own isolation test verified it; nothing was retroactively loosened or narrowed.
+
+### Phase 12: error boundaries never leak internals (blueprint §O.7)
+
+`app/(app)/error.tsx`, `app/(auth)/error.tsx`, and `app/global-error.tsx` all render a fixed, generic message ("Something went wrong," "Try again") — never the caught `Error`'s own `message` or `stack`. The error is passed to `console.error()` only (server-side log, per this project's existing no-`console.log`-of-request-bodies discipline), never rendered into the DOM. Database errors were already never surfaced verbatim (every Server Action maps a Supabase `error` to a fixed plain-language string); these boundaries close the remaining gap — an *unexpected*, unhandled throw anywhere in a route segment.
+
+### Phase 12: rate limiting (blueprint §N)
+
+Login/signup/password-reset brute-force protection is Supabase Auth's own built-in mechanism — not reimplemented in application code, one of blueprint §N's two explicitly acceptable approaches ("Vercel/Supabase native ... mechanism decided in Phase 2/10"). AI generation gets a real, code-level daily cap (`DAILY_AI_GENERATION_LIMIT = 50` per user, `features/ai/actions.ts`) counted from successful completions only (`ai_messages` rows with `role='assistant'`, scoped to the calling user's own RLS-visible threads) — a limit-reached user degrades through the exact same `AIUnavailableError` path a missing provider key already uses, so there's no new UI state or new error-leakage surface to review.
+
+### Phase 12: Data Export only ever returns the caller's own rows
+
+`getFullDataExport()` (`features/export/data.ts`) queries all 28 user-owned tables with a plain `select("*")` — no service-role client, no explicit `user_id` filter in the query itself. Every row returned is, by construction, one RLS already decided this session's authenticated user may see; the export can't accidentally include another user's data because there's no code path that could bypass the same RLS policies every other query in the app goes through.
+
 ## Secrets
 
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`: safe to ship to the browser by Supabase's own design (RLS is the real boundary, not key secrecy), but still supplied only via env vars, never hardcoded.
@@ -145,7 +161,7 @@ Every case passed on the first run. Fixtures (two `auth.users` rows, one notific
 - `handle_new_user()` (a `security definer` function) was callable directly via PostgREST RPC by `anon`/`authenticated` — `EXECUTE` revoked from both, and from the trigger-only `set_updated_at()` too. Neither function should ever be called directly; both still work as triggers, since trigger invocation bypasses `EXECUTE` grants.
 - All four RLS policies re-evaluated `auth.uid()` per row — rewritten to `(select auth.uid())` so Postgres evaluates it once per query.
 
-`performance` advisor flagged two missing FK-covering indexes after the Phase 5 migration (`task_tags.tag_id`, `weekly_priorities.task_id` — the composite PK/unique index each table already had doesn't lead with that column, so a lookup by it alone still scans); fixed immediately in a follow-up migration (`tasks_kanban_missing_fk_indexes`). The Phase 6 migration (`calendar_time_blocks`) had no such gap — every FK got its own index from the start. Remaining `performance` findings are informational "unused index" notices, expected on a fresh dev database with no query traffic history — not a real problem.
+`performance` advisor flagged two missing FK-covering indexes after the Phase 5 migration (`task_tags.tag_id`, `weekly_priorities.task_id` — the composite PK/unique index each table already had doesn't lead with that column, so a lookup by it alone still scans); fixed immediately in a follow-up migration (`tasks_kanban_missing_fk_indexes`). The Phase 6 migration (`calendar_time_blocks`) had no such gap — every FK got its own index from the start. A Phase 12 project-wide re-audit (not scoped to the latest migration only, unlike every prior phase's check) caught two more of the same shape that earlier phases had missed: `ai_insights.thread_id` (Phase 10) and `weekly_reviews.next_week_mio_task_id` (Phase 9) — fixed in `production_hardening_indexes`, confirmed cleared on re-run. Remaining `performance` findings are informational "unused index" notices, expected on a fresh dev database with no query traffic history — not a real problem.
 
 ## Known limitation of this development session
 

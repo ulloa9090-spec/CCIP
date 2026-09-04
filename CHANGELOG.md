@@ -2,6 +2,19 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Phase 12 — Production Hardening (MVP complete)
+
+- Database: one index-only migration (`production_hardening_indexes`) — no new user-owned tables this phase. A project-wide `get_advisors` re-audit (security + performance, scoped to the whole project rather than just the latest migration, unlike every prior phase's check) caught two missing FK-covering indexes earlier phases had missed — `ai_insights.thread_id` (Phase 10), `weekly_reviews.next_week_mio_task_id` (Phase 9) — fixed immediately, re-run confirmed clean. Zero security findings.
+- Error boundaries (blueprint §O.7): `app/(app)/error.tsx`, `app/(auth)/error.tsx`, `app/global-error.tsx` (bare `<html>/<body>` fallback for root-layout crashes), `app/(app)/not-found.tsx` + `app/not-found.tsx`. All render a fixed, generic message — never a caught error's own `message`/`stack`.
+- Pagination / list capping (blueprint §O.10, ADR 0016): Journal (`features/journal/queries.ts`) gets real `?page=` pagination (`JOURNAL_PAGE_SIZE = 30`). Tasks and Ideas Kanban columns (`KanbanColumn`, `IdeaColumn`) get a 50-card render cap with a "Show N more" control instead — a page-number scheme doesn't map cleanly onto a `dnd-kit` drop target.
+- Rate limiting (blueprint §N, ADR 0017): login/signup/password-reset brute-force protection stays Supabase Auth's own native mechanism, not reimplemented. AI generation gets a real per-user daily cap (`DAILY_AI_GENERATION_LIMIT = 50`, `features/ai/actions.ts`), counted from successful completions only, degrading through the existing `AIUnavailableError` path.
+- Data Export (blueprint §I.8, ADR 0017): `features/export/` — a full JSON export across all 28 user-owned tables (doubling as "full backup"), plus Tasks and Journal CSV exports via a pure `toCsv()` formatter (`lib/utils/csv.ts`, RFC-4180-ish quoting, CRLF). PDF explicitly deferred. New Data Export card in Settings, replacing the Phase 3 placeholder.
+- PWA installable shell (blueprint §O.9, ADR 0017): `app/manifest.ts` (Next.js native manifest route), a hand-authored `public/icon.svg`, `public/sw.js` (cache-first static assets, network-first-then-cache-then-`/offline` for navigations), a `ServiceWorkerRegistration` client component mounted in the root layout, and a static `/offline` fallback page. Read-only, partial offline — no write queue, no background sync (explicitly out of scope).
+- `proxy.ts` matcher extended to exclude `sw.js`/`manifest.webmanifest` from session-refresh/protected-route handling.
+- ADR 0016 (Kanban columns capped, not paginated — Journal gets real pagination) and ADR 0017 (Phase 12 scope: no PDF export, rate-limiting approach, offline scope).
+- `tests/csv-format.ts` (6 cases) added; every prior pure-logic test suite re-run with no regressions from this phase's changes.
+- **MVP complete**: all 12 roadmap phases (blueprint §T) are now built. Phase 2's live auth E2E test and Phase 10's live AI provider test remain the project's only PENDING items, both blocked purely on this sandbox's lack of real Supabase network access / AI provider key — see `docs/SECURITY.md`.
+
 ## Phase 11 — Integrations + Automation
 
 - Database: `notifications`, `automations` — full RLS, `user_id`-only scoping (neither has a FK to another owned table). `get_advisors` clean on the first run.

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { NotebookPen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -19,10 +21,11 @@ function isJournalCategory(value: string | undefined): value is JournalCategory 
 export default async function JournalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const category = isJournalCategory(params.category) ? params.category : undefined;
+  const page = Math.max(1, Number(params.page) || 1);
 
   const [goals, projects, tasks, decisions, dueDecisions] = await Promise.all([
     getGoals(),
@@ -31,7 +34,9 @@ export default async function JournalPage({
     getDecisions(),
     getDueForReview(),
   ]);
-  const entries = await getJournalEntries({ category });
+  const { entries, hasMore } = await getJournalEntries({ category, page });
+
+  const pageHref = (p: number) => `/journal?${category ? `category=${category}&` : ""}page=${p}`;
 
   return (
     <div className="flex flex-col">
@@ -57,6 +62,28 @@ export default async function JournalPage({
               {entries.map((entry) => (
                 <JournalEntryItem key={entry.id} entry={entry} />
               ))}
+              {(page > 1 || hasMore) && (
+                <div className="flex items-center justify-between pt-2">
+                  {page > 1 ? (
+                    <Button asChild variant="secondary" size="sm">
+                      <Link href={pageHref(page - 1)}>Newer</Link>
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" size="sm" disabled>
+                      Newer
+                    </Button>
+                  )}
+                  {hasMore ? (
+                    <Button asChild variant="secondary" size="sm">
+                      <Link href={pageHref(page + 1)}>Older</Link>
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" size="sm" disabled>
+                      Older
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

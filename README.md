@@ -17,9 +17,9 @@ This repository is built in phases; do not add functionality outside the phase c
 
 ## Status
 
-**Phase 11 — Integrations + Automation.** A real Automation engine (blueprint §M.4): `Trigger → Condition → Action` rows, two trigger types (overdue task, weekly schedule), evaluated on every page load rather than a background job (ADR 0014) and firing a real in-app notification. A Notification Center (Header bell) and Magic Link sign-in also went live. Google/Apple/Outlook Calendar sync and Social login are deferred entirely — they need real OAuth credentials this environment can't self-provision (ADR 0015).
+**Phase 12 — Production Hardening. MVP complete: all 12 roadmap phases are built.** Error boundaries at every route-group level (blueprint §O.7), real pagination for Journal / render-capping for the Tasks and Ideas Kanban boards (ADR 0016), a per-user daily AI generation cap layered onto Supabase Auth's native brute-force protection (blueprint §N), a real Data Export (JSON full backup + Tasks/CSV + Journal/CSV, PDF explicitly deferred — ADR 0017), and an installable PWA shell (manifest, SVG icon, service worker with cache-first assets / network-first-then-offline-fallback navigations). A project-wide `get_advisors` re-audit (not just the latest migration) closed the phase with two more missing FK-covering indexes fixed and zero security findings.
 
-Phases 1-10 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer, Journal + Ideas + Decision Log, Reviews + Analytics, AI Intelligence Layer) are complete. Phase 2's live end-to-end auth test and Phase 10's live AI provider test are both **pending** follow-ups (see below) — this sandbox has no real Supabase network access or AI provider key configured; unrelated to and unaffected by any other phase's work.
+Phases 1-11 (product foundation, auth + database, Dashboard architecture, Goals + 90-Day Plan, Projects + Tasks + Kanban, Today + Calendar + Time Blocking, Habits + Challenges + Focus Timer, Journal + Ideas + Decision Log, Reviews + Analytics, AI Intelligence Layer, Integrations + Automation) are complete. Phase 2's live end-to-end auth test and Phase 10's live AI provider test remain **pending** follow-ups (see below) — this sandbox has no real Supabase network access or AI provider key configured; unrelated to and unaffected by any other phase's work. Calendar sync and Social login (Phase 11, ADR 0015) stay deferred — they need real OAuth credentials this environment can't self-provision.
 
 ## Stack
 
@@ -87,6 +87,12 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
     npx tsx tests/automation-match.ts
     ```
     Verifies the blueprint §M.4 Automation engine's trigger-matching and idempotency logic directly — overdue-day/priority matching, and the "has this week's/today's scheduled slot already fired" checks.
+13. **CSV export format test** (pure logic, no server or network needed):
+    ```bash
+    npx tsx tests/csv-format.ts
+    ```
+    Verifies `toCsv()` (`lib/utils/csv.ts`) directly — RFC-4180-ish quoting on commas/quotes/newlines, CRLF line endings, header row, empty-input handling.
+14. **Data Export / PWA smoke check**: signed in, `/settings` → Data Export card → download JSON/CSV; a service worker registers at `/sw.js` (DevTools → Application → Service Workers), and the app is installable (browser's install icon / "Add to Home Screen"). Not exercised live in this sandbox — same auth-dependent limitation as the auth smoke test above.
 
 ## Scripts
 
@@ -102,13 +108,14 @@ Next.js (App Router) · React · TypeScript (strict) · Tailwind CSS v4 · Supab
 ```
 app/            Next.js App Router — routing + composition
 proxy.ts        Session refresh + protected-route redirects (Next.js 16's middleware convention)
-features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, ai, automations, notifications, ...)
+features/       Domain logic (goals, projects, tasks, habits, auth, dashboard, ai, automations, notifications, export, ...)
 components/ui/  Design-system primitives
-components/layout/  Sidebar, Header (NotificationBell + evaluateAutomations()), Quick Add, theme toggle, user menu
-lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils, AI provider abstraction)
-supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions, weekly/monthly reviews, ai_threads/ai_messages/ai_insights, notifications/automations — see docs/DATABASE.md)
-tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts, tests/execution-score.ts, tests/ai-context-format.ts, tests/ai-insight-write-path.ts, tests/automation-match.ts (pure-logic correctness tests, run via tsx)
+components/layout/  Sidebar, Header (NotificationBell + evaluateAutomations()), Quick Add, theme toggle, user menu, ServiceWorkerRegistration
+lib/            Cross-domain infrastructure (Supabase clients, validation, time, utils incl. csv.ts, AI provider abstraction)
+supabase/       Migrations (profiles/settings, life_areas/goals/quarter_cycles, projects/tasks/kanban, calendar/time_blocks, habits/challenges/focus, journal/ideas/decisions, weekly/monthly reviews, ai_threads/ai_messages/ai_insights, notifications/automations, production_hardening_indexes — see docs/DATABASE.md)
+tests/          E2E smoke tests (Playwright) + tests/habit-streak.ts, tests/execution-score.ts, tests/ai-context-format.ts, tests/ai-insight-write-path.ts, tests/automation-match.ts, tests/csv-format.ts (pure-logic correctness tests, run via tsx)
 docs/           Product, architecture, database, security, and decision records
+public/         Static assets — manifest icon (icon.svg), service worker (sw.js)
 ```
 
 Full rationale for this structure: `docs/PHASE_0_BLUEPRINT.md` §P.

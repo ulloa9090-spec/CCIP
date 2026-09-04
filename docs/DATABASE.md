@@ -22,8 +22,9 @@ All migrations live in `supabase/migrations/`, applied via `mcp__Supabase__apply
 | `20260903163819` | `reviews` | Creates `weekly_reviews`, `monthly_reviews`, full RLS with an FK ownership check on `weekly_reviews.next_week_mio_task_id` (ADR 0005), indexes on `(user_id, week_start_date)` / `(user_id, month)`, `updated_at` triggers. `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903211921` | `ai_layer` | Creates `ai_threads`, `ai_messages`, `ai_insights`, full RLS — `ai_messages` ownership-checked via join to its parent thread (no direct `user_id`), `ai_insights` FK-ownership-checked on `thread_id` (ADR 0005). `get_advisors` clean on first run — no follow-up fix needed. |
 | `20260903215650` | `notifications_automations` | Creates `notifications`, `automations`, full RLS, `user_id`-only scoping (neither table has a FK to another owned table). `get_advisors` clean on first run — no follow-up fix needed. |
+| `20260904015545` | `production_hardening_indexes` | Phase 12's project-wide performance re-audit caught two FK columns without a covering index, missed when their tables were created — `ai_insights.thread_id` (Phase 10) and `weekly_reviews.next_week_mio_task_id` (Phase 9). Same class of gap Phase 5's `tasks_kanban_missing_fk_indexes` migration fixed. |
 
-`get_advisors` (security) reports zero findings as of the last migration. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
+`get_advisors` (security) reports zero findings project-wide as of the last migration — re-verified at the close of Phase 12, not just checked incrementally per table. Performance advisor findings are limited to informational "unused index" notices expected on a fresh dev database with no query traffic history.
 
 ## Tables
 

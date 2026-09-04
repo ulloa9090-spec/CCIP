@@ -2,7 +2,9 @@
 
 Living summary of the system as actually built, updated at the close of each phase. The authoritative design decisions live in [`PHASE_0_BLUEPRINT.md`](./PHASE_0_BLUEPRINT.md) §O–§S; this file tracks what's true *right now*, not the full rationale.
 
-## Current state (Phase 11)
+## Current state (Phase 12 — MVP complete)
+
+All 12 phases of `PHASE_0_BLUEPRINT.md` §T are built. This section (and the whole file) keeps being maintained going forward, but there is no Phase 13 in the roadmap — future work is a new decision, not a resumption of this sequence.
 
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS v4.
 - **Routing:** `app/(auth)/*` (login/signup/forgot-password/reset-password — real forms, Server Action-backed) and `app/(app)/*` (the 14 primary product routes, wrapped in `AppShell`, protected by `proxy.ts`), plus the secondary drill-down routes `app/(app)/habits/challenges/[id]`, `app/(app)/journal/decisions/[id]`, `app/(app)/reviews/weekly/[weekStartDate]`, `app/(app)/reviews/monthly/[month]`, and `app/(app)/ai-coach/[threadId]`. `/dev/components` and `/dev/dashboard-preview` are internal-only, unauthenticated verification routes. `app/auth/confirm/route.ts` handles the Supabase PKCE email-link callback (signup confirmation, password recovery, and now Magic Link sign-in — Phase 11).
@@ -18,9 +20,10 @@ Living summary of the system as actually built, updated at the close of each pha
 - **Design system:** `components/ui/*` — Button (now supports `asChild` via `@radix-ui/react-slot`, for rendering as a styled `<Link>`), Input, Textarea, Select, Card, Modal, Badge, Dropdown Menu, Progress Bar (now takes an optional `ariaLabel` distinct from its visible `label`, so a bar never ships without an accessible name), Progress Ring, Skeleton, Empty State, Tooltip. Built on Radix UI primitives plus `class-variance-authority` for variants.
 - **Data layer:** `lib/supabase/client.ts` (browser), `lib/supabase/server.ts` (Server Components/Actions, cookie-bound), `lib/supabase/middleware.ts` (`updateSession()` — session refresh + route protection, called from `proxy.ts`). Schema: `profiles` + `settings`, RLS on both — see [`DATABASE.md`](./DATABASE.md).
 - **Auth:** Supabase Auth, email/password plus Magic Link (Phase 11). `features/auth/actions.ts` — Server Actions (`signUp`, `logIn`, `logOut`, `requestPasswordReset`, `updatePassword`, `signInWithMagicLink`) validated with Zod (`lib/validation/auth.ts`), mapping Supabase error messages to plain-language text. Forms use React 19's `useActionState` directly against these Server Actions (no client-side form library) — see ADR 0002.
-- **Route protection:** `proxy.ts` (Next.js 16's renamed `middleware.ts` convention — see ADR 0003) calls `updateSession()` on every request. Unauthenticated users hitting a protected route are redirected to `/login`; authenticated users hitting `/login` or `/signup` are redirected to `/dashboard`. Uses `getUser()` (revalidates the token against Supabase Auth), never `getSession()` alone.
+- **Route protection:** `proxy.ts` (Next.js 16's renamed `middleware.ts` convention — see ADR 0003) calls `updateSession()` on every request. Unauthenticated users hitting a protected route are redirected to `/login`; authenticated users hitting `/login` or `/signup` are redirected to `/dashboard`. Uses `getUser()` (revalidates the token against Supabase Auth), never `getSession()` alone. `/manifest.webmanifest`, `/sw.js`, and image extensions are excluded from the matcher entirely (Phase 12).
 - **AI layer:** `lib/ai/provider.ts` + `features/ai/` — real `AnthropicAdapter`/`OpenAIAdapter`, a 5-builder Context Engine, and the READ/SUGGEST/WRITE Action Model, all wired to real `/ai-coach` UI. See [`AI_ARCHITECTURE.md`](./AI_ARCHITECTURE.md) and the dedicated section below.
 - **Notifications + Automation:** `features/notifications/`, `features/automations/` — a real in-app Notification Center (Header bell) and a declarative Automation engine (two trigger types, evaluated at read-time, no background scheduler). See the dedicated section below.
+- **Error boundaries + PWA:** `app/(app)/error.tsx`, `app/(auth)/error.tsx`, `app/global-error.tsx`, and `app/(app)/not-found.tsx`/`app/not-found.tsx` (blueprint §O.7); `app/manifest.ts` + `public/sw.js` + `ServiceWorkerRegistration` for an installable shell with partial, read-only offline support (blueprint §O.9). See the Phase 12 section below.
 - **State management:** No global client store yet.
 
 ## Dashboard architecture (Phase 3)
@@ -143,18 +146,37 @@ Full detail lives in [`AI_ARCHITECTURE.md`](./AI_ARCHITECTURE.md) (blueprint §M
 
 **Calendar sync, Social login: deferred, not scaffolded** (ADR 0015) — both need real OAuth app credentials (Client ID/secret) this sandbox cannot self-provision; building a token-storage schema before knowing a real provider's actual shape risks locking in the wrong one. Ready to build for real once credentials are available.
 
+## Production Hardening architecture (Phase 12 — final phase)
+
+**Error boundaries** (blueprint §O.7): `app/(app)/error.tsx` and `app/(auth)/error.tsx` catch any throw within their route group and show a generic "Something went wrong" plus a retry action — never a raw stack trace. `app/global-error.tsx` is the last-resort fallback if the root layout itself throws (its own bare `<html>/<body>`, no dependency on `globals.css` since that's the thing potentially broken). `app/(app)/not-found.tsx` and `app/not-found.tsx` cover `notFound()` calls and genuinely unmatched routes, the former staying wrapped in `AppShell` so an authenticated 404 still has Sidebar/Header.
+
+**Pagination / list capping** (blueprint §O.10): `/journal` gets real `?page=` pagination (`JOURNAL_PAGE_SIZE = 30`, a `.range()` query fetching one extra row to detect `hasMore`). Tasks/Ideas are Kanban boards, not flat lists — each column render-caps at 50 cards with a "Show N more" expand, rather than forcing page-number pagination onto a drag-and-drop surface. See ADR 0016.
+
+**Rate limiting** (blueprint §N): Supabase Auth's own native brute-force protection covers login/signup/password-reset (no custom code — one of blueprint §N's two named acceptable mechanisms). AI generation gets a real per-user daily cap (`DAILY_AI_GENERATION_LIMIT = 50` in `features/ai/actions.ts`, counting only successful completions), reusing the exact same `AIUnavailableError` degrade-gracefully path a missing provider key already uses. See ADR 0017.
+
+**Data Export** (blueprint §I.8, §C): `features/export/` — `getFullDataExport()` dumps every one of the user's 28 owned tables via `select("*")` (RLS-scoped automatically), doubling as blueprint's "full backup." JSON export is the complete bundle; CSV export covers Tasks and Journal specifically. PDF is not built — see ADR 0017.
+
+**PWA installable shell + partial offline read** (blueprint §O.9): `app/manifest.ts` (Next's native file convention, auto-linked into every page's `<head>`), `public/icon.svg`, `public/sw.js` (cache-first for static assets, network-first-then-cached-then-`/offline` for navigations), and `ServiceWorkerRegistration` (mounted once in the root layout). No offline writes, no background sync — explicitly out of scope per blueprint §C's DO-NOT-BUILD-YET list.
+
+**Final project-wide audit**: `get_advisors` (security) re-run clean across the whole project, not just the latest migration. The performance re-audit caught two real gaps missed in earlier phases — `ai_insights.thread_id` and `weekly_reviews.next_week_mio_task_id` had no FK-covering index — fixed in `production_hardening_indexes`, the same class of fix Phase 5's `tasks_kanban_missing_fk_indexes` migration made.
+
+**E2E test coverage — honest status**: none of blueprint §R's 8 priority flows have been driven through a live authenticated browser session in this development sandbox — the same `*.supabase.co` egress block documented since Phase 2's auth E2E test blocks every flow that needs a real login, not just that one. What *is* verified for each: RLS isolation (every table, every phase), pure-logic unit tests for any real domain math involved (streaks, execution score, CSV formatting, automation matching, AI context formatting — 6 suites, ~90 cases total), and `dashboard-smoke.mjs`'s fixture-route rendering checks (real UI rendering, real accessibility scan, just not through a real Supabase write). `tests/auth-smoke.mjs` remains the one blocking piece — running it locally with real network access is what would move all 8 flows from "logic verified" to "actually witnessed end-to-end."
+
 ## Not yet decided / deferred
 
-- `PWA`/offline (Phase 12).
 - `attachments` (blueprint §I.10) — see `DATABASE.md` and ADR 0001.
 - A configurable per-user weekly focus-time target (ADR 0011) — `DEFAULT_WEEKLY_FOCUS_TARGET_MINUTES` is fixed at 300 for every user until Settings grows a field for it; Weekly Coach's AI context uses the same fixed target.
 - The Anti-Distraction Guard (blueprint §D.2/§C) — still deferred (ADR 0013); the Automation engine it would extend is now real (ADR 0014), making the Guard a smaller follow-up than when ADR 0013 was written.
 - Local/self-hosted LLM support (`LocalModelAdapter` is a stub) and live testing against a real Anthropic/OpenAI provider key (this sandbox has neither configured).
 - Google/Apple/Outlook Calendar sync and Social login (Google/Apple) — no OAuth credentials to build against; see ADR 0015.
 - A real background scheduler (Supabase Edge Function + `pg_cron`) for automations, if push notifications or precise-timing firing is ever wanted — see ADR 0014.
+- PDF export — JSON/CSV cover data-export needs for now; see ADR 0017.
+- Offline writes / background sync — read-only offline is as far as blueprint §O.9 goes for MVP.
+- A Tasks List view (the blueprint's "Kanban/List" toggle never got its List half built in any phase) — see ADR 0016.
 - Per-profile timezone conversion for Calendar/Time Blocks (ADR 0007) — `profiles.timezone` exists but isn't consulted yet. (Habits' streak engine *does* consult it — Phase 6's Calendar predates that pattern.) `automations.trigger_config.hour` for `weekly_schedule` is UTC, the same known simplification.
 - Drag-to-schedule on the Calendar grid (ADR 0007) — click-to-create via modal covers the same outcome for now; `dnd-kit` is already a dependency if this is wanted later.
 - Cross-route/refresh-persistent Focus Timer (ADR 0009) — would need a small store (Zustand or `localStorage`-backed) plus a persistent indicator in `Header`.
+- Live E2E validation of all 8 blueprint §R priority flows, and live AI provider testing — both PENDING on real network access this sandbox doesn't have; see the Phase 12 section above and ADR 0013.
 
 ## Environments
 
@@ -184,3 +206,5 @@ ADRs live in [`decisions/`](./decisions):
 - [0013](./decisions/0013-phase-10-ai-scope.md) — Phase 10 AI scope: real Anthropic/OpenAI adapters, `ai_insights.type` limited to `plan_breakdown`/`suggest_reschedule`, and the Anti-Distraction Guard deferred.
 - [0014](./decisions/0014-automations-evaluated-read-time.md) — Automations are evaluated at read-time on every page load, not by a background scheduler, generalizing Phase 8's Decision-due-for-review pattern.
 - [0015](./decisions/0015-oauth-integrations-deferred.md) — Calendar sync and Social login deferred entirely (not even scaffolded) — no OAuth credentials to build against in this sandbox.
+- [0016](./decisions/0016-kanban-columns-capped-not-paginated.md) — Kanban columns (Tasks, Ideas) get a render cap + "show more," not page-number pagination; Journal (the one flat list) gets real pagination.
+- [0017](./decisions/0017-phase-12-hardening-scope.md) — Phase 12 hardening scope: PDF export deferred, Supabase native auth rate limiting plus a real AI daily-usage cap, read-only partial offline via service worker.

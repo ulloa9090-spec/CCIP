@@ -33,6 +33,43 @@ async function resolveUserProvider(supabase: Awaited<ReturnType<typeof createCli
   return data?.ai_provider ?? null;
 }
 
+/** blueprint §N — cost control on AI endpoints. Counts today's successful
+ * completions (assistant messages — a failed/unavailable call never wrote
+ * one, so it's never counted against the budget) across every thread the
+ * user owns. Personal-app scale, so fetching all thread ids first is cheap
+ * and avoids a fragile cross-table filter in the count query. */
+const DAILY_AI_GENERATION_LIMIT = 50;
+
+async function countTodaysAiGenerations(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number> {
+  const { data: threads } = await supabase.from("ai_threads").select("id").eq("user_id", userId);
+  const threadIds = (threads ?? []).map((t) => t.id as string);
+  if (threadIds.length === 0) return 0;
+
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from("ai_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "assistant")
+    .in("thread_id", threadIds)
+    .gte("created_at", todayStart.toISOString());
+
+  return count ?? 0;
+}
+
+/** The one place every AI action gets its provider — folds the daily usage
+ * cap in ahead of provider resolution, so a limit-reached user degrades
+ * through the exact same "AI Coach is unavailable right now" path as a
+ * missing API key (AIUnavailableError), no separate UI state needed. */
+async function getAIProviderForUser(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  const used = await countTodaysAiGenerations(supabase, userId);
+  if (used >= DAILY_AI_GENERATION_LIMIT) {
+    throw new AIUnavailableError(`Daily AI usage limit (${DAILY_AI_GENERATION_LIMIT}) reached. Try again tomorrow.`);
+  }
+  return getAIProvider(await resolveUserProvider(supabase, userId));
+}
+
 function revalidateAiViews(threadId?: string) {
   revalidatePath("/ai-coach");
   if (threadId) revalidatePath(`/ai-coach/${threadId}`);
@@ -80,7 +117,7 @@ export async function generateMorningBrief() {
   if (!alreadyAnswered) {
     try {
       const context = await buildMorningBriefContext();
-      const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+      const provider = await getAIProviderForUser(supabase, userId);
       const response = await provider.chatCompletion([{ role: "user", content: context.promptText }], {
         system: MORNING_BRIEF_SYSTEM_PROMPT,
         maxTokens: 400,
@@ -121,7 +158,7 @@ export async function generateEveningReview() {
   if (!alreadyAnswered) {
     try {
       const context = await buildEveningReviewContext();
-      const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+      const provider = await getAIProviderForUser(supabase, userId);
       const response = await provider.chatCompletion([{ role: "user", content: context.promptText }], {
         system: EVENING_REVIEW_SYSTEM_PROMPT,
         maxTokens: 400,
@@ -202,7 +239,7 @@ export async function generateWeeklyCoach(weekStart: string = weekStartDate()) {
         overdueTasks.map((t) => `${t.id}: ${t.title}`).join("; ") || "none"
       }.`;
 
-      const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+      const provider = await getAIProviderForUser(supabase, userId);
       const result = await provider.structuredCompletion<WeeklyCoachResult>(
         [{ role: "user", content: promptWithTaskIds }],
         WEEKLY_COACH_SCHEMA,
@@ -283,7 +320,7 @@ export async function startPlanningAssistant(targetType: "goal" | "project", tar
   await supabase.from("ai_messages").insert({ thread_id: threadId, role: "user", content: context.promptText });
 
   try {
-    const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+    const provider = await getAIProviderForUser(supabase, userId);
     const result = await provider.structuredCompletion<PlanningResult>(
       [{ role: "user", content: context.promptText }],
       PLANNING_SCHEMA,
@@ -332,7 +369,7 @@ export async function startDecisionAssistant(decisionId: string) {
   await supabase.from("ai_messages").insert({ thread_id: threadId, role: "user", content: context.promptText });
 
   try {
-    const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+    const provider = await getAIProviderForUser(supabase, userId);
     const response = await provider.chatCompletion([{ role: "user", content: context.promptText }], {
       system: DECISION_ASSISTANT_SYSTEM_PROMPT,
       maxTokens: 400,
@@ -369,7 +406,7 @@ export async function startFreeformThread(_prev: ActionResult, formData: FormDat
   await supabase.from("ai_messages").insert({ thread_id: threadId, role: "user", content });
 
   try {
-    const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+    const provider = await getAIProviderForUser(supabase, userId);
     const response = await provider.chatCompletion([{ role: "user", content }], { maxTokens: 700 });
     await supabase.from("ai_messages").insert({ thread_id: threadId, role: "assistant", content: response.content });
   } catch (err) {
@@ -395,7 +432,7 @@ export async function sendChatMessage(threadId: string, _prev: ActionResult, for
 
   try {
     const priorMessages = await getMessages(threadId);
-    const provider = await getAIProvider(await resolveUserProvider(supabase, userId));
+    const provider = await getAIProviderForUser(supabase, userId);
     const response = await provider.chatCompletion(
       priorMessages.filter((m) => m.role !== "system").map((m) => ({ role: m.role, content: m.content })),
       { maxTokens: 700 },

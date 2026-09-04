@@ -39,14 +39,30 @@ function mapRow(row: JournalEntryRow): JournalEntry {
   };
 }
 
-export async function getJournalEntries({ category }: { category?: JournalCategory } = {}): Promise<
-  JournalEntry[]
-> {
+/** blueprint §O.10 — Journal is the one flat, unbounded-growth list in the
+ * app (Tasks/Ideas are Kanban boards, capped per-column instead — see
+ * ADR 0016), so it's the one that needs real pagination. */
+export const JOURNAL_PAGE_SIZE = 30;
+
+export interface JournalEntriesPage {
+  entries: JournalEntry[];
+  hasMore: boolean;
+}
+
+export async function getJournalEntries({
+  category,
+  page = 1,
+}: { category?: JournalCategory; page?: number } = {}): Promise<JournalEntriesPage> {
   const supabase = await createClient();
-  let query = supabase.from("journal_entries").select(JOURNAL_SELECT).order("created_at", { ascending: false });
+  const from = (page - 1) * JOURNAL_PAGE_SIZE;
+  const to = from + JOURNAL_PAGE_SIZE; // one extra row, to detect hasMore without a separate count query
+
+  let query = supabase.from("journal_entries").select(JOURNAL_SELECT).order("created_at", { ascending: false }).range(from, to);
   if (category) query = query.eq("category", category);
 
   const { data, error } = await query;
   if (error) throw error;
-  return ((data ?? []) as unknown as JournalEntryRow[]).map(mapRow);
+
+  const rows = (data ?? []) as unknown as JournalEntryRow[];
+  return { entries: rows.slice(0, JOURNAL_PAGE_SIZE).map(mapRow), hasMore: rows.length > JOURNAL_PAGE_SIZE };
 }

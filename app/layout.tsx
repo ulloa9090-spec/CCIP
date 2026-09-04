@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ServiceWorkerRegistration } from "@/components/layout/service-worker-registration";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Atlas OS",
   description: "Atlas OS — Personal Operating System",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Atlas OS" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -31,6 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );

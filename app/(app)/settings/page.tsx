@@ -9,13 +9,13 @@ import {
   NewTaskOverdueAutomationModal,
   NewWeeklyScheduleAutomationModal,
 } from "@/features/automations/components";
+import { DataExportPanel } from "@/features/export/components/data-export-panel";
 
 const otherGroups = [
   { title: "Working Hours", description: "Shapes suggested time-block slots." },
   { title: "Theme", description: "Dark or light — toggle from the header for now." },
   { title: "Notification Preferences", description: "Critical, actionable, informational, silent." },
   { title: "Privacy", description: "Control what Atlas OS is allowed to use as AI context." },
-  { title: "Data Export", description: "JSON/CSV/PDF export and full backup (Phase 12)." },
   { title: "Archived Content", description: "Everything you've archived instead of deleted." },
 ];
 
@@ -82,6 +82,16 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent>
             <AiProviderForm currentProvider={settings?.ai_provider ?? null} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Data Export</CardTitle>
+            <CardDescription>JSON export and CSV export — includes a full backup of your account.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataExportPanel />
           </CardContent>
         </Card>
 
