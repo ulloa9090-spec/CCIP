@@ -4,7 +4,11 @@
 
 This project auto-registers the [Superpowers](https://github.com/obra/superpowers) marketplace and enables the `superpowers` plugin for anyone who opens this repo in Claude Code (see `.claude/settings.json`). Superpowers adds a skills library covering TDD, systematic debugging, brainstorming/planning, and subagent-driven development workflows.
 
-After trusting this folder in Claude Code, run `/plugin install superpowers@superpowers-marketplace` if it isn't installed automatically, then `/reload-plugins` to activate it.
+This project also enables the [`figma`](https://claude.com/plugins) plugin from the official Anthropic marketplace, which bundles the Figma MCP server plus skills for design-to-code, generating designs/diagrams, motion, and FigJam/Slides workflows.
+
+In a cloud (Claude Code on the web) session, `.claude/hooks/session-start.sh` installs both plugins automatically at session start — `enabledPlugins`/`extraKnownMarketplaces` in `.claude/settings.json` alone aren't enough in a headless environment, since that mechanism normally relies on the interactive "trust this folder" flow. In a local interactive session, run `/plugin install superpowers@superpowers-marketplace` and `/plugin install figma@claude-plugins-official` if they aren't installed automatically, then `/reload-plugins` to activate them.
+
+Figma's MCP server needs authentication, same as Firecrawl below — each collaborator runs `claude mcp login plugin:figma:figma` (or approves it interactively) from their own session.
 
 ## MCP servers
 
