@@ -1,0 +1,2 @@
+testId,platform,deviceModel,osVersion,objectLabel,axis,groundTruthCm,measuredCm,absoluteErrorCm,percentErrorPct,trialNumber,distanceFromObjectM,viewingAngleDeg,lighting,surface,method,sensorsUsed,timeToResultSec,confidenceNote,environmentNotes
+1,ios,"iPhone14,5",17.4,REF-S,length,20.0,,,,1,1.0,0,normal,matte-cardboard,point-to-point,"AR world tracking, no LiDAR",,,
