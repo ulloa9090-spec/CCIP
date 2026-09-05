@@ -4,6 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import {
+  Modal,
+  ModalContent,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+  ModalTrigger,
+} from "@/components/ui/modal";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import {
@@ -40,7 +48,24 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function ComponentsDevPage() {
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-10 p-8">
-      <h1 className="text-xl font-semibold text-text-primary">Design System — Dev Preview</h1>
+      <h1 className="text-headline text-text-primary">Design System — Dev Preview</h1>
+
+      <Section title="Typography">
+        <div className="flex w-full flex-col gap-3">
+          <p className="text-display text-text-primary">Display</p>
+          <p className="text-headline text-text-primary">Headline</p>
+          <p className="text-title text-text-primary">Title</p>
+          <p className="text-body text-text-primary">
+            Body — used for descriptions and general reading text.
+          </p>
+          <p className="text-label text-text-secondary">Label</p>
+          <p className="text-caption text-text-secondary">Caption</p>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-metric text-text-primary">72</span>
+            <span className="text-label text-text-secondary">%</span>
+          </div>
+        </div>
+      </Section>
 
       <Section title="Button">
         <Button variant="primary">Primary</Button>
@@ -112,6 +137,28 @@ export default function ComponentsDevPage() {
             <TooltipContent>This is a tooltip</TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      </Section>
+
+      <Section title="Modal">
+        <Modal>
+          <ModalTrigger asChild>
+            <Button variant="secondary">Open modal</Button>
+          </ModalTrigger>
+          <ModalContent>
+            <ModalHeader>
+              <ModalTitle className="text-title text-text-primary">Confirm action</ModalTitle>
+              <ModalDescription className="text-body text-text-secondary">
+                Enter/exit motion driven by design tokens (duration-standard / ease-standard).
+              </ModalDescription>
+            </ModalHeader>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm">
+                Cancel
+              </Button>
+              <Button size="sm">Confirm</Button>
+            </div>
+          </ModalContent>
+        </Modal>
       </Section>
 
       <Section title="Empty State">

@@ -49,12 +49,10 @@ export function ProgressRing({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="fill-none stroke-accent transition-[stroke-dashoffset]"
+          className="fill-none stroke-accent transition-[stroke-dashoffset] duration-emphasized ease-standard"
         />
       </svg>
-      <span className="absolute text-xs font-semibold text-text-primary">
-        {Math.round(clamped)}%
-      </span>
+      <span className="absolute text-title text-text-primary">{Math.round(clamped)}%</span>
     </div>
   );
 }

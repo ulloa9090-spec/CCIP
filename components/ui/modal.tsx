@@ -15,12 +15,18 @@ export function ModalContent({
 }: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
+      <DialogPrimitive.Overlay
+        className={cn(
+          "fixed inset-0 z-50 bg-black/50",
+          "data-[state=open]:animate-modal-overlay-in data-[state=closed]:animate-modal-overlay-out",
+        )}
+      />
       <DialogPrimitive.Content
         className={cn(
           "fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2",
           "rounded-(--radius-token-md) border border-border bg-surface-raised p-6 shadow-xl",
           "focus:outline-none",
+          "data-[state=open]:animate-modal-content-in data-[state=closed]:animate-modal-content-out",
           className,
         )}
         {...props}

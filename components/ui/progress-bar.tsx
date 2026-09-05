@@ -34,7 +34,7 @@ export function ProgressBar({
         className="h-1.5 w-full overflow-hidden rounded-full bg-surface"
       >
         <div
-          className="h-full rounded-full bg-accent transition-[width]"
+          className="h-full rounded-full bg-accent transition-[width] duration-emphasized ease-standard"
           style={{ width: `${clamped}%` }}
         />
       </div>

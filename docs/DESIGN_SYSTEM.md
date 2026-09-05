@@ -20,6 +20,33 @@ Defined once in `app/globals.css` as CSS custom properties, light values on `:ro
 
 Spacing uses Tailwind's default 4px-based scale directly (no custom spacing tokens needed on top of it).
 
+### Typography scale (Premium Polish pass)
+
+Semantic type roles, each a paired font-size + line-height (+ font-weight where the role implies one) registered in the `--text-*` theme namespace so they're ordinary Tailwind utilities (`text-title`, not a wrapper component):
+
+| Utility | Size / line-height | Weight | Use |
+|---|---|---|---|
+| `text-display` | 2.25rem / 2.5rem | 600 | Page-level hero text (rare — most pages use `PageHeader`, not a raw display) |
+| `text-headline` | 1.5rem / 2rem | 600 | Section headlines, top-level page `<h1>` |
+| `text-title` | 1rem / 1.5rem | 600 | Card/widget titles, empty-state titles, modal titles |
+| `text-body` | 0.9375rem / 1.375rem | — | Descriptions, general reading text |
+| `text-label` | 0.8125rem / 1.125rem | 500 | Form labels, secondary inline text |
+| `text-caption` | 0.75rem / 1rem | — | Timestamps, helper text, badge-adjacent text |
+| `text-metric` | 2.5rem / 1 | 700 | A dominant standalone number (e.g. Weekly Score) — pair with `text-label`/`text-caption` for its unit, never the same size |
+
+These are additive to Tailwind's default scale (`text-sm`, `text-xs`, etc. still work) — existing call sites were not force-migrated; `components/ui/card.tsx` (`CardTitle`/`CardDescription`) and `components/ui/empty-state.tsx` now use `text-title`/`text-body` as the first adopters. See ADR 0018 for scope.
+
+### Motion tokens (Premium Polish pass)
+
+| Token | Value | Use |
+|---|---|---|
+| `--duration-fast` | 120ms | State toggles — button press, tooltip fade |
+| `--duration-standard` | 200ms | Layout/content changes — modal enter/exit |
+| `--duration-emphasized` | 320ms | Value changes worth noticing — progress bar/ring fill animating to a new value |
+| `--ease-standard` | `cubic-bezier(0.2, 0, 0, 1)` | The one easing curve used everywhere, for consistency |
+
+A global `prefers-reduced-motion: reduce` media query (in `app/globals.css`) collapses every `animation-duration`/`transition-duration` to near-zero — this is handled once, centrally, rather than gated per component. `Button` gets a `active:scale-[0.98]` press-feedback micro-motion; `Modal`'s overlay/content and `Tooltip`'s content each get a real enter/exit transition (previously: none) via hand-written `@keyframes` + `--animate-*` theme entries in `globals.css` — no animation library dependency was added for this (see ADR 0018).
+
 ## Components (`components/ui/`)
 
 Button (supports `asChild` via `@radix-ui/react-slot` — render as a styled `<Link>` without a nested `<button>`) · Input · Textarea · Select · Card (+ Header/Title/Description/Content/Footer) · Modal (Radix Dialog) · Badge · Dropdown Menu · Progress Bar (`label` for a visible caption, `ariaLabel` when a visible one would duplicate text already on screen — always has *some* accessible name, defaulting to "Progress") · Progress Ring · Skeleton · Empty State · Tooltip.

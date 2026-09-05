@@ -26,8 +26,8 @@ export function EmptyState({
     >
       {icon && <div className="text-text-secondary">{icon}</div>}
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-text-primary">{title}</p>
-        {description && <p className="max-w-sm text-sm text-text-secondary">{description}</p>}
+        <p className="text-title text-text-primary">{title}</p>
+        {description && <p className="max-w-sm text-body text-text-secondary">{description}</p>}
       </div>
       {action}
     </div>
