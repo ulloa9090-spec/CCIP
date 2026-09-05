@@ -1,1 +1,12 @@
 node_modules/
+
+# Android build tooling (phase0/android)
+phase0/android/.gradle/
+phase0/android/local.properties
+phase0/android/**/build/
+phase0/android/.idea/
+phase0/android/**/*.iml
+
+# Xcode tooling (phase0/ios) — only relevant once a real .xcodeproj exists
+phase0/ios/**/xcuserdata/
+phase0/ios/**/*.xcuserstate
