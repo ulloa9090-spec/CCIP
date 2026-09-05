@@ -50,6 +50,8 @@ try {
     "No ideas captured",
     "Nothing to review yet",
     "Your first weekly review will appear here.",
+    "Nothing yet",
+    "Completed tasks, habits, and sessions will show up here.",
   ];
   for (const s of emptyStrings) {
     assert(emptyBody.includes(s), `empty state shows: "${s}"`);
@@ -67,6 +69,7 @@ try {
     "Study CDL",
     "session",
     "Negocio de lavado de camiones",
+    "Quiz completed: Change Orders",
   ];
   for (const s of populatedStrings) {
     assert(populatedBody.includes(s), `populated state shows: "${s}"`);

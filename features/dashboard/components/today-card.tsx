@@ -11,7 +11,7 @@ import { WidgetError } from "./widget-error";
  * path (TodayCard) and the dev demo preview, so they can never drift. */
 export function TodayCardBody({ result }: { result: ModuleResult<DashboardTodayData> }) {
   return (
-    <WidgetCard title="Today" icon={<Sunrise className="h-4 w-4" />}>
+    <WidgetCard title="Today" icon={<Sunrise className="h-4 w-4" />} accent="blue">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.mostImportantTask === null && result.data.topThree.length === 0 ? (

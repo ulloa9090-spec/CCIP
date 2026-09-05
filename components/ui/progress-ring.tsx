@@ -1,12 +1,21 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
+const RING_TONE_CLASSES = {
+  accent: "stroke-accent",
+  success: "stroke-success",
+  warning: "stroke-warning",
+  danger: "stroke-danger",
+} as const;
+
 export interface ProgressRingProps extends React.HTMLAttributes<HTMLDivElement> {
   /** 0-100 */
   value: number;
   size?: number;
   strokeWidth?: number;
   label?: string;
+  /** Defaults to "accent". Never the only signal for what the value means — pair with visible text. */
+  tone?: keyof typeof RING_TONE_CLASSES;
 }
 
 export function ProgressRing({
@@ -14,6 +23,7 @@ export function ProgressRing({
   size = 56,
   strokeWidth = 5,
   label,
+  tone = "accent",
   className,
   ...props
 }: ProgressRingProps) {
@@ -49,7 +59,10 @@ export function ProgressRing({
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          className="fill-none stroke-accent transition-[stroke-dashoffset] duration-emphasized ease-standard"
+          className={cn(
+            "fill-none transition-[stroke-dashoffset] duration-emphasized ease-standard",
+            RING_TONE_CLASSES[tone],
+          )}
         />
       </svg>
       <span className="absolute text-title text-text-primary">{Math.round(clamped)}%</span>

@@ -9,6 +9,7 @@ import {
   IdeaParkingCard,
   NinetyDayGoalCard,
   ProgressCard,
+  RecentActivityCard,
   TodayCard,
   WeeklyPrioritiesCard,
   WeeklyReviewCard,
@@ -83,6 +84,11 @@ export default function DashboardPage() {
         weeklyReview={
           <Suspense fallback={<WidgetSkeleton />}>
             <WeeklyReviewCard />
+          </Suspense>
+        }
+        activity={
+          <Suspense fallback={<WidgetSkeleton />}>
+            <RecentActivityCard />
           </Suspense>
         }
       />

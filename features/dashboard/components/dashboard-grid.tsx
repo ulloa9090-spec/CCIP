@@ -24,6 +24,7 @@ export function DashboardGrid({
   weeklyScore,
   ideas,
   weeklyReview,
+  activity,
 }: {
   today: ReactNode;
   activeProject: ReactNode;
@@ -36,6 +37,7 @@ export function DashboardGrid({
   weeklyScore: ReactNode;
   ideas: ReactNode;
   weeklyReview: ReactNode;
+  activity: ReactNode;
 }) {
   return (
     <div className="grid grid-cols-1 gap-4 p-6 md:grid-cols-2 lg:grid-cols-3">
@@ -50,6 +52,7 @@ export function DashboardGrid({
       <div className="order-9 md:order-9">{weeklyScore}</div>
       <div className="order-10 md:order-10">{ideas}</div>
       <div className="order-11 md:order-11">{weeklyReview}</div>
+      <div className="order-12 md:order-12 md:col-span-2">{activity}</div>
     </div>
   );
 }

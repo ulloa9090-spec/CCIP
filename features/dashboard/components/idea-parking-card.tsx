@@ -9,7 +9,7 @@ import { WidgetError } from "./widget-error";
 
 export function IdeaParkingCardBody({ result }: { result: ModuleResult<DashboardIdeaData> }) {
   return (
-    <WidgetCard title="Idea Parking Lot" icon={<Lightbulb className="h-4 w-4" />}>
+    <WidgetCard title="Idea Parking Lot" icon={<Lightbulb className="h-4 w-4" />} accent="amber">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.ideas.length === 0 ? (

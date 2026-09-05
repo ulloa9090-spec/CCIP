@@ -9,7 +9,7 @@ import { WidgetError } from "./widget-error";
 
 export function FocusSummaryCardBody({ result }: { result: ModuleResult<DashboardFocusData> }) {
   return (
-    <WidgetCard title="Focus" icon={<Timer className="h-4 w-4" />}>
+    <WidgetCard title="Focus" icon={<Timer className="h-4 w-4" />} accent="teal">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.sessionsToday === 0 ? (

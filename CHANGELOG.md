@@ -2,6 +2,11 @@
 
 Notable changes per phase. See `docs/PHASE_0_BLUEPRINT.md` §T for the roadmap and `docs/decisions/` for the reasoning behind non-obvious choices.
 
+## Post-MVP — Design System Premium Polish
+
+- **Iteration 1 (tokens + components):** adopted the domain-agnostic UI principles from an externally supplied design-system document (written for an unrelated warehouse/camera app) — a 3-duration motion system with one shared easing curve, a 7-role typography scale, and complete component states — while discarding everything specific to that app's actual domain. Applied to `components/ui/*` (Button press feedback, Modal/Tooltip enter-exit transitions previously absent, Skeleton/ProgressBar/ProgressRing timing, Card/EmptyState typography). No new dependency, no screen-by-screen redesign. ADR 0018.
+- **Iteration 2 (Dashboard recolor + Recent Activity):** per the project owner's own screenshot reference, gave each of the 12 Dashboard widgets a distinct category color (`--category-*` tokens) for at-a-glance visual categorization, while keeping `--accent` as the single color for every interactive element app-wide. `WeeklyScoreCard`'s ring is now value-toned (success/warning/danger) with a paired text label, never color alone. Added a new `RecentActivityCard` widget aggregating real cross-domain events (completed tasks, habit check-ins, focus sessions, journal entries, ideas, completed weekly reviews) from six already-existing feature queries — no new table, no gamification/XP invented. `tests/dashboard-smoke.mjs` extended to cover the new widget; full regression pass (typecheck, lint, build, axe accessibility scan, all pure-logic suites) clean. ADR 0019.
+
 ## Phase 12 — Production Hardening (MVP complete)
 
 - Database: one index-only migration (`production_hardening_indexes`) — no new user-owned tables this phase. A project-wide `get_advisors` re-audit (security + performance, scoped to the whole project rather than just the latest migration, unlike every prior phase's check) caught two missing FK-covering indexes earlier phases had missed — `ai_insights.thread_id` (Phase 10), `weekly_reviews.next_week_mio_task_id` (Phase 9) — fixed immediately, re-run confirmed clean. Zero security findings.

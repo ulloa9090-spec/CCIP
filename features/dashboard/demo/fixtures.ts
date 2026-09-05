@@ -13,6 +13,7 @@
  */
 import type {
   DashboardActiveProjectData,
+  DashboardActivityData,
   DashboardCalendarData,
   DashboardFocusData,
   DashboardHabitData,
@@ -45,6 +46,7 @@ export const emptyFixtures = {
     lastReviewCompletedAt: null,
     reviewDueNow: false,
   }),
+  activity: ready<DashboardActivityData>({ items: [] }),
 };
 
 export const populatedFixtures = {
@@ -104,6 +106,40 @@ export const populatedFixtures = {
   weeklyReview: ready<DashboardWeeklyReviewData>({
     lastReviewCompletedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     reviewDueNow: true,
+  }),
+  activity: ready<DashboardActivityData>({
+    items: [
+      {
+        id: "a1",
+        type: "task",
+        title: "Quiz completed: Change Orders",
+        occurredAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: "a2",
+        type: "habit",
+        title: "Deep work (min. 1h)",
+        occurredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: "a3",
+        type: "focus",
+        title: "Call the trucking school",
+        occurredAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: "a4",
+        type: "idea",
+        title: "Negocio de lavado de camiones",
+        occurredAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: "a5",
+        type: "review",
+        title: "Weekly review — week of 2026-08-24",
+        occurredAt: "2026-08-24",
+      },
+    ],
   }),
 };
 

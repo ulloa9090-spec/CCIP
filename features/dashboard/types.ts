@@ -88,6 +88,20 @@ export interface DashboardWeeklyReviewData {
   reviewDueNow: boolean;
 }
 
+export type ActivityItemType = "task" | "habit" | "focus" | "journal" | "idea" | "review";
+
+export interface DashboardActivityItem {
+  id: string;
+  type: ActivityItemType;
+  title: string;
+  /** Date or ISO timestamp string — always lexically sortable/comparable. */
+  occurredAt: string;
+}
+
+export interface DashboardActivityData {
+  items: DashboardActivityItem[];
+}
+
 /**
  * A module's data plus how it got there — lets each widget render a
  * loading/error/empty/ready state without every module needing its own
@@ -108,4 +122,5 @@ export interface DashboardData {
   weeklyScore: ModuleResult<DashboardWeeklyScoreData>;
   ideas: ModuleResult<DashboardIdeaData>;
   weeklyReview: ModuleResult<DashboardWeeklyReviewData>;
+  activity: ModuleResult<DashboardActivityData>;
 }

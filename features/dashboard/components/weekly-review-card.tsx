@@ -13,7 +13,7 @@ export function WeeklyReviewCardBody({
   result: ModuleResult<DashboardWeeklyReviewData>;
 }) {
   return (
-    <WidgetCard title="Weekly Review" icon={<ClipboardList className="h-4 w-4" />}>
+    <WidgetCard title="Weekly Review" icon={<ClipboardList className="h-4 w-4" />} accent="slate">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.reviewDueNow ? (

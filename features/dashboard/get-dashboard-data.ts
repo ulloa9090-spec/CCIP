@@ -7,16 +7,19 @@ import { computeCycleProgress, computeGoalProgress } from "@/features/goals/prog
 import { getCurrentCycle } from "@/features/plan-90-days/queries";
 import { getActiveProject } from "@/features/projects/queries";
 import { computeProjectProgress } from "@/features/projects/progress";
-import { getTodayTasks, getWeeklyPriorities, weekStartDate } from "@/features/tasks/queries";
+import { getTodayTasks, getWeeklyPriorities, getTasks, weekStartDate } from "@/features/tasks/queries";
 import type { Task } from "@/features/tasks/types";
 import { getCalendarItems } from "@/features/calendar/queries";
 import { getHabitLogs, getHabitTimeSettings, getHabits } from "@/features/habits/queries";
 import { computeStreak, STREAK_LOOKBACK_DAYS, todayInTimezone, toDateStr } from "@/features/habits/progress";
 import { getTodaySessions } from "@/features/focus/queries";
 import { getIdeas } from "@/features/ideas/queries";
+import { getJournalEntries } from "@/features/journal/queries";
 import { getWeeklyReviews } from "@/features/reviews/queries";
 import type {
   DashboardActiveProjectData,
+  DashboardActivityData,
+  DashboardActivityItem,
   DashboardCalendarData,
   DashboardData,
   DashboardFocusData,
@@ -202,6 +205,90 @@ export async function getWeeklyReviewData(): Promise<DashboardWeeklyReviewData> 
   };
 }
 
+const RECENT_ACTIVITY_LIMIT = 8;
+const RECENT_ACTIVITY_LOOKBACK_DAYS = 6;
+
+/**
+ * Composes a cross-domain "what happened recently" feed from real rows in
+ * several already-existing feature queries (no new table, no new query
+ * logic beyond merging + sorting) — task completions, habit check-ins,
+ * today's focus sessions, journal entries, newly captured ideas, and
+ * completed weekly reviews. Bounded and best-effort: a domain with nothing
+ * recent simply contributes no items, same as every other dashboard module.
+ */
+export async function getRecentActivityData(): Promise<DashboardActivityData> {
+  const { timezone } = await getHabitTimeSettings();
+  const today = todayInTimezone(timezone);
+  const rangeStart = addDays(today, -RECENT_ACTIVITY_LOOKBACK_DAYS);
+
+  const [tasks, habits, focusSessions, journalPage, ideas, weeklyReviews] = await Promise.all([
+    getTasks(),
+    getHabits(),
+    getTodaySessions(),
+    getJournalEntries({ page: 1 }),
+    getIdeas(),
+    getWeeklyReviews(),
+  ]);
+
+  const habitLogs = await getHabitLogs(
+    habits.map((h) => h.id),
+    toDateStr(rangeStart),
+    toDateStr(today),
+  );
+  const habitNameById = new Map(habits.map((h) => [h.id, h.name]));
+
+  const items: DashboardActivityItem[] = [];
+
+  for (const task of tasks) {
+    if (task.completedAt) {
+      items.push({ id: `task-${task.id}`, type: "task", title: task.title, occurredAt: task.completedAt });
+    }
+  }
+  for (const log of habitLogs) {
+    if (log.completed) {
+      items.push({
+        id: `habit-${log.id}`,
+        type: "habit",
+        title: habitNameById.get(log.habitId) ?? "Habit",
+        occurredAt: log.logDate,
+      });
+    }
+  }
+  for (const session of focusSessions) {
+    items.push({
+      id: `focus-${session.id}`,
+      type: "focus",
+      title: session.taskTitle ?? session.context ?? "Focus session",
+      occurredAt: session.endedAt ?? session.startedAt,
+    });
+  }
+  for (const entry of journalPage.entries.slice(0, RECENT_ACTIVITY_LIMIT)) {
+    items.push({
+      id: `journal-${entry.id}`,
+      type: "journal",
+      title: entry.body.length > 60 ? `${entry.body.slice(0, 60)}…` : entry.body,
+      occurredAt: entry.createdAt,
+    });
+  }
+  for (const idea of ideas.slice(0, RECENT_ACTIVITY_LIMIT)) {
+    items.push({ id: `idea-${idea.id}`, type: "idea", title: idea.title, occurredAt: idea.createdAt });
+  }
+  for (const review of weeklyReviews) {
+    if (review.status === "completed") {
+      items.push({
+        id: `review-${review.id}`,
+        type: "review",
+        title: `Weekly review — week of ${review.weekStartDate}`,
+        occurredAt: review.weekStartDate,
+      });
+    }
+  }
+
+  items.sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0));
+
+  return { items: items.slice(0, RECENT_ACTIVITY_LIMIT) };
+}
+
 export async function getUserData(
   supabase: SupabaseClient,
   userId: string,
@@ -264,6 +351,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     weeklyScore,
     ideas,
     weeklyReview,
+    activity,
   ] = await Promise.all([
     getUserData(supabase, user.id, user.email ?? ""),
     safeModule(getTodayData),
@@ -277,6 +365,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     safeModule(getWeeklyScoreData),
     safeModule(getIdeaData),
     safeModule(getWeeklyReviewData),
+    safeModule(getRecentActivityData),
   ]);
 
   return {
@@ -292,5 +381,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     weeklyScore,
     ideas,
     weeklyReview,
+    activity,
   };
 }

@@ -15,7 +15,7 @@ export function ActiveProjectCardBody({
   result: ModuleResult<DashboardActiveProjectData>;
 }) {
   return (
-    <WidgetCard title="Active Project" icon={<Home className="h-4 w-4" />}>
+    <WidgetCard title="Active Project" icon={<Home className="h-4 w-4" />} accent="indigo">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.project === null ? (

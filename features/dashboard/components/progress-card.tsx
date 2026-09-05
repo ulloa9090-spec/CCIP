@@ -8,7 +8,7 @@ import { WidgetError } from "./widget-error";
 
 export function ProgressCardBody({ result }: { result: ModuleResult<DashboardProgressData> }) {
   return (
-    <WidgetCard title="Progress" icon={<BarChart3 className="h-4 w-4" />}>
+    <WidgetCard title="Progress" icon={<BarChart3 className="h-4 w-4" />} accent="pink">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.goalProgress.length === 0 ? (

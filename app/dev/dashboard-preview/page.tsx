@@ -8,6 +8,7 @@ import {
   IdeaParkingCardBody,
   NinetyDayGoalCardBody,
   ProgressCardBody,
+  RecentActivityCardBody,
   TodayCardBody,
   WeeklyPrioritiesCardBody,
   WeeklyReviewCardBody,
@@ -77,6 +78,7 @@ export default async function DashboardPreviewPage({
         weeklyScore={<WeeklyScoreCardBody result={fixtures.weeklyScore} />}
         ideas={<IdeaParkingCardBody result={fixtures.ideas} />}
         weeklyReview={<WeeklyReviewCardBody result={fixtures.weeklyReview} />}
+        activity={<RecentActivityCardBody result={fixtures.activity} />}
       />
     </div>
   );

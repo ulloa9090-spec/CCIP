@@ -9,7 +9,7 @@ import { WidgetError } from "./widget-error";
 
 export function HabitSnapshotCardBody({ result }: { result: ModuleResult<DashboardHabitData> }) {
   return (
-    <WidgetCard title="Habits" icon={<Repeat className="h-4 w-4" />}>
+    <WidgetCard title="Habits" icon={<Repeat className="h-4 w-4" />} accent="orange">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.habits.length === 0 ? (

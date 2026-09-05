@@ -20,6 +20,25 @@
   --info: #3d63dd;
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
+
+  /*
+    Dashboard category colors (Design System Premium Polish, iteration 2).
+    Purely decorative/categorization color-coding for widget icon chips —
+    never used for interactive elements (buttons/links/focus rings stay on
+    the single --accent token, per ADR 0018/0019: one accent for action,
+    many colors for "what kind of thing is this at a glance").
+  */
+  --category-blue: #2f6fed;
+  --category-indigo: #5b4fd9;
+  --category-violet: #7c3aed;
+  --category-cyan: #0e8fa3;
+  --category-teal: #0f8f74;
+  --category-orange: #c2570a;
+  --category-amber: #a86a06;
+  --category-rose: #c22a5c;
+  --category-pink: #b21f8f;
+  --category-sky: #0369a1;
+  --category-slate: #475569;
 }
 
 .dark {
@@ -35,6 +54,18 @@
   --warning: #e2a33d;
   --danger: #f2555f;
   --info: #6690ff;
+
+  --category-blue: #5b8dff;
+  --category-indigo: #8f80ff;
+  --category-violet: #b083f7;
+  --category-cyan: #4dd4e8;
+  --category-teal: #34d1ae;
+  --category-orange: #ffa361;
+  --category-amber: #ffcc4d;
+  --category-rose: #ff90ab;
+  --category-pink: #ff8fd1;
+  --category-sky: #6ecbff;
+  --category-slate: #94a3b8;
 }
 
 @theme inline {
@@ -50,6 +81,17 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  --color-category-blue: var(--category-blue);
+  --color-category-indigo: var(--category-indigo);
+  --color-category-violet: var(--category-violet);
+  --color-category-cyan: var(--category-cyan);
+  --color-category-teal: var(--category-teal);
+  --color-category-orange: var(--category-orange);
+  --color-category-amber: var(--category-amber);
+  --color-category-rose: var(--category-rose);
+  --color-category-pink: var(--category-pink);
+  --color-category-sky: var(--category-sky);
+  --color-category-slate: var(--category-slate);
   --radius-token-sm: var(--radius-sm);
   --radius-token-md: var(--radius-md);
   --font-sans: var(--font-geist-sans);

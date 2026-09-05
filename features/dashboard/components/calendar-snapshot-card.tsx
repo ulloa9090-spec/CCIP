@@ -13,7 +13,7 @@ export function CalendarSnapshotCardBody({
   result: ModuleResult<DashboardCalendarData>;
 }) {
   return (
-    <WidgetCard title="Calendar" icon={<CalendarIcon className="h-4 w-4" />}>
+    <WidgetCard title="Calendar" icon={<CalendarIcon className="h-4 w-4" />} accent="sky">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.items.length === 0 ? (

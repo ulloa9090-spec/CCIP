@@ -14,7 +14,7 @@ export function NinetyDayGoalCardBody({
   result: ModuleResult<DashboardNinetyDayGoalData>;
 }) {
   return (
-    <WidgetCard title="90-Day Goal" icon={<Flag className="h-4 w-4" />}>
+    <WidgetCard title="90-Day Goal" icon={<Flag className="h-4 w-4" />} accent="violet">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.cycle === null ? (

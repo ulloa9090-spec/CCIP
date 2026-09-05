@@ -11,6 +11,7 @@ export * from "./progress-card";
 export * from "./weekly-score-card";
 export * from "./idea-parking-card";
 export * from "./weekly-review-card";
+export * from "./recent-activity-card";
 export * from "./widget-card";
 export * from "./widget-skeleton";
 export * from "./widget-error";

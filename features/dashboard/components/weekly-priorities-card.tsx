@@ -13,7 +13,7 @@ export function WeeklyPrioritiesCardBody({
   result: ModuleResult<DashboardWeeklyPrioritiesData>;
 }) {
   return (
-    <WidgetCard title="Weekly Priorities" icon={<ListChecks className="h-4 w-4" />}>
+    <WidgetCard title="Weekly Priorities" icon={<ListChecks className="h-4 w-4" />} accent="cyan">
       {result.status === "error" ? (
         <WidgetError />
       ) : result.data.priorities.length === 0 ? (
