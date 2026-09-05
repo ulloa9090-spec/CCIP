@@ -2,9 +2,14 @@
 
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { format } from "date-fns";
+import { CATEGORY_CSS_VAR, type CategoryColor } from "@/lib/design/category-colors";
 import type { AnalyticsMetric } from "@/features/analytics/types";
 
-const SERIES_COLORS = ["var(--accent)", "var(--success)"];
+/** First series uses the metric's own category color; a second series (e.g. "created" vs "completed") stays neutral so the two don't compete. */
+function seriesColors(color: CategoryColor | "danger"): string[] {
+  const primary = color === "danger" ? "var(--danger)" : CATEGORY_CSS_VAR[color];
+  return [primary, "var(--text-secondary)"];
+}
 
 function formatTick(dateStr: string): string {
   return format(new Date(`${dateStr}T00:00:00`), "MMM d");
@@ -16,7 +21,14 @@ function formatValue(value: number, unit: AnalyticsMetric["unit"]): string {
   return String(value);
 }
 
-export function MetricChart({ metric }: { metric: AnalyticsMetric }) {
+export function MetricChart({
+  metric,
+  color,
+}: {
+  metric: AnalyticsMetric;
+  color: CategoryColor | "danger";
+}) {
+  const seriesColorList = seriesColors(color);
   const dates = metric.series[0]?.points.map((p) => p.date) ?? [];
   const data = dates.map((date, i) => {
     const row: Record<string, number | string | null> = { date };
@@ -55,7 +67,7 @@ export function MetricChart({ metric }: { metric: AnalyticsMetric }) {
               type="monotone"
               dataKey={s.label}
               name={s.label}
-              stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
+              stroke={seriesColorList[i % seriesColorList.length]}
               strokeWidth={2}
               dot={false}
               connectNulls={false}

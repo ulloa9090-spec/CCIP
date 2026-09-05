@@ -2,18 +2,19 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { BookOpen, CheckCircle2, ClipboardCheck, Flame, History, Lightbulb, Timer } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils/cn";
+import { CATEGORY_CHIP_CLASSES, type CategoryColor } from "@/lib/design/category-colors";
 import type { ActivityItemType, DashboardActivityData, ModuleResult } from "@/features/dashboard/types";
 import { safeModule, getRecentActivityData } from "@/features/dashboard/get-dashboard-data";
 import { WidgetCard } from "./widget-card";
 import { WidgetError } from "./widget-error";
 
-const TYPE_META: Record<ActivityItemType, { icon: typeof CheckCircle2; classes: string }> = {
-  task: { icon: CheckCircle2, classes: "bg-category-blue/15 text-category-blue" },
-  habit: { icon: Flame, classes: "bg-category-orange/15 text-category-orange" },
-  focus: { icon: Timer, classes: "bg-category-teal/15 text-category-teal" },
-  journal: { icon: BookOpen, classes: "bg-category-cyan/15 text-category-cyan" },
-  idea: { icon: Lightbulb, classes: "bg-category-amber/15 text-category-amber" },
-  review: { icon: ClipboardCheck, classes: "bg-category-violet/15 text-category-violet" },
+const TYPE_META: Record<ActivityItemType, { icon: typeof CheckCircle2; color: CategoryColor }> = {
+  task: { icon: CheckCircle2, color: "blue" },
+  habit: { icon: Flame, color: "orange" },
+  focus: { icon: Timer, color: "teal" },
+  journal: { icon: BookOpen, color: "cyan" },
+  idea: { icon: Lightbulb, color: "amber" },
+  review: { icon: ClipboardCheck, color: "violet" },
 };
 
 function occurredAtLabel(occurredAt: string): string {
@@ -42,13 +43,13 @@ export function RecentActivityCardBody({
       ) : (
         <ul className="flex flex-col gap-2.5">
           {result.data.items.map((item) => {
-            const { icon: Icon, classes } = TYPE_META[item.type];
+            const { icon: Icon, color } = TYPE_META[item.type];
             return (
               <li key={item.id} className="flex items-center gap-2.5">
                 <span
                   className={cn(
                     "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-                    classes,
+                    CATEGORY_CHIP_CLASSES[color],
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden="true" />

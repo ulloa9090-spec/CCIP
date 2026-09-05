@@ -6,6 +6,7 @@ import { toggleHabitLog } from "@/features/habits/actions";
 import { isHabitDueOn, toDateStr } from "@/features/habits/progress";
 import type { Habit } from "@/features/habits/types";
 import { cn } from "@/lib/utils/cn";
+import { CATEGORY_DOT_CLASSES, pickCategoryColor } from "@/lib/design/category-colors";
 
 export function WeekGrid({
   habits,
@@ -46,7 +47,18 @@ export function WeekGrid({
             const doneDates = new Set(doneDatesByHabit[habit.id] ?? []);
             return (
               <tr key={habit.id} className="border-t border-border">
-                <td className="p-2 font-medium text-text-primary">{habit.name}</td>
+                <td className="p-2 font-medium text-text-primary">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "h-2 w-2 shrink-0 rounded-full",
+                        CATEGORY_DOT_CLASSES[pickCategoryColor(habit.id)],
+                      )}
+                      aria-hidden="true"
+                    />
+                    {habit.name}
+                  </span>
+                </td>
                 {weekDays.map((d) => {
                   const dateStr = toDateStr(d);
                   const due = isHabitDueOn(habit, d);

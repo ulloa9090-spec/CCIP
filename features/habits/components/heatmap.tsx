@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { isHabitDueOn, toDateStr } from "@/features/habits/progress";
 import type { Habit } from "@/features/habits/types";
 import { cn } from "@/lib/utils/cn";
+import { CATEGORY_DOT_CLASSES, pickCategoryColor } from "@/lib/design/category-colors";
 
 export function Heatmap({
   habits,
@@ -18,7 +19,16 @@ export function Heatmap({
         const doneDates = new Set(doneDatesByHabit[habit.id] ?? []);
         return (
           <div key={habit.id} className="flex items-center gap-3">
-            <span className="w-32 shrink-0 truncate text-sm font-medium text-text-primary">{habit.name}</span>
+            <span className="flex w-32 shrink-0 items-center gap-2 truncate text-sm font-medium text-text-primary">
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  CATEGORY_DOT_CLASSES[pickCategoryColor(habit.id)],
+                )}
+                aria-hidden="true"
+              />
+              <span className="truncate">{habit.name}</span>
+            </span>
             <div className="flex gap-0.5">
               {days.map((d) => {
                 const dateStr = toDateStr(d);
