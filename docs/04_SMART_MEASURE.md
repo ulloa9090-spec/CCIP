@@ -1,5 +1,9 @@
 # 04 — Smart Measure
 
+> For the detailed AR engine design behind the Automatic/Adaptive Guided
+> modes below (tracking states, coordinate spaces, AR-specific fallbacks,
+> accuracy validation), see `21_AR_MEASUREMENT_SYSTEM.md`.
+
 ## Purpose
 Measure an Object, Bin or Spot using a common measurement engine.
 

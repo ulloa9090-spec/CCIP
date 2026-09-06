@@ -23,6 +23,16 @@
 18. `18_CLAUDE_HANDOFF.md` — exactly how to start Claude Code.
 19. `19_SESSION_TASK_TEMPLATE.md` — reusable per-task prompt.
 20. `20_PHASE0_EXECUTION_RESEARCH_PROMPT.md` — Phase 0 kickoff instruction: capability spike, benchmark protocol and required pre-implementation report.
+21. `21_AR_MEASUREMENT_SYSTEM.md` — deep technical dive on the AR measurement engine (modes, tracking, coordinate spaces, accuracy validation). Subordinate to `04_SMART_MEASURE.md`; read that first.
+22. `22_AR_MEASUREMENT_ROADMAP_DETAIL.md` — milestone-level detail for the AR work inside Phases 2/5/6/8/9/10 of `17_IMPLEMENTATION_ROADMAP.md`. Does not reorder phases or move the Phase 0 gate.
+23. `23_AR_PLATFORM_INTEGRATION_ADDENDUM.md` — candidate shared-UI/native-adapter bridge strategy, applicable only if Phase 0 selects a shared cross-platform layer.
+
+**Framework note**: docs 21–23 mention a shared cross-platform UI layer
+(Flutter is discussed as one candidate) alongside native ARKit/ARCore
+adapters. This remains a candidate under evaluation, not a decision —
+`02_MASTER_ARCHITECTURE.md` ("Cross-platform decision") and
+`20_PHASE0_EXECUTION_RESEARCH_PROMPT.md` section 6 still govern when and
+how that choice gets made, from real-device Phase 0 evidence.
 
 ## Minimal context rule
 Do not load all documents for every task.

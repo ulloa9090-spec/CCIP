@@ -91,6 +91,14 @@ against this exact method so benchmarking can start the moment it lands.
    section 6 (native vs. shared cross-platform layer) is made from that
    evidence, not before.
 
+## Open architecture decisions (tracked here, not pre-decided)
+
+- **Cross-platform framework**: native iOS/Android vs. a shared-UI layer
+  with native AR adapters. `docs/23_AR_PLATFORM_INTEGRATION_ADDENDUM.md`
+  documents Flutter as one candidate for the shared-UI branch, evaluated
+  the same way any other candidate would be (see that document's "Bridge
+  decision") — it is not selected. Decide from Phase 0 evidence only.
+
 ## Completion report (per `docs/03_CLAUDE_CODE_RULES.md`)
 
 **Files changed**: see the commit this file ships in.
