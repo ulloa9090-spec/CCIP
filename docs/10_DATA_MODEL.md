@@ -39,6 +39,14 @@
 ## Object minimum
 `id, code?, name?, weight?, currentBinId?, currentSpotId?, createdAt`
 
+## Pending entities (not yet implemented)
+`24_AR_CAPABILITIES_ADDENDUM.md` introduces `MeasurementSession` (owns
+many `MeasurementGeometry`) as a grouping layer above the `Measurement`
+entity above — e.g. one session against Bin A-104 holding a Line, a
+Height and a Cuboid measurement together. Add these two entities here
+with their fields once that capability is implemented; until then this
+section is the pointer, not the schema.
+
 ## Rules
 - UUID-style stable IDs
 - canonical base unit internally

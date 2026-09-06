@@ -115,6 +115,12 @@ Object/Bin/Spot `length, width, height, volume` fields defined in
 `10_DATA_MODEL.md`. Output D1/D2/D3, semantic L/W/H and volume. Support
 manual AR, assisted CV, support-plane, and future depth/LiDAR workflows.
 
+### Cylinder, and multiple geometries per session
+`24_AR_CAPABILITIES_ADDENDUM.md` extends this list with a `CYLINDER`
+mode and with `MeasurementSession`s that hold several geometries at
+once (Line, Height, Angle, Rectangle, Cuboid, Cylinder, ...) plus a
+derived-quantity calculator. Phase 2/5 scope, not required for Phase 0.
+
 ## Computer vision cooperation
 
 Recommended pipeline:
