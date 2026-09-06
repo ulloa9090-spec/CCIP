@@ -143,7 +143,10 @@ A `MeasurementSession` should be able to own a collection such as:
 
 Conceptual geometry types: `LINE`, `HEIGHT`, `ANGLE`, `RECTANGLE`,
 `POLYLINE`, `POLYGON`, `CUBOID`, `CYLINDER`. Future types may be added
-without redesigning the session.
+without redesigning the session. (`25_MEASUREMENT_TOOLS_CATALOG.md`
+section 31 has since superseded this with the full authoritative list,
+including Wall, Curved Wall, Heap, Pit and others — treat that one as
+current.)
 
 Each geometry should preserve:
 

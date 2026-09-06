@@ -121,6 +121,12 @@ mode and with `MeasurementSession`s that hold several geometries at
 once (Line, Height, Angle, Rectangle, Cuboid, Cylinder, ...) plus a
 derived-quantity calculator. Phase 2/5 scope, not required for Phase 0.
 
+### Full tool catalog
+`25_MEASUREMENT_TOOLS_CATALOG.md` is the complete target tool list this
+engine eventually serves — the modes above are its "Level A" subset.
+Live per-tool implementation status is tracked in
+`phase0/TOOL_REGISTRY_STATUS.md`.
+
 ## Computer vision cooperation
 
 Recommended pipeline:

@@ -13,6 +13,11 @@ change phase ordering, does not move the Phase 0 gate, and does not
 decide the cross-platform framework — see
 `21_AR_MEASUREMENT_SYSTEM.md` ("Relationship to the rest of the canon").
 
+`25_MEASUREMENT_TOOLS_CATALOG.md` section 38 gives a parallel,
+tool-by-tool staging (Stage 1-5) for the same work with a mapping table
+back to the milestones below — read that section alongside this one
+rather than treating them as two separate roadmaps.
+
 ## M1 — AR Measurement Core (maps to Phase 2)
 
 Cross-platform shell (framework decided at Phase 0 — a shared-UI layer is

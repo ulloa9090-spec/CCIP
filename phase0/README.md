@@ -91,6 +91,14 @@ against this exact method so benchmarking can start the moment it lands.
    section 6 (native vs. shared cross-platform layer) is made from that
    evidence, not before.
 
+## Tool registry status
+
+`TOOL_REGISTRY_STATUS.md` in this folder tracks the live
+implementation/validation status of every tool defined in
+`docs/25_MEASUREMENT_TOOLS_CATALOG.md`. Update it whenever a tool moves
+between `SPECIFIED` / `PROTOTYPE` / `IMPLEMENTED` / `VALIDATING` /
+`PRODUCTION_READY` / `DISABLED`.
+
 ## Open architecture decisions (tracked here, not pre-decided)
 
 - **Cross-platform framework**: native iOS/Android vs. a shared-UI layer

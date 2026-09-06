@@ -27,6 +27,7 @@
 22. `22_AR_MEASUREMENT_ROADMAP_DETAIL.md` — milestone-level detail for the AR work inside Phases 2/5/6/8/9/10 of `17_IMPLEMENTATION_ROADMAP.md`. Does not reorder phases or move the Phase 0 gate.
 23. `23_AR_PLATFORM_INTEGRATION_ADDENDUM.md` — candidate shared-UI/native-adapter bridge strategy, applicable only if Phase 0 selects a shared cross-platform layer.
 24. `24_AR_CAPABILITIES_ADDENDUM.md` — Cylinder geometry and Multi-Measurement Session/Measurement Calculator, extending `21_AR_MEASUREMENT_SYSTEM.md`. Phase 2/5 scope, not required for Phase 0.
+25. `25_MEASUREMENT_TOOLS_CATALOG.md` — the full target tool catalog (Line through Pit, 3 capability levels) for Smart Measure. Target capability list, not implementation status — see `phase0/TOOL_REGISTRY_STATUS.md` for what's actually built.
 
 **Framework note**: docs 21–23 mention a shared cross-platform UI layer
 (Flutter is discussed as one candidate) alongside native ARKit/ARCore
