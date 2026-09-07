@@ -14,13 +14,14 @@ Status values (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 30):
 
 | Item | Status | Notes |
 |---|---|---|
-| Capability detection (camera/AR/IMU/depth/LiDAR) | `IMPLEMENTED`, not yet `VALIDATING` | Built for both iOS and Android in `phase0/ios` and `phase0/android`; not yet run on real hardware, so not promoted to `VALIDATING`. See `phase0/README.md`. |
+| Capability detection — iOS | `VALIDATING` | **PASS on real hardware**: `iPhone18,2`, iOS 26.6.1, Tier C/LiDAR. Evidence: `phase0/evidence/ios/RESULT.md`. Held at `VALIDATING` rather than `PRODUCTION_READY` until it's also been run on a non-LiDAR ("unsupported/lesser device") iPhone to confirm the fallback path actually works, not just the best case. |
+| Capability detection — Android | `IMPLEMENTED`, not yet `VALIDATING` | Built in `phase0/android`; not yet run on real hardware. See `phase0/README.md`. |
 
 ## Level A — Core AR geometry
 
 | Tool | Status | Notes |
 |---|---|---|
-| Line | `SPECIFIED` | Next queued task (`phase0/README.md` "Next task") — point-to-point AR measurement. First tool expected to reach `PROTOTYPE`. |
+| Line | `PROTOTYPE` (iOS only) | Implemented: `phase0/ios/BoxOpPhase0/ARMeasureView.swift` + `ARMeasureScreen.swift` + `PointToPointMeasurement.swift`. Not yet run on real hardware (`phase0/README.md` "Next task") — do not promote past `PROTOTYPE` until it has. Android not started. |
 | Height | `SPECIFIED` | |
 | Distance Meter | `SPECIFIED` | |
 | Angle | `SPECIFIED` | |

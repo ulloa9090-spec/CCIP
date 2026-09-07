@@ -1,0 +1,22 @@
+{
+  "platform": "ios",
+  "osVersion": "26.6.1",
+  "deviceModel": "iPhone18,2",
+  "harnessVersion": "0.1.0-phase0",
+  "timestamp": "2026-09-07T18:39:03Z",
+  "cameraAvailable": true,
+  "cameraAuthorizationStatus": "authorized",
+  "arSupported": true,
+  "arSupportDetail": "ARWorldTrackingConfiguration.isSupported == true",
+  "planeDetectionSupported": true,
+  "accelerometerAvailable": true,
+  "gyroscopeAvailable": true,
+  "deviceMotionAvailable": true,
+  "depthSupported": true,
+  "lidarAvailable": true,
+  "tofAvailable": false,
+  "selectedMeasurementStrategy": "Reference-Assisted / Station Mode using LiDAR scene mesh for higher-precision geometry",
+  "fallbackStrategy": "Fall back to AR point-to-point (world tracking, no mesh) if mesh reconstruction quality is poor",
+  "knownLimitations": "",
+  "rawNotes": ""
+}

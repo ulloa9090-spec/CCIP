@@ -24,10 +24,11 @@ organization network policy that blocks `dl.google.com` (confirmed via
   verified in isolation. First real sync happens in Android Studio on
   your machine — see `android/SETUP.md`.
 
-Neither app has been run on real hardware yet. That is the next thing
-*you* do, not something this pass could simulate — Phase 0's whole
-point is real-device evidence (`docs/20_PHASE0_EXECUTION_RESEARCH_PROMPT.md`
-section 15).
+Neither app had been run on real hardware from inside this environment —
+that was always the next thing *you* do, not something this pass could
+simulate. **Update**: iOS capability detection has since been run on a
+real iPhone (see "Current status" below) — that step is done. Android
+still has not.
 
 ## Structure
 
@@ -38,6 +39,10 @@ phase0/
 │   ├── capability-matrix.schema.json
 │   ├── BENCHMARK_PROTOCOL.md
 │   └── benchmark-results-template.csv
+├── evidence/                    # real-device evidence artifacts — never overwrite, add dated/tagged files
+│   └── ios/
+│       ├── RESULT.md            # iOS capability spike: PASS (iPhone18,2, iOS 26.6.1, Tier C/LiDAR)
+│       └── boxop-capability-matrix-1788806343.json
 ├── ios/                         # Swift sources + setup guide (no .xcodeproj — see ios/SETUP.md for why)
 │   ├── SETUP.md
 │   ├── Info-Additions.md
@@ -48,43 +53,54 @@ phase0/
     └── app/src/main/java/com/boxop/phase0/*.kt
 ```
 
-## Current slice: capability detection only
+## Current status
 
-Both harnesses currently ship **one screen**: a live capability matrix
-(camera, AR/world tracking, plane detection, accelerometer, gyroscope,
-fused device motion, depth API, LiDAR mesh / discrete ToF), matching the
-contract in `shared/CAPABILITY_MATRIX.md`, with tester notes and a
-JSON export via the OS share sheet.
+| Platform | Capability detection | AR point-to-point measurement |
+|---|---|---|
+| iOS | **PASS on real hardware** — `evidence/ios/RESULT.md` (`iPhone18,2`, iOS 26.6.1, Tier C/LiDAR) | Implemented (`ARMeasureView.swift`, `ARMeasureScreen.swift`, `PointToPointMeasurement.swift`), **not yet run on real hardware** |
+| Android | Implemented, **not yet run on real hardware** | Not started |
 
-This was scoped deliberately narrow rather than also including the AR
-point-to-point measurement screen in the same pass, for two reasons:
+iOS ships two tabs now: **Capabilities** (validated) and **Measure** (the
+point-to-point spike, awaiting its own real-device run). Android still
+ships capability detection only.
 
-1. `docs/03_CLAUDE_CODE_RULES.md` rule 2 ("one roadmap phase/task at a
-   time") applies recursively inside Phase 0 too — capability detection
-   and AR measurement are separable, independently useful slices.
-2. AR node placement/hit-testing code is the highest-risk part of this
-   spike and could not be compiled or run here at all (see above). It is
-   safer to land it in a follow-up pass once you've confirmed the
-   capability-detection slice actually builds and runs on your Mac and
-   Android Studio — that first real build will surface any small API
-   drift immediately, which is much cheaper to fix than debugging a
-   larger uncompiled AR screen blind.
+This was built up one slice at a time rather than all at once, per
+`docs/03_CLAUDE_CODE_RULES.md` rule 2 ("one roadmap phase/task at a time")
+— capability detection landed and was confirmed working on real iOS
+hardware before the higher-risk AR point-to-point code was added on top
+of it, so any regression is easy to isolate.
 
-## Next task (queued, not started)
+## Next task
 
-**AR point-to-point measurement screen** for both platforms: tap two
-points, raycast onto the AR world mesh/plane, report the 3D distance
-between them as one edge length (per `docs/04_SMART_MEASURE.md`
-"Point-to-Point" mode). `shared/BENCHMARK_PROTOCOL.md` is already written
-against this exact method so benchmarking can start the moment it lands.
+**Run the iOS Measure tab on the real iPhone** and, once it produces a
+sane distance, start filling in `shared/BENCHMARK_PROTOCOL.md` /
+`shared/benchmark-results-template.csv` against a tape measure. In
+parallel or after: **run `android/` on a real Android phone** for its
+own capability-detection evidence (same bar as `evidence/ios/RESULT.md`),
+then bring the AR point-to-point spike to Android
+(`ArSceneView`/ARCore raycast — see `docs/23_AR_PLATFORM_INTEGRATION_ADDENDUM.md`
+for the adapter boundary that still applies regardless of the eventual
+framework choice).
+
+Deliberately still not started (per the exact restriction list from the
+iOS handoff, which applies equally to Android and to any further iOS
+work until this spike is validated): automatic box/cuboid measurement,
+L/W/H/volume, edge detection, object recognition, the Bin/Spot system,
+an external station, Bluetooth, full report export, backend, sync, AI.
+One capability first: **a reproducible physical distance measurement
+between two points, on the real device.**
 
 ## How to run Phase 0 end to end
 
-1. Build and run `ios/` on your iPhone — `ios/SETUP.md`.
-2. Build and run `android/` on your Android phone — `android/SETUP.md`.
-3. Export and collect both capability-matrix JSON files.
-4. Once the measurement screen lands (next task), follow
-   `shared/BENCHMARK_PROTOCOL.md` on both devices and fill in
+1. ~~Build and run `ios/`'s Capabilities tab on your iPhone~~ — **done**,
+   see `evidence/ios/RESULT.md`.
+2. Build and run `ios/`'s Measure tab on the same iPhone — `ios/SETUP.md`
+   section 6. Compare its output against a tape measure.
+3. Build and run `android/` on your Android phone — `android/SETUP.md`.
+   Export its capability matrix into `evidence/android/` (create that
+   folder; follow the `evidence/ios/` naming pattern).
+4. Follow `shared/BENCHMARK_PROTOCOL.md` on both devices once both have a
+   working point-to-point measurement, and fill in
    `shared/benchmark-results-template.csv`.
 5. Bring both capability matrices and the benchmark CSV back — the
    architecture decision in `docs/20_PHASE0_EXECUTION_RESEARCH_PROMPT.md`
@@ -131,6 +147,50 @@ against Google's Maven repo here — Android Studio's first sync on your
 machine is the real check, and its Upgrade Assistant is safe to accept
 if it suggests newer versions.
 
-**Next recommended task**: build the AR point-to-point measurement
-screen for both platforms (see above), after you've confirmed both
-capability-detection harnesses build and run on your own hardware.
+**Next recommended task (superseded, see below)**: build the AR
+point-to-point measurement screen for both platforms, after you've
+confirmed both capability-detection harnesses build and run on your own
+hardware.
+
+## Completion report — iOS capability PASS + AR point-to-point spike
+
+**Files changed**: `phase0/evidence/ios/RESULT.md`,
+`phase0/evidence/ios/boxop-capability-matrix-1788806343.json`,
+`phase0/ios/BoxOpPhase0/ARMeasureView.swift`,
+`phase0/ios/BoxOpPhase0/ARMeasureScreen.swift`,
+`phase0/ios/BoxOpPhase0/PointToPointMeasurement.swift`,
+`phase0/ios/BoxOpPhase0/ContentView.swift` (now a two-tab `TabView`),
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`, this file,
+`phase0/TOOL_REGISTRY_STATUS.md`.
+
+**Implementation summary**: recorded the user's real-device capability
+evidence (iPhone18,2, iOS 26.6.1 — camera, ARKit world tracking, plane
+detection, IMU, scene depth and LiDAR mesh all confirmed present) as the
+canonical Phase 0 iOS PASS artifact. Built the AR point-to-point
+measurement spike on top of the now-validated capability harness: tap a
+point (raycast against existing plane geometry, falling back to an
+estimated plane), tap a second point, see a line and the 3D Euclidean
+distance between them, per the exact 11-step minimal flow and the "do
+not build yet" restriction list the user specified. Distance math lives
+in a small ARKit/SceneKit-free `PointToPointMeasurement.distance(from:to:)`
+function so it's unit-testable once a test target exists, without adding
+one now (the user's own project deliberately has `Testing System: None`).
+
+**Tests/results**: no automated tests (see above — no test target in
+the project by deliberate choice). Not compiled in this environment
+(still no macOS/Xcode here); the code follows standard, stable
+ARKit/SceneKit/simd APIs (`ARWorldTrackingConfiguration`, `raycastQuery`,
+`session.raycast`, `SCNCylinder`/`SCNSphere`, `simd_quatf` for
+gimbal-lock-free line orientation).
+
+**Limitations**: the Measure tab has not run on real hardware yet —
+that's the immediate next step, on the same iPhone that already passed
+capability detection. Android has neither leg run on real hardware.
+Phase 0 as defined in `docs/20_PHASE0_EXECUTION_RESEARCH_PROMPT.md`
+section 15 is not complete until both platforms have real-device
+evidence for both capability detection and point-to-point measurement.
+
+**Next recommended task**: run the iOS Measure tab on the iPhone
+(`ios/SETUP.md` section 6), sanity-check it against a tape measure, then
+start the Android capability-detection real-device run so that leg
+isn't the last one standing.

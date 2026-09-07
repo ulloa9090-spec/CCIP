@@ -33,7 +33,17 @@ placeholder content.
 
 You should end up with these files in the target:
 `BoxOpPhase0App.swift`, `ContentView.swift`, `CapabilityDetector.swift`,
-`CapabilityMatrix.swift`, `CapabilityReportView.swift`.
+`CapabilityMatrix.swift`, `CapabilityReportView.swift`,
+`ARMeasureView.swift`, `ARMeasureScreen.swift`,
+`PointToPointMeasurement.swift`.
+
+**Already have a working Phase 0 project from before?** You don't need to
+redo any of this. Just drag in the 3 new files
+(`ARMeasureView.swift`, `ARMeasureScreen.swift`,
+`PointToPointMeasurement.swift`) the same way, and re-drag
+`ContentView.swift` on top of the existing one, choosing **Replace** — it
+now shows two tabs (Capabilities, Measure) instead of one screen.
+Everything else in your project stays untouched.
 
 ## 3. Add the required permission strings
 
@@ -70,16 +80,33 @@ your target's Info settings (click the project in the navigator → the
 
 ## 6. Using the app
 
-- The single screen shows the full capability matrix read live from your
-  device: camera, AR/world tracking, plane detection, accelerometer,
-  gyroscope, fused device motion, scene depth, and LiDAR mesh support.
+The app now has two tabs:
+
+**Capabilities** (already validated — `phase0/evidence/ios/RESULT.md`):
+- Shows the full capability matrix read live from your device: camera,
+  AR/world tracking, plane detection, accelerometer, gyroscope, fused
+  device motion, scene depth, and LiDAR mesh support.
 - Fill in **Known limitations** / **Raw notes** with anything you notice
   (e.g. "tracking took a few seconds to stabilize", "AR unsupported on
   this model").
 - Tap **Export Capability Matrix (JSON)** and share it to yourself (Files,
   AirDrop, Messages, email — whatever's convenient) so the result can be
   collected and compared against the Android run. Field meanings are in
-  `phase0/shared/CAPABILITY_MATRIX.md`.
+  `phase0/shared/CAPABILITY_MATRIX.md`. **Name each export with the
+  device/date and keep it under `phase0/evidence/` — don't overwrite an
+  existing evidence file.**
+
+**Measure** (new — needs its first real-device run):
+1. Point the phone at a real surface (floor, table, wall) and move it
+   slowly for a second or two — ARKit needs a moment to find a plane.
+2. Tap a point on that surface: a small teal sphere appears there.
+3. Tap a second point: another sphere appears, a line is drawn between
+   them, and the distance shows at the bottom in meters.
+4. Tap anywhere to start a new measurement, or use **Reset** to restart
+   the AR session entirely.
+5. Compare the on-screen distance against a real tape measure at a few
+   distances and angles — that's the start of
+   `phase0/shared/BENCHMARK_PROTOCOL.md`.
 
 ## Troubleshooting
 
@@ -96,3 +123,14 @@ your target's Info settings (click the project in the navigator → the
   **Xcode → Settings → Accounts**, select your Apple ID, click **Manage
   Certificates…**, and add an "Apple Development" certificate with the +
   button, then retry.
+- **Measure tab is black or frozen** → this screen needs a real device;
+  it cannot run in the Simulator (no camera, no ARKit). Make sure the
+  run destination is your iPhone, not a simulator.
+- **Tapping does nothing on the Measure tab** → ARKit hasn't found a
+  plane under that point yet. Move the phone slowly over the surface
+  first (this is what "world tracking" is doing), then tap again.
+- **The line/points look slightly off after moving around a lot** → this
+  is normal drift for a phone with no depth sensor; on a device with
+  LiDAR (like the one already validated), accuracy should hold up much
+  better over distance and time. This is exactly what
+  `phase0/shared/BENCHMARK_PROTOCOL.md` exists to measure precisely.
