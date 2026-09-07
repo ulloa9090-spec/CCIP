@@ -187,6 +187,22 @@ generalized version needs its first real-device run):
   exactly what the warning is for, not a bug to "fix" by hiding it.
 - **"Set Height Point" is disabled** → same cause as "Add Point" being
   disabled: the reticle needs to be resting on a valid surface first.
+- **A segment's text label is missing, flickers, or looks wrong from some
+  angles** → the labels use `SCNText` with a billboard constraint so they
+  always face the camera; a documented SceneKit gotcha is `SCNText`
+  rendering invisible from the back face of a single-sided material,
+  which this code already guards against (`isDoubleSided = true`). If you
+  still see this, it's a real, not-yet-explained device issue worth
+  writing down — don't assume it's already handled just because the code
+  guards the known cause.
+- **Labels feel sluggish or the app's frame rate drops with many
+  segments/long shapes** → `SCNText` is a real, documented SceneKit
+  performance cost (each label is its own polygon-heavy geometry); this
+  hasn't been stress-tested with many segments on a real device yet. If
+  it becomes a real problem, the fix is switching labels to a
+  `SpriteKit`/texture-based billboard instead of `SCNText` — not
+  something to pre-optimize without device evidence that it's actually
+  slow.
 
 ## 7. Running the unit tests (geometry & unit-conversion math)
 

@@ -436,3 +436,21 @@ before adding automatic rectangle-suggestion (still explicitly deferred)
 or any other new Measure-tab feature. Also still open: running the
 XCTest suites in Xcode for their first pass/fail signal, and the Android
 capability-detection real-device run, which hasn't moved.
+
+**Addendum (Context7 + Firecrawl verification pass)**: with the user's
+permission, checked the implementation above against current Apple
+docs and community reports. Confirmed correct and unchanged:
+`ARSCNView.raycastQuery(from:allowing:alignment:)` takes view-space
+(pixel) coordinates, not normalized 0-1, matching existing code;
+`SCNText`/`SCNBillboardConstraint`/`SCNNode.pivot` usage matches current
+API signatures. Two real, documented risks surfaced and written into
+`ios/SETUP.md`'s troubleshooting section rather than silently
+"fixed": (1) a known SceneKit gotcha where a billboard-constrained
+`SCNText` node can render invisible from certain angles due to
+single-sided materials -- this code already sets `isDoubleSided = true`,
+which addresses the documented cause, but it hasn't been confirmed
+against real hardware, so it's flagged as mitigated-not-verified; (2) a
+documented real-world report that `SCNText` is expensive to render at
+scale (many labels/long text) -- not yet stress-tested here, and not
+pre-optimized without device evidence it's actually a problem. No code
+changed as a result of this pass; `TOOL_REGISTRY_STATUS.md` unaffected.
