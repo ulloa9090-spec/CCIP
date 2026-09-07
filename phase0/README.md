@@ -389,9 +389,50 @@ than freshly-fetched docs. These tests cover only the pure math layer —
 real-device behavior are still untested by anything but the manual
 benchmark protocol.
 
-**Next recommended task**: in-scene per-segment measurement labels in the
-AR view, including the live/active segment updating in real time —
-explicitly excluding automatic rectangle-suggestion, per direct
-instruction. Also still open: running these tests in Xcode for the first
-real pass/fail signal, and the Android capability-detection real-device
-run, which hasn't moved.
+**Next recommended task (superseded, see below)**: in-scene per-segment
+measurement labels in the AR view, including the live/active segment
+updating in real time — explicitly excluding automatic
+rectangle-suggestion, per direct instruction. Also still open: running
+these tests in Xcode for the first real pass/fail signal, and the
+Android capability-detection real-device run, which hasn't moved.
+
+## Completion report — in-scene per-segment measurement labels
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift` (extended),
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`, this file.
+
+**Implementation summary**: per explicit request, every segment now
+carries its own always-camera-facing text label directly in the AR scene
+(via `SCNText` + `SCNBillboardConstraint`), showing that segment's length
+in feet/inches (`UnitFormatting.feetAndInches`) — not just in the bottom
+result cards. This covers every confirmed base segment, the closing
+segment once the shape is closed, the height segment once a height point
+is set, and the live/active segment, which updates its label in place
+every AR frame as the reticle moves (mirroring the existing
+mutate-in-place pattern used for the live line/marker, rather than
+recreating the label node each frame). Labels are rebuilt alongside the
+rest of the confirmed geometry in `syncConfirmedNodes()` and anchored to
+each segment's midpoint via a re-centered pivot (so the text doesn't
+trail off to one side of the point it's labeling). Per explicit
+instruction, automatic rectangle-suggestion was **not** implemented as
+part of this — that stays a distinct, not-yet-started increment.
+
+**Tests/results**: not covered by the new XCTest suites (they exercise
+only the ARKit/SceneKit-free math layer, per design); not compiled or run
+in this environment. Follows standard, documented `SCNText`/
+`SCNBillboardConstraint` APIs.
+
+**Limitations**: not run on real hardware yet. Label legibility/placement
+(font size, the fixed vertical offset, overlap when segments are short or
+close together) has not been checked against a live device and may need
+tuning once it is. Labels are plain, unlit, camera-facing text — no
+background plate/contrast treatment yet, which could hurt legibility
+against a busy real-world background; a good candidate for the first
+real-device pass to flag.
+
+**Next recommended task**: run this on the iPhone and check label
+legibility/placement at a few distances and angles; if needed, revisit
+before adding automatic rectangle-suggestion (still explicitly deferred)
+or any other new Measure-tab feature. Also still open: running the
+XCTest suites in Xcode for their first pass/fail signal, and the Android
+capability-detection real-device run, which hasn't moved.

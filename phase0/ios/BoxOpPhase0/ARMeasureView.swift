@@ -46,12 +46,14 @@ struct ARMeasureView: UIViewRepresentable {
 
         private var confirmedMarkerNodes: [SCNNode] = []
         private var confirmedSegmentNodes: [SCNNode] = []
+        private var confirmedLabelNodes: [SCNNode] = []
         private var renderedPoints: [SIMD3<Float>] = []
         private var renderedIsClosed = false
         private var renderedHeightPoint: SIMD3<Float>?
 
         private var liveMarkerNode: SCNNode?
         private var liveSegmentNode: SCNNode?
+        private var liveLabelNode: SCNNode?
 
         init(parent: ARMeasureView) {
             self.parent = parent
@@ -110,25 +112,45 @@ struct ARMeasureView: UIViewRepresentable {
 
             confirmedMarkerNodes.forEach { $0.removeFromParentNode() }
             confirmedSegmentNodes.forEach { $0.removeFromParentNode() }
+            confirmedLabelNodes.forEach { $0.removeFromParentNode() }
             confirmedMarkerNodes.removeAll()
             confirmedSegmentNodes.removeAll()
+            confirmedLabelNodes.removeAll()
 
             for point in currentPoints {
                 confirmedMarkerNodes.append(addMarker(at: point, in: arView, color: .systemTeal, opacity: 1.0))
             }
             for i in 0 ..< max(0, currentPoints.count - 1) {
-                confirmedSegmentNodes.append(
-                    addLine(from: currentPoints[i], to: currentPoints[i + 1], in: arView, color: .systemTeal, opacity: 1.0)
-                )
+                let a = currentPoints[i]
+                let b = currentPoints[i + 1]
+                confirmedSegmentNodes.append(addLine(from: a, to: b, in: arView, color: .systemTeal, opacity: 1.0))
+                confirmedLabelNodes.append(addLabel(
+                    text: UnitFormatting.feetAndInches(meters: simd_distance(a, b)),
+                    at: labelPosition(from: a, to: b),
+                    in: arView,
+                    color: .white
+                ))
             }
             if measurement.isClosed, currentPoints.count >= 3,
                let first = currentPoints.first, let last = currentPoints.last {
                 confirmedSegmentNodes.append(addLine(from: last, to: first, in: arView, color: .systemTeal, opacity: 1.0))
+                confirmedLabelNodes.append(addLabel(
+                    text: UnitFormatting.feetAndInches(meters: simd_distance(last, first)),
+                    at: labelPosition(from: last, to: first),
+                    in: arView,
+                    color: .white
+                ))
             }
             if let heightPoint = measurement.heightPoint, currentPoints.count >= 3 {
                 confirmedMarkerNodes.append(addMarker(at: heightPoint, in: arView, color: .systemOrange, opacity: 1.0))
                 let footpoint = PolygonGeometry.footpoint(of: heightPoint, onPlaneOf: currentPoints)
                 confirmedSegmentNodes.append(addLine(from: footpoint, to: heightPoint, in: arView, color: .systemOrange, opacity: 1.0))
+                confirmedLabelNodes.append(addLabel(
+                    text: UnitFormatting.feetAndInches(meters: simd_distance(footpoint, heightPoint)),
+                    at: labelPosition(from: footpoint, to: heightPoint),
+                    in: arView,
+                    color: .systemOrange
+                ))
             }
 
             renderedPoints = currentPoints
@@ -164,7 +186,9 @@ struct ARMeasureView: UIViewRepresentable {
 
             guard let (from, to) = liveSegmentEndpoints else {
                 liveSegmentNode?.removeFromParentNode()
+                liveLabelNode?.removeFromParentNode()
                 liveSegmentNode = nil
+                liveLabelNode = nil
                 return
             }
 
@@ -173,13 +197,22 @@ struct ARMeasureView: UIViewRepresentable {
             } else {
                 liveSegmentNode = addLine(from: from, to: to, in: arView, color: .white, opacity: 0.6)
             }
+
+            let liveText = UnitFormatting.feetAndInches(meters: simd_distance(from, to))
+            if let liveLabelNode {
+                updateLabel(liveLabelNode, text: liveText, at: labelPosition(from: from, to: to))
+            } else {
+                liveLabelNode = addLabel(text: liveText, at: labelPosition(from: from, to: to), in: arView, color: .yellow)
+            }
         }
 
         func hideLiveVisuals() {
             liveMarkerNode?.removeFromParentNode()
             liveSegmentNode?.removeFromParentNode()
+            liveLabelNode?.removeFromParentNode()
             liveMarkerNode = nil
             liveSegmentNode = nil
+            liveLabelNode = nil
         }
 
         // MARK: - Node builders
@@ -216,6 +249,58 @@ struct ARMeasureView: UIViewRepresentable {
             (node.geometry as? SCNCylinder)?.height = CGFloat(max(length, 0.0001))
             node.simdPosition = (a + b) / 2
             node.simdOrientation = rotation(fromDefaultAxisTo: b - a)
+        }
+
+        /// World-space point a text label for a segment should sit at: the
+        /// midpoint, nudged up slightly so it doesn't overlap the line
+        /// itself.
+        private func labelPosition(from a: SIMD3<Float>, to b: SIMD3<Float>) -> SIMD3<Float> {
+            (a + b) / 2 + SIMD3<Float>(0, 0.015, 0)
+        }
+
+        /// A small always-camera-facing text label showing a segment's
+        /// length, per-segment in-scene (not just the bottom result cards).
+        /// `SCNText` is authored in point-sized local units, so the node is
+        /// scaled down to a real-world size; a `SCNBillboardConstraint`
+        /// keeps it legible regardless of viewing angle.
+        private func addLabel(text: String, at position: SIMD3<Float>, in arView: ARSCNView, color: UIColor) -> SCNNode {
+            let textGeometry = SCNText(string: text, extrusionDepth: 0)
+            textGeometry.font = UIFont.systemFont(ofSize: 10, weight: .semibold)
+            textGeometry.flatness = 0.2
+            textGeometry.firstMaterial?.diffuse.contents = color
+            textGeometry.firstMaterial?.lightingModel = .constant
+            textGeometry.firstMaterial?.isDoubleSided = true
+
+            let node = SCNNode(geometry: textGeometry)
+            node.scale = SCNVector3(0.0012, 0.0012, 0.0012)
+            node.simdPosition = position
+            node.constraints = [SCNBillboardConstraint()]
+            centerTextPivot(node)
+            arView.scene.rootNode.addChildNode(node)
+            return node
+        }
+
+        /// Updates an existing label's text/position in place rather than
+        /// recreating the node -- called every AR frame for the live
+        /// segment's label, so it skips re-centering the pivot unless the
+        /// displayed string actually changed.
+        private func updateLabel(_ node: SCNNode, text: String, at position: SIMD3<Float>) {
+            node.simdPosition = position
+            guard let textGeometry = node.geometry as? SCNText,
+                  (textGeometry.string as? String) != text else { return }
+            textGeometry.string = text
+            centerTextPivot(node)
+        }
+
+        /// `SCNText` draws starting at its local origin, so a fresh node's
+        /// text trails off to one side of `position`. Re-centering the
+        /// pivot on the text's own bounding box anchors it on `position`
+        /// instead.
+        private func centerTextPivot(_ node: SCNNode) {
+            let (min, max) = node.boundingBox
+            let dx = (max.x - min.x) / 2 + min.x
+            let dy = (max.y - min.y) / 2 + min.y
+            node.pivot = SCNMatrix4MakeTranslation(dx, dy, 0)
         }
 
         /// `SCNCylinder` is authored along its local +Y axis. Rotate that

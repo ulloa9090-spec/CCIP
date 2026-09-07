@@ -12,7 +12,12 @@ Two screens, built up one Phase 0 slice at a time
    `ARMeasureView.swift`, `ARMeasureScreen.swift`): start, place an
    unlimited number of points one at a time via a continuous
    screen-center reticle raycast, see each segment and the running total
-   distance live, undo/finish/clear. Optionally **Close Shape** to turn
+   distance live, undo/finish/clear. Every confirmed segment (and the
+   closing segment, and the height segment once set) carries an
+   in-scene, always-camera-facing text label showing its length directly
+   over the geometry, not just in the bottom result cards; the live/active
+   segment gets the same treatment, updated in place every AR frame.
+   Optionally **Close Shape** to turn
    the polyline into a polygon (perimeter, planar area, interior angles,
    automatic rectangle detection with length×width), then optionally
    place one **height point** to derive a volume (base area × height —

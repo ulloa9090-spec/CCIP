@@ -117,11 +117,14 @@ generalized version needs its first real-device run):
    resting on a valid surface.
 3. Tap **Add Point** to confirm the first point (a teal sphere appears).
    Move the phone toward the next point you want to measure — you'll see
-   a white tentative line follow the reticle live, with its length
-   updating continuously.
+   a white tentative line follow the reticle live, with a yellow text
+   label floating just above it showing its length, updating
+   continuously in feet/inches as you move.
 4. Tap **Add Point** again to confirm the second point — the segment
-   turns solid teal and locks in, and a new live segment starts from
-   there. Repeat for as many points as you want; there's no limit.
+   turns solid teal and locks in with a white label over it, and a new
+   live segment (with its own live yellow label) starts from there.
+   Repeat for as many points as you want; there's no limit. Every
+   confirmed segment keeps its own label, always turned to face you.
 5. Once you have 3+ points, a **Close Shape** button appears. Tap it to
    connect the last point back to the first — you'll see area, perimeter,
    the interior angle at each vertex, and (if the 4 points form one) a
@@ -130,9 +133,9 @@ generalized version needs its first real-device run):
    says so and calls the area approximate rather than hiding it.
 6. After closing, the primary button becomes **Set Height Point**: aim
    the reticle above or below the shape (e.g. up a wall from a floor
-   shape) — you'll see a live height preview — then confirm. This gives
-   you a volume (base area × height), shown as an orange marker/line in
-   the scene.
+   shape) — you'll see a live height preview with its own label — then
+   confirm. This gives you a volume (base area × height), shown as an
+   orange marker/line/label in the scene.
 7. **Undo Last Point** undoes whatever you did most recently — the
    height point, then un-closing the shape, then the last base point, in
    that order. **Clear All** wipes everything and lets you keep measuring
