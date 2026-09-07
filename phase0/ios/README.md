@@ -38,7 +38,25 @@ millimeters as the eventual canonical persisted unit once records are
 saved — nothing is persisted yet in this Phase 0 spike, so that's a real
 but not-yet-relevant gap, tracked here rather than silently ignored.
 
+Deterministic unit tests now cover the pure math layer —
+`BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests,UnitFormattingTests}.swift`
+— for distance/segment sums, perimeter, triangle/rectangle area,
+CW/CCW orientation, interior angles, rectangle detection (accept and
+reject cases), planarity tolerance, height, volume, meters→feet/inches
+conversion, and edge/zero cases. These validate the implementation as it
+exists today; no production code changed to accommodate them, with one
+explicitly-flagged exception: `UnitFormatting.feetAndInchesFraction(meters:)`
+is a new, additive function (rounds to the nearest 1/8") added only so the
+"rounding to 1/8\"" test case has real behavior to check — it is not wired
+into `ARMeasureScreen.swift`, which keeps displaying `feetAndInches(meters:)`
+unchanged. None of this runs against ARKit/SceneKit or real-device data;
+that stays the job of the benchmark protocol. See `SETUP.md` section 7 for
+exact Xcode steps to create the Unit Testing Bundle target and add these
+files (they don't come with a generated `.xcodeproj` either, for the same
+corruption-risk reason as the app source).
+
 - **Source**: `BoxOpPhase0/*.swift`
+- **Tests**: `BoxOpPhase0Tests/*.swift` — see `SETUP.md` section 7
 - **Setup & run on a real iPhone**: see `SETUP.md`
 - **Required Info.plist keys**: see `Info-Additions.md` (unchanged — AR
   reuses the camera permission already granted)

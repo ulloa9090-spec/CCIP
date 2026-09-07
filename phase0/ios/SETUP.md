@@ -184,3 +184,85 @@ generalized version needs its first real-device run):
   exactly what the warning is for, not a bug to "fix" by hiding it.
 - **"Set Height Point" is disabled** → same cause as "Add Point" being
   disabled: the reticle needs to be resting on a valid surface first.
+
+## 7. Running the unit tests (geometry & unit-conversion math)
+
+`phase0/ios/BoxOpPhase0Tests/` contains deterministic XCTest suites for the
+pure math layer — `PolygonGeometry.swift`, `MultiPointMeasurement.swift`,
+and `UnitFormatting.swift` — none of which touch ARKit/SceneKit, so they
+run instantly on the Simulator or even without a device connected. Your
+project doesn't have a test target yet unless you checked "Include Tests"
+back in step 1, so you need to add one once.
+
+### 7.1 Create the Unit Testing Bundle target
+
+1. In Xcode, click the **project name** (blue icon) at the very top of the
+   file navigator — this opens the project editor, not a file.
+2. In the left column of the project editor (under "PROJECT"/"TARGETS"),
+   click the **+** button at the bottom of the **TARGETS** list.
+3. In the template picker, select the **iOS** tab, then scroll to the
+   **Test** section and choose **Unit Testing Bundle**. Click **Next**.
+4. Fill in the options:
+   - **Product Name**: `BoxOpPhase0Tests` (must match exactly — this is
+     the folder name the test files already live in, and matching it
+     keeps everything easy to find).
+   - **Team**: same team you set for the app target.
+   - **Organization Identifier**: same as your app's.
+   - **Project**: `BoxOpPhase0`.
+   - **Target to be Tested**: `BoxOpPhase0` (this is what makes
+     `@testable import BoxOpPhase0` work).
+5. Click **Finish**. Xcode creates a new `BoxOpPhase0Tests` group with one
+   placeholder file (something like `BoxOpPhase0Tests.swift`) and adds a
+   new **scheme** for running tests.
+
+### 7.2 Add the three test files
+
+1. **Delete** the placeholder file Xcode generated (select it in the
+   `BoxOpPhase0Tests` group → Delete → "Move to Trash") — it's empty
+   boilerplate, not needed.
+2. In Finder, open `phase0/ios/BoxOpPhase0Tests/` (this repo folder, a
+   sibling of `phase0/ios/BoxOpPhase0/` you used in step 2).
+3. Drag `PolygonGeometryTests.swift`, `MultiPointMeasurementTests.swift`,
+   and `UnitFormattingTests.swift` into the **`BoxOpPhase0Tests`** group
+   in Xcode's navigator (the one the new target created — **not** the
+   `BoxOpPhase0` app group).
+4. In the "Choose options" sheet: check **"Copy items if needed"**, and
+   under **"Add to targets"** make sure **only `BoxOpPhase0Tests` is
+   checked** (not the `BoxOpPhase0` app target — test files don't belong
+   in the shipped app).
+5. Click **Finish**.
+
+You should now have a `BoxOpPhase0Tests` group containing exactly the
+three files above, with a `BoxOpPhase0Tests` target next to your
+`BoxOpPhase0` app target in the project editor's TARGETS list.
+
+### 7.3 Run the tests
+
+1. Press **Cmd+U**, or click **Product → Test** in the menu bar. Any
+   destination works (Simulator or your real iPhone) since these tests
+   don't use the camera or AR.
+2. Xcode runs all three suites and shows results in the **Test navigator**
+   (the diamond-shaped icon in the left sidebar): a green checkmark per
+   test on success, a red one with the failing assertion's file/line if
+   something doesn't match.
+3. If it doesn't compile: the most common cause is the test files having
+   been added to the wrong target — reselect each test file in the
+   navigator, open the **File Inspector** (right sidebar), and confirm
+   under **Target Membership** that only `BoxOpPhase0Tests` is checked.
+
+**What these tests do and don't cover:** they validate the pure math in
+`PolygonGeometry`, `MultiPointMeasurement`, and `UnitFormatting` exactly as
+those files exist today (distance, perimeter, area, orientation, angles,
+rectangle detection, planarity, height, volume, meters→feet/inches
+conversion, and rounding to the nearest 1/8") — including edge cases like
+empty/too-few points and zero-length values. They do **not** exercise
+`ARMeasureView.swift`/`ARMeasureScreen.swift` (SwiftUI/ARKit glue) or run
+against real device data — that stays covered by the real-hardware
+benchmark protocol instead (`../shared/BENCHMARK_PROTOCOL.md`).
+
+One function under test, `UnitFormatting.feetAndInchesFraction(meters:)`,
+is new: it didn't exist before this test suite and isn't called from any
+screen yet — it was added specifically so "rounding to 1/8\"" had real,
+existing behavior to test, without changing what `ARMeasureScreen.swift`
+currently displays (`feetAndInches(meters:)`, unchanged). If a future
+increment adopts eighth-inch display, this is the function it would use.

@@ -42,4 +42,45 @@ enum UnitFormatting {
     static func cubicFeet(cubicMeters: Float) -> String {
         String(format: "%.2f ft\u{00B3}", Double(cubicMeters) * cubicFeetPerCubicMeter)
     }
+
+    /// New, additive: `"4' 3-5/8""`-style feet-and-nearest-1/8-inch string.
+    /// Not wired into any screen yet -- `feetAndInches(meters:)` above stays
+    /// the display format actually shown in `ARMeasureScreen.swift`. Added
+    /// solely so `UnitFormattingTests.swift` has real 1/8" rounding behavior
+    /// to validate, per explicit request.
+    static func feetAndInchesFraction(meters: Float) -> String {
+        let totalInches = Double(meters) * inchesPerMeter
+        let sign = totalInches < 0 ? "-" : ""
+        let magnitude = abs(totalInches)
+
+        let totalEighths = (magnitude * 8).rounded()
+        var wholeInches = Int(totalEighths / 8)
+        var eighths = Int(totalEighths.truncatingRemainder(dividingBy: 8))
+        if eighths == 8 {
+            eighths = 0
+            wholeInches += 1
+        }
+
+        var feet = wholeInches / 12
+        var remainderInches = wholeInches % 12
+        if remainderInches == 12 {
+            remainderInches = 0
+            feet += 1
+        }
+
+        if eighths == 0 {
+            return String(format: "%@%d' %d\"", sign, feet, remainderInches)
+        }
+
+        let divisor = gcd(eighths, 8)
+        let reducedNumerator = eighths / divisor
+        let reducedDenominator = 8 / divisor
+        return String(format: "%@%d' %d-%d/%d\"", sign, feet, remainderInches, reducedNumerator, reducedDenominator)
+    }
+
+    private static func gcd(_ a: Int, _ b: Int) -> Int {
+        var a = a, b = b
+        while b != 0 { (a, b) = (b, a % b) }
+        return a
+    }
 }

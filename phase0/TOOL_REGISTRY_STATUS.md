@@ -10,6 +10,16 @@ Status values (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 30):
 `SPECIFIED` → `PROTOTYPE` → `IMPLEMENTED` → `VALIDATING` →
 `PRODUCTION_READY`, or `DISABLED` at any point.
 
+**Unit test coverage (distinct from device validation)**: the pure math
+behind Line/Polyline, Angle, Polygon, Rectangle, Area, Perimeter, and
+Standard Geometric Volume (all iOS) now has deterministic XCTest coverage —
+`phase0/ios/BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests,UnitFormattingTests}.swift`.
+This confirms the geometry/unit-conversion code is internally correct
+against hand-verified values; it does **not** substitute for real-hardware
+validation (AR tracking noise, raycast source, device drift) — a tool's
+`VALIDATING`/`PRODUCTION_READY` status below still depends only on
+real-device evidence, per the gate in section 39 of the catalog.
+
 ## Prerequisite (not a tool, but gates everything below)
 
 | Item | Status | Notes |

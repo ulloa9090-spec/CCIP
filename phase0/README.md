@@ -62,8 +62,12 @@ phase0/
 
 iOS ships two tabs now: **Capabilities** (validated) and **Measure**
 (length validated with a real accuracy baseline; area, rectangle
-detection, interior angles and volume added on top, not yet validated).
-Android still ships capability detection only. See
+detection, interior angles and volume added on top, not yet validated;
+all results now display in feet/inches, internal units unchanged).
+Android still ships capability detection only. The geometry/unit-
+conversion math (`PolygonGeometry`, `MultiPointMeasurement`,
+`UnitFormatting`) now has deterministic XCTest coverage
+(`ios/BoxOpPhase0Tests/`) — see `ios/SETUP.md` section 7 to run it. See
 `phase0/TOOL_REGISTRY_STATUS.md` for the exact per-tool status.
 
 This was built up one slice at a time rather than all at once, per
@@ -74,28 +78,27 @@ of it, so any regression is easy to isolate.
 
 ## Next task
 
-**Run the iOS Measure tab's new multi-point mode on the real iPhone.**
-It replaced the fixed two-point version that already passed its own
-benchmark (`evidence/ios/POINT_TO_POINT_BENCHMARK.md`) — confirm the
-generalized polyline version still measures a single segment correctly
-(it should, structurally), then measure a real multi-segment path (e.g.
-along the edges of a table) and sanity-check the total against a tape
-measure. Do **not** treat the existing +5 to +7mm bias as something to
-fix yet — `shared/BENCHMARK_PROTOCOL.md` section 8 governs that.
+**In-scene per-segment measurement labels in the AR view**, including the
+live/active segment updating in real time (not just the bottom result
+cards) — the next UX increment, explicitly excluding automatic
+rectangle-suggestion for now (stays out of scope per direct instruction).
 
-In parallel or after: **run `android/` on a real Android phone** for its
-own capability-detection evidence (same bar as `evidence/ios/RESULT.md`),
-then bring AR measurement to Android (`ArSceneView`/ARCore raycast — see
+In parallel: run the new XCTest suites in Xcode (`ios/SETUP.md` section
+7) for their first real pass/fail signal, then run the full iOS Measure
+flow (length, Close Shape/area/rectangle, height/volume, feet/inches
+display) on the real iPhone — none of it beyond the original two-point
+spike has real-hardware evidence yet. Also still open: **run `android/`
+on a real Android phone** for its own capability-detection evidence
+(same bar as `evidence/ios/RESULT.md`), then bring AR measurement to
+Android (`ArSceneView`/ARCore raycast — see
 `docs/23_AR_PLATFORM_INTEGRATION_ADDENDUM.md` for the adapter boundary
 that still applies regardless of the eventual framework choice).
 
-Deliberately still not started (per the exact restriction lists given
-for both the original spike and this multi-point increment, which apply
-equally to Android and to any further iOS work until calibration work
-begins): Close Shape, perimeter, polygon area, rectangle detection,
-automatic box/cuboid measurement, L/W/H/volume, edge detection, object
-recognition, the Bin/Spot system, an external station, Bluetooth, full
-report export, backend, sync, AI.
+Deliberately still not started: automatic rectangle-suggestion (next
+increment explicitly excludes it), dedicated Cuboid/Cylinder tools,
+Circle, Wall, curved/smooth geometry, multi-measurement sessions, edge
+detection, object recognition, the Bin/Spot system, an external station,
+Bluetooth, full report export, backend, sync, AI.
 
 ## How to run Phase 0 end to end
 
@@ -286,12 +289,109 @@ implement the catalog's dedicated Cuboid/Cylinder tools (see
 `phase0/TOOL_REGISTRY_STATUS.md` for the precise distinction) — it's a
 different, more general path the user chose instead, for now.
 
-**Next recommended task**: run the full flow on the iPhone — multi-point
-length (reconfirm against the existing baseline), Close Shape on a known
-rectangle (e.g. a book or table) and compare its reported area/length/
-width against physical measurements, then a height point against a
-known volume (e.g. a box). Record results the same way as
-`evidence/ios/POINT_TO_POINT_BENCHMARK.md`, and only then consider
-whether `shared/BENCHMARK_PROTOCOL.md` needs extending to cover area/
-volume metrics explicitly. Also still open: the Android capability-
+**Next recommended task (superseded, see below)**: run the full flow on
+the iPhone — multi-point length (reconfirm against the existing
+baseline), Close Shape on a known rectangle (e.g. a book or table) and
+compare its reported area/length/width against physical measurements,
+then a height point against a known volume (e.g. a box). Record results
+the same way as `evidence/ios/POINT_TO_POINT_BENCHMARK.md`, and only then
+consider whether `shared/BENCHMARK_PROTOCOL.md` needs extending to cover
+area/volume metrics explicitly. Also still open: the Android capability-
 detection real-device run, which hasn't moved.
+
+## Completion report — feet/inches display
+
+**Files changed**: `phase0/ios/BoxOpPhase0/UnitFormatting.swift` (new),
+`ARMeasureScreen.swift` (all primary numeric readouts routed through it),
+`phase0/ios/README.md`, this file.
+
+**Implementation summary**: per explicit request, all Measure-tab result
+cards (segment/total/perimeter distances, rectangle length×width, height,
+the planarity-deviation warning, area, volume) now display in feet and
+inches (or ft²/ft³) instead of raw meters, via a new display-only
+`UnitFormatting` enum. Internal storage and every computation
+(`PolygonGeometry`, `MultiPointMeasurement`) are untouched — still meters,
+still `SIMD3<Float>` — per the explicit instruction not to change internal
+units, and per `docs/14_LOCALIZATION_LANGUAGE.md`'s existing rule to
+convert only at presentation time via typed conversion, never string
+manipulation.
+
+**Tests/results**: none yet at the time (no test target existed). Not
+compiled in this environment.
+
+**Limitations**: not run on real hardware yet in this display form (the
+underlying measurements were already validated in meters; only the
+formatting layer is new and unverified against a live device). Also
+evaluated, per explicit request, what tooling/dependencies would
+materially help the project going forward: recommended adding an
+XCTest/Swift Testing target as the only clearly-justified addition (no
+existing coverage on the geometry/unit-conversion math);
+declined RealityKit-over-SceneKit, third-party AR libraries, and
+backend/sync/AI work as unjustified scope expansion; flagged Context7 and
+Firecrawl (already configured in `.mcp.json` but unauthenticated in this
+session) as tools that would help verify current ARKit/ARCore API
+documentation. User granted permission to use both going forward.
+
+**Next recommended task (superseded, see below)**: write the XCTest
+suite this evaluation identified as the clear next infrastructure step.
+
+## Completion report — deterministic XCTest suites for geometry/unit math
+
+**Files changed**: `phase0/ios/BoxOpPhase0/UnitFormatting.swift` (added
+new, additive `feetAndInchesFraction(meters:)` + private `gcd` helper —
+see note below), `phase0/ios/BoxOpPhase0Tests/PolygonGeometryTests.swift`
+(new), `MultiPointMeasurementTests.swift` (new), `UnitFormattingTests.swift`
+(new), `phase0/ios/SETUP.md` (new section 7: creating the Unit Testing
+Bundle target and adding these files in Xcode), `phase0/ios/README.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: added three deterministic XCTest suites
+covering exactly the 15 requested topics — distance between points, sum
+of segments, perimeter, triangle area, rectangle area, CW/CCW
+orientation, interior angles, correct rectangle detection, rejection of
+non-rectangle quadrilaterals (both a false-side-equality irregular quad
+and a true-equal-sides-wrong-angles parallelogram, to prove the angle
+check matters, not just side lengths), planarity tolerance (an exact,
+hand-derived 4-point "saddle" configuration whose Newell normal stays
+exactly axis-aligned regardless of its z-offset `d`, giving an exact, not
+approximate, expected deviation of `|d|`), height, volume, meters→feet/
+inches conversion (including the existing rollover-guard boundary),
+rounding to the nearest 1/8", and edge/zero cases (empty/too-few points,
+single-point measurements, no-op guards on `addPoint`/`closeShape`/
+`setHeightPoint` when preconditions aren't met, `undoLast`'s
+height→close→point unwind order, `clear()`). Every expected value was
+hand-derived from the actual existing algorithms (Newell's method, the
+`angleDegrees`/`rectangleCheck` tolerances, the `feetAndInches` rollover
+guard) rather than assumed — no production behavior changed to
+accommodate a test. **One explicitly-flagged exception**: 1/8" rounding
+did not exist anywhere in production code, so nothing real existed for
+that requested test topic to validate; added
+`UnitFormatting.feetAndInchesFraction(meters:)` as a new, additive
+function (not wired into `ARMeasureScreen.swift`, which keeps using the
+unchanged `feetAndInches(meters:)`) specifically so that test case has
+real behavior behind it. XCTest was chosen over the newer Swift Testing
+framework for maximum Xcode-version compatibility, per the same
+compatibility reasoning used elsewhere in this project.
+
+**Tests/results**: the three suites themselves are the deliverable; not
+run in this environment (no macOS/Xcode here) — every expected value was
+manually re-derived and cross-checked against the source algorithm by
+hand rather than assumed, but Xcode's compiler and test runner on your
+Mac (`Cmd+U`, per `SETUP.md` section 7) is the first place these actually
+execute.
+
+**Limitations**: Context7 and Firecrawl were granted permission for this
+task but remained unauthenticated in this session (OAuth needs an
+interactive `claude mcp`/`/mcp` flow this remote session can't run), so
+this suite was written from existing XCTest/ARKit/simd knowledge rather
+than freshly-fetched docs. These tests cover only the pure math layer —
+`ARMeasureView.swift`/`ARMeasureScreen.swift` (SwiftUI/ARKit glue) and
+real-device behavior are still untested by anything but the manual
+benchmark protocol.
+
+**Next recommended task**: in-scene per-segment measurement labels in the
+AR view, including the live/active segment updating in real time —
+explicitly excluding automatic rectangle-suggestion, per direct
+instruction. Also still open: running these tests in Xcode for the first
+real pass/fail signal, and the Android capability-detection real-device
+run, which hasn't moved.
