@@ -59,7 +59,7 @@ final class MultiPointMeasurementTests: XCTestCase {
 
     // MARK: - Area (delegated to PolygonGeometry, exercised through the shape)
 
-    func testAreaOfClosedRectangle() {
+    func testAreaOfClosedRectangle() throws {
         var measurement = MultiPointMeasurement()
         measurement.addPoint(SIMD3(0, 0, 0))
         measurement.addPoint(SIMD3(4, 0, 0))
@@ -67,7 +67,8 @@ final class MultiPointMeasurementTests: XCTestCase {
         measurement.addPoint(SIMD3(0, 3, 0))
         measurement.closeShape()
 
-        XCTAssertEqual(measurement.area ?? -1, 12, accuracy: epsilon)
+        let area = try XCTUnwrap(measurement.area)
+        XCTAssertEqual(area, 12, accuracy: epsilon)
     }
 
     func testShapeLabelDistinguishesPolylinePolygonAndRectangle() {
@@ -95,7 +96,7 @@ final class MultiPointMeasurementTests: XCTestCase {
 
     // MARK: - Height and volume
 
-    func testHeightAndVolumeOfClosedRectangleWithHeightPoint() {
+    func testHeightAndVolumeOfClosedRectangleWithHeightPoint() throws {
         var measurement = MultiPointMeasurement()
         measurement.addPoint(SIMD3(0, 0, 0))
         measurement.addPoint(SIMD3(4, 0, 0))
@@ -104,8 +105,10 @@ final class MultiPointMeasurementTests: XCTestCase {
         measurement.closeShape()
         measurement.setHeightPoint(SIMD3(2, 1.5, 5))
 
-        XCTAssertEqual(measurement.height ?? -1, 5, accuracy: epsilon)
-        XCTAssertEqual(measurement.volume ?? -1, 60, accuracy: epsilon)
+        let height = try XCTUnwrap(measurement.height)
+        let volume = try XCTUnwrap(measurement.volume)
+        XCTAssertEqual(height, 5, accuracy: epsilon)
+        XCTAssertEqual(volume, 60, accuracy: epsilon)
     }
 
     func testHeightAndVolumeAreNilBeforeHeightPointIsSet() {

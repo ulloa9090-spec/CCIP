@@ -79,15 +79,14 @@ final class PolygonGeometryTests: XCTestCase {
 
     // MARK: - Rectangle detection
 
-    func testRectangleCheckAcceptsTrueRectangle() {
+    func testRectangleCheckAcceptsTrueRectangle() throws {
         let rectangle: [SIMD3<Float>] = [
             SIMD3(0, 0, 0), SIMD3(4, 0, 0), SIMD3(4, 3, 0), SIMD3(0, 3, 0)
         ]
-        let check = PolygonGeometry.rectangleCheck(points: rectangle)
-        XCTAssertNotNil(check)
-        XCTAssertEqual(check?.isRectangle, true)
-        XCTAssertEqual(check?.length, 4, accuracy: epsilon)
-        XCTAssertEqual(check?.width, 3, accuracy: epsilon)
+        let check = try XCTUnwrap(PolygonGeometry.rectangleCheck(points: rectangle))
+        XCTAssertTrue(check.isRectangle)
+        XCTAssertEqual(check.length, 4, accuracy: epsilon)
+        XCTAssertEqual(check.width, 3, accuracy: epsilon)
     }
 
     func testRectangleCheckRejectsParallelogramWithNonRightAngles() {
