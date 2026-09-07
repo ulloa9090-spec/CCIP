@@ -35,15 +35,21 @@ You should end up with these files in the target:
 `BoxOpPhase0App.swift`, `ContentView.swift`, `CapabilityDetector.swift`,
 `CapabilityMatrix.swift`, `CapabilityReportView.swift`,
 `ARMeasureView.swift`, `ARMeasureScreen.swift`,
-`PointToPointMeasurement.swift`.
+`MultiPointMeasurement.swift`.
 
-**Already have a working Phase 0 project from before?** You don't need to
-redo any of this. Just drag in the 3 new files
-(`ARMeasureView.swift`, `ARMeasureScreen.swift`,
-`PointToPointMeasurement.swift`) the same way, and re-drag
-`ContentView.swift` on top of the existing one, choosing **Replace** — it
-now shows two tabs (Capabilities, Measure) instead of one screen.
-Everything else in your project stays untouched.
+**Already have a working Phase 0 project from before, including the
+earlier two-point Measure tab?** You don't need to redo the whole setup —
+just bring your project up to date with the new multi-point version:
+
+1. In Xcode, **delete** `PointToPointMeasurement.swift` from the project
+   (select it → Delete → "Move to Trash") — it's been replaced by
+   `MultiPointMeasurement.swift` and no longer exists in the repo.
+2. Drag in `MultiPointMeasurement.swift` from
+   `phase0/ios/BoxOpPhase0/` (Copy items if needed, target checked).
+3. Re-drag `ARMeasureView.swift` and `ARMeasureScreen.swift` on top of
+   the existing ones, choosing **Replace** — both were rewritten to
+   support an unlimited number of points instead of a fixed two.
+4. `ContentView.swift` did not change this time; leave it as-is.
 
 ## 3. Add the required permission strings
 
@@ -96,17 +102,35 @@ The app now has two tabs:
   device/date and keep it under `phase0/evidence/` — don't overwrite an
   existing evidence file.**
 
-**Measure** (new — needs its first real-device run):
-1. Point the phone at a real surface (floor, table, wall) and move it
-   slowly for a second or two — ARKit needs a moment to find a plane.
-2. Tap a point on that surface: a small teal sphere appears there.
-3. Tap a second point: another sphere appears, a line is drawn between
-   them, and the distance shows at the bottom in meters.
-4. Tap anywhere to start a new measurement, or use **Reset** to restart
-   the AR session entirely.
-5. Compare the on-screen distance against a real tape measure at a few
-   distances and angles — that's the start of
-   `phase0/shared/BENCHMARK_PROTOCOL.md`.
+**Measure** (multi-point — the two-point version already passed its own
+benchmark, see `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md`; this
+generalized version needs its first real-device run):
+
+1. A small circle **reticle** sits in the center of the screen at all
+   times — this is where the next point will land, not something you
+   tap. Point the phone at a real surface and move it slowly for a
+   second or two so ARKit can find a plane.
+2. Tap **Start Measure**. The reticle turns solid white once it's
+   resting on a valid surface.
+3. Tap **Add Point** to confirm the first point (a teal sphere appears).
+   Move the phone toward the next point you want to measure — you'll see
+   a white tentative line follow the reticle live, with its length
+   updating continuously.
+4. Tap **Add Point** again to confirm the second point — the segment
+   turns solid teal and locks in, and a new live segment starts from
+   there. Repeat for as many points as you want; there's no limit.
+5. **Undo Last Point** removes only the most recent point. **Clear All**
+   wipes everything and lets you keep measuring from scratch. **Finish**
+   freezes the geometry and shows the final total distance across every
+   segment.
+6. From **Finished**, **New Measurement** clears and starts right back
+   up in Measuring; **Clear** wipes everything and returns to the start
+   screen.
+7. Compare the on-screen distances against a real tape measure at a few
+   distances and angles — that's `phase0/shared/BENCHMARK_PROTOCOL.md`.
+   **Do not treat any small discrepancy as something to "fix" in the
+   app** — see that document's section 8 before touching the measurement
+   code over accuracy concerns.
 
 ## Troubleshooting
 
@@ -126,9 +150,10 @@ The app now has two tabs:
 - **Measure tab is black or frozen** → this screen needs a real device;
   it cannot run in the Simulator (no camera, no ARKit). Make sure the
   run destination is your iPhone, not a simulator.
-- **Tapping does nothing on the Measure tab** → ARKit hasn't found a
-  plane under that point yet. Move the phone slowly over the surface
-  first (this is what "world tracking" is doing), then tap again.
+- **"Add Point" stays greyed out** → the reticle isn't resting on any
+  detected/estimated surface yet. Move the phone slowly over the area
+  you want to measure first (this is what "world tracking" is doing)
+  until the reticle turns solid white, then try again.
 - **The line/points look slightly off after moving around a lot** → this
   is normal drift for a phone with no depth sensor; on a device with
   LiDAR (like the one already validated), accuracy should hold up much

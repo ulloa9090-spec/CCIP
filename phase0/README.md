@@ -73,23 +73,28 @@ of it, so any regression is easy to isolate.
 
 ## Next task
 
-**Run the iOS Measure tab on the real iPhone** and, once it produces a
-sane distance, start filling in `shared/BENCHMARK_PROTOCOL.md` /
-`shared/benchmark-results-template.csv` against a tape measure. In
-parallel or after: **run `android/` on a real Android phone** for its
-own capability-detection evidence (same bar as `evidence/ios/RESULT.md`),
-then bring the AR point-to-point spike to Android
-(`ArSceneView`/ARCore raycast — see `docs/23_AR_PLATFORM_INTEGRATION_ADDENDUM.md`
-for the adapter boundary that still applies regardless of the eventual
-framework choice).
+**Run the iOS Measure tab's new multi-point mode on the real iPhone.**
+It replaced the fixed two-point version that already passed its own
+benchmark (`evidence/ios/POINT_TO_POINT_BENCHMARK.md`) — confirm the
+generalized polyline version still measures a single segment correctly
+(it should, structurally), then measure a real multi-segment path (e.g.
+along the edges of a table) and sanity-check the total against a tape
+measure. Do **not** treat the existing +5 to +7mm bias as something to
+fix yet — `shared/BENCHMARK_PROTOCOL.md` section 8 governs that.
 
-Deliberately still not started (per the exact restriction list from the
-iOS handoff, which applies equally to Android and to any further iOS
-work until this spike is validated): automatic box/cuboid measurement,
-L/W/H/volume, edge detection, object recognition, the Bin/Spot system,
-an external station, Bluetooth, full report export, backend, sync, AI.
-One capability first: **a reproducible physical distance measurement
-between two points, on the real device.**
+In parallel or after: **run `android/` on a real Android phone** for its
+own capability-detection evidence (same bar as `evidence/ios/RESULT.md`),
+then bring AR measurement to Android (`ArSceneView`/ARCore raycast — see
+`docs/23_AR_PLATFORM_INTEGRATION_ADDENDUM.md` for the adapter boundary
+that still applies regardless of the eventual framework choice).
+
+Deliberately still not started (per the exact restriction lists given
+for both the original spike and this multi-point increment, which apply
+equally to Android and to any further iOS work until calibration work
+begins): Close Shape, perimeter, polygon area, rectangle detection,
+automatic box/cuboid measurement, L/W/H/volume, edge detection, object
+recognition, the Bin/Spot system, an external station, Bluetooth, full
+report export, backend, sync, AI.
 
 ## How to run Phase 0 end to end
 
@@ -191,7 +196,58 @@ Phase 0 as defined in `docs/20_PHASE0_EXECUTION_RESEARCH_PROMPT.md`
 section 15 is not complete until both platforms have real-device
 evidence for both capability detection and point-to-point measurement.
 
-**Next recommended task**: run the iOS Measure tab on the iPhone
-(`ios/SETUP.md` section 6), sanity-check it against a tape measure, then
-start the Android capability-detection real-device run so that leg
-isn't the last one standing.
+**Next recommended task (superseded, see below)**: run the iOS Measure
+tab on the iPhone, sanity-check it against a tape measure, then start
+the Android capability-detection real-device run.
+
+## Completion report — accuracy baseline + continuous multi-point measurement
+
+**Files changed**: `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md`,
+`phase0/evidence/ios/point-to-point-benchmark-2026-09-07.csv`,
+`phase0/shared/BENCHMARK_PROTOCOL.md` (new section 8),
+`phase0/ios/BoxOpPhase0/MultiPointMeasurement.swift` (new, replaces
+`PointToPointMeasurement.swift`), `phase0/ios/BoxOpPhase0/ARMeasureView.swift`
+and `ARMeasureScreen.swift` (rewritten), this file,
+`phase0/TOOL_REGISTRY_STATUS.md`, `phase0/ios/README.md`,
+`phase0/ios/SETUP.md`.
+
+**Implementation summary**: recorded the user's real tape-measure
+benchmark of the two-point spike (10/20/30/40 in; +5 to +7mm bias,
+3mm repeatability at 20in) as evidence, and — per explicit
+instruction — encoded "no ad-hoc calibration yet" as a binding
+constraint in the shared benchmark protocol rather than leaving it as
+one-off conversation guidance. Generalized the measurement model from a
+fixed two-point pair to an unlimited ordered polyline
+(`MultiPointMeasurement.confirmedPoints: [SIMD3<Float>]`, no
+`pointA`/`pointB`/`pointC` fields), with a continuous screen-center
+reticle raycast (`ARSessionDelegate.session(_:didUpdate:)`, gated to the
+`.measuring` state) driving a live tentative point/segment that's
+mutated in place each frame for performance, while confirmed
+points/segments are rebuilt from the point array whenever it changes.
+Three explicit states (`idle` / `measuring` / `finished`) per the given
+UI spec, with Add Point / Undo Last Point / Finish / Clear All /
+New Measurement wired to `MultiPointMeasurement`'s mutating methods.
+Close Shape, perimeter, polygon area, rectangle detection, height/depth
+chains and volume are deliberately not implemented, per instruction.
+
+**Tests/results**: no automated tests (no test target, by the project's
+own deliberate `Testing System: None` choice). Not compiled in this
+environment (still no macOS/Xcode here); the code follows standard,
+stable ARKit/SceneKit/simd APIs, structurally similar to the two-point
+version that already compiled and ran correctly on the real device.
+
+**Limitations**: the multi-point version has not itself run on real
+hardware yet — only its structural predecessor (the fixed two-point
+spike) has. The accuracy baseline is preliminary and device/condition-
+specific; it does not distinguish the error sources listed in
+`shared/BENCHMARK_PROTOCOL.md` section 8 from one another. Android has
+neither capability detection nor any AR measurement run on real
+hardware. Phase 0 is not complete until both platforms have real-device
+evidence for both.
+
+**Next recommended task**: run the new multi-point Measure tab on the
+iPhone (`ios/SETUP.md` section 6) and confirm a single-segment
+measurement still matches the existing baseline, then measure a real
+multi-segment path and sanity-check the total. Start the Android
+capability-detection real-device run so that leg isn't the last one
+standing.
