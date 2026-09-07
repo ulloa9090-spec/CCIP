@@ -20,31 +20,68 @@ enum ARMeasureState: Equatable {
 
 /// An ordered polyline of confirmed 3D points: `P0 -> P1 -> P2 -> ...`,
 /// with no fixed count and no `pointA`/`pointB`/`pointC` fields — see
-/// `docs/21_AR_MEASUREMENT_SYSTEM.md` "Core modes" > Polyline. This is the
-/// entire scope for now: segment + total distance. Close Shape, perimeter,
-/// polygon area, rectangle detection and volume are deliberately not
-/// implemented — see `phase0/README.md`.
+/// `docs/21_AR_MEASUREMENT_SYSTEM.md` "Core modes" > Polyline.
+///
+/// Beyond the open polyline (segment/total distance), this also supports
+/// closing the polyline into a polygon (perimeter, area, rectangle
+/// detection, interior angles) and, once closed, capturing one extra
+/// height point to derive a volume (`area × height`) — the same pattern
+/// Apple's Measure app uses for room volume, per user decision. Rectangle
+/// detection, area and volume math live in `PolygonGeometry.swift`, kept
+/// separate so this type stays focused on point/state bookkeeping.
 struct MultiPointMeasurement {
     private(set) var confirmedPoints: [SIMD3<Float>] = []
+    private(set) var isClosed = false
+    private(set) var heightPoint: SIMD3<Float>?
 
     var pointCount: Int { confirmedPoints.count }
     var isEmpty: Bool { confirmedPoints.isEmpty }
     var lastPoint: SIMD3<Float>? { confirmedPoints.last }
 
+    /// Available once there are enough points to form a shape and it
+    /// isn't already closed.
+    var canClose: Bool { confirmedPoints.count >= 3 && !isClosed }
+
     mutating func addPoint(_ point: SIMD3<Float>) {
+        guard !isClosed else { return }
         confirmedPoints.append(point)
     }
 
+    mutating func closeShape() {
+        guard canClose else { return }
+        isClosed = true
+    }
+
+    mutating func setHeightPoint(_ point: SIMD3<Float>) {
+        guard isClosed, heightPoint == nil else { return }
+        heightPoint = point
+    }
+
+    /// Undo the most recent action, whichever stage it was in: the height
+    /// point if one was set, otherwise un-closing the shape, otherwise the
+    /// last confirmed base point.
     mutating func undoLast() {
+        if heightPoint != nil {
+            heightPoint = nil
+            return
+        }
+        if isClosed {
+            isClosed = false
+            return
+        }
         guard !confirmedPoints.isEmpty else { return }
         confirmedPoints.removeLast()
     }
 
     mutating func clear() {
         confirmedPoints.removeAll()
+        isClosed = false
+        heightPoint = nil
     }
 
-    /// Distance of each confirmed segment, `P[i] -> P[i+1]`, in order.
+    // MARK: - Open polyline (base) measurements
+
+    /// Distance of each confirmed base segment, `P[i] -> P[i+1]`, in order.
     var segmentDistances: [Float] {
         guard confirmedPoints.count > 1 else { return [] }
         return (0 ..< confirmedPoints.count - 1).map {
@@ -57,7 +94,7 @@ struct MultiPointMeasurement {
     }
 
     func liveSegmentDistance(to livePoint: SIMD3<Float>) -> Float? {
-        guard let last = lastPoint else { return nil }
+        guard !isClosed, let last = lastPoint else { return nil }
         return simd_distance(last, livePoint)
     }
 
@@ -68,5 +105,81 @@ struct MultiPointMeasurement {
             return totalDistance
         }
         return totalDistance + liveSegment
+    }
+
+    /// Interior angle (degrees) at the last confirmed point, previewing
+    /// what it would become if `livePoint` were confirmed next. Only
+    /// meaningful while still building the open base (need a point before
+    /// the last one to form an angle).
+    func liveAngleAtLastPoint(with livePoint: SIMD3<Float>) -> Float? {
+        guard !isClosed, confirmedPoints.count >= 2, let last = lastPoint else { return nil }
+        let previous = confirmedPoints[confirmedPoints.count - 2]
+        return PolygonGeometry.angleDegrees(at: last, previous: previous, next: livePoint)
+    }
+
+    // MARK: - Closed shape measurements
+
+    var closingSegmentDistance: Float? {
+        guard isClosed, let first = confirmedPoints.first, let last = confirmedPoints.last else { return nil }
+        return simd_distance(last, first)
+    }
+
+    var perimeter: Float? {
+        guard isClosed, let closing = closingSegmentDistance else { return nil }
+        return totalDistance + closing
+    }
+
+    var area: Float? {
+        guard isClosed, confirmedPoints.count >= 3 else { return nil }
+        return PolygonGeometry.area(of: confirmedPoints)
+    }
+
+    /// RMS distance of the base points from their own best-fit plane, in
+    /// meters — surface this to the user rather than hiding it; a large
+    /// value means the area/rectangle result below is approximate.
+    var planarityDeviation: Float? {
+        guard isClosed, confirmedPoints.count >= 3 else { return nil }
+        return PolygonGeometry.planarityDeviation(of: confirmedPoints)
+    }
+
+    var interiorAngles: [Float] {
+        PolygonGeometry.interiorAngles(points: confirmedPoints, closed: isClosed)
+    }
+
+    var rectangleCheck: PolygonGeometry.RectangleCheck? {
+        guard isClosed else { return nil }
+        return PolygonGeometry.rectangleCheck(points: confirmedPoints)
+    }
+
+    /// `"Polyline"` while open, `"Rectangle"` once closed and detected as
+    /// one, `"Polygon"` for any other closed shape.
+    var shapeLabel: String {
+        guard isClosed else { return "Polyline" }
+        if let rectangleCheck, rectangleCheck.isRectangle { return "Rectangle" }
+        return "Polygon"
+    }
+
+    // MARK: - Height / volume
+
+    var height: Float? {
+        guard isClosed, confirmedPoints.count >= 3, let heightPoint else { return nil }
+        return PolygonGeometry.perpendicularDistance(from: heightPoint, toPlaneOf: confirmedPoints)
+    }
+
+    var volume: Float? {
+        guard let area, let height else { return nil }
+        return area * height
+    }
+
+    /// Live preview of `height`/would-be volume using a not-yet-confirmed
+    /// point, shown while closed and waiting for the height point.
+    func liveHeight(with livePoint: SIMD3<Float>) -> Float? {
+        guard isClosed, heightPoint == nil, confirmedPoints.count >= 3 else { return nil }
+        return PolygonGeometry.perpendicularDistance(from: livePoint, toPlaneOf: confirmedPoints)
+    }
+
+    func liveVolume(with livePoint: SIMD3<Float>) -> Float? {
+        guard let area, let liveHeight = liveHeight(with: livePoint) else { return nil }
+        return area * liveHeight
     }
 }

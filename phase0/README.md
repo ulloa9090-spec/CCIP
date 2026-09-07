@@ -57,13 +57,14 @@ phase0/
 
 | Platform | Capability detection | AR point-to-point measurement |
 |---|---|---|
-| iOS | **PASS on real hardware** — `evidence/ios/RESULT.md` (`iPhone18,2`, iOS 26.6.1, Tier C/LiDAR) | **Ran on real hardware** — `evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, preliminary, not calibrated — see `shared/BENCHMARK_PROTOCOL.md` section 8). Now being generalized from fixed two points to an unlimited-point polyline. |
+| iOS | **PASS on real hardware** — `evidence/ios/RESULT.md` (`iPhone18,2`, iOS 26.6.1, Tier C/LiDAR) | Fixed two-point length **ran on real hardware** — `evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, preliminary, not calibrated — see `shared/BENCHMARK_PROTOCOL.md` section 8). Generalized to unlimited-point polyline + Close Shape (area/perimeter/angles/rectangle) + one-height-point volume — **none of that generalization has run on real hardware yet.** |
 | Android | Implemented, **not yet run on real hardware** | Not started |
 
 iOS ships two tabs now: **Capabilities** (validated) and **Measure**
-(point-to-point validated with a real accuracy baseline, currently being
-upgraded to continuous multi-point measurement). Android still ships
-capability detection only.
+(length validated with a real accuracy baseline; area, rectangle
+detection, interior angles and volume added on top, not yet validated).
+Android still ships capability detection only. See
+`phase0/TOOL_REGISTRY_STATUS.md` for the exact per-tool status.
 
 This was built up one slice at a time rather than all at once, per
 `docs/03_CLAUDE_CODE_RULES.md` rule 2 ("one roadmap phase/task at a time")
@@ -245,9 +246,52 @@ neither capability detection nor any AR measurement run on real
 hardware. Phase 0 is not complete until both platforms have real-device
 evidence for both.
 
-**Next recommended task**: run the new multi-point Measure tab on the
-iPhone (`ios/SETUP.md` section 6) and confirm a single-segment
+**Next recommended task (superseded, see below)**: run the new
+multi-point Measure tab on the iPhone and confirm a single-segment
 measurement still matches the existing baseline, then measure a real
-multi-segment path and sanity-check the total. Start the Android
-capability-detection real-device run so that leg isn't the last one
-standing.
+multi-segment path.
+
+## Completion report — Close Shape, area, rectangle, angle, volume
+
+**Files changed**: `phase0/ios/BoxOpPhase0/PolygonGeometry.swift` (new),
+`MultiPointMeasurement.swift`, `ARMeasureView.swift`, `ARMeasureScreen.swift`
+(all extended), `phase0/TOOL_REGISTRY_STATUS.md`, `phase0/ios/README.md`,
+`phase0/ios/SETUP.md`, this file.
+
+**Implementation summary**: per explicit request, extended the polyline
+tool with a "Close Shape" action (connects the last point back to the
+first) and, once closed, one extra height-point capture — the design the
+user picked over a full 8-vertex box tool, matching Apple Measure's room
+-volume pattern. `PolygonGeometry.swift` computes area/normal via
+Newell's method (robust to near-planar rather than exactly-planar
+points), a planarity-deviation confidence signal surfaced as a warning
+rather than hidden, per-vertex interior angles (also live-previewed at
+the last point while still placing base points), and a 4-point rectangle
+check (side/angle tolerances) that relabels the shape and reports
+length×width when it passes. Volume is `area × height`, with a live
+preview before the height point is confirmed. `MultiPointMeasurement`'s
+`undoLast()` now unwinds height → un-close → last point, in that order.
+
+**Tests/results**: no automated tests (no test target, by deliberate
+project choice); the new geometry lives in an ARKit/SceneKit-free file
+for when one exists. Not compiled in this environment.
+
+**Limitations**: none of this — Close Shape, area, rectangle detection,
+angles, or volume — has run on real hardware. There is no accuracy
+baseline for any of it, unlike the validated length measurement. Volume
+via a single height point assumes the base shape is a reasonable
+prism/cuboid cross-section; a genuinely irregular base times one height
+point will produce a number, not a validated volume. This does not
+implement the catalog's dedicated Cuboid/Cylinder tools (see
+`phase0/TOOL_REGISTRY_STATUS.md` for the precise distinction) — it's a
+different, more general path the user chose instead, for now.
+
+**Next recommended task**: run the full flow on the iPhone — multi-point
+length (reconfirm against the existing baseline), Close Shape on a known
+rectangle (e.g. a book or table) and compare its reported area/length/
+width against physical measurements, then a height point against a
+known volume (e.g. a box). Record results the same way as
+`evidence/ios/POINT_TO_POINT_BENCHMARK.md`, and only then consider
+whether `shared/BENCHMARK_PROTOCOL.md` needs extending to cover area/
+volume metrics explicitly. Also still open: the Android capability-
+detection real-device run, which hasn't moved.

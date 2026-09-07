@@ -37,19 +37,22 @@ You should end up with these files in the target:
 `ARMeasureView.swift`, `ARMeasureScreen.swift`,
 `MultiPointMeasurement.swift`.
 
-**Already have a working Phase 0 project from before, including the
-earlier two-point Measure tab?** You don't need to redo the whole setup —
-just bring your project up to date with the new multi-point version:
+**Already have a working Phase 0 project from before?** You don't need to
+redo the whole setup — just bring your project up to date:
 
-1. In Xcode, **delete** `PointToPointMeasurement.swift` from the project
-   (select it → Delete → "Move to Trash") — it's been replaced by
-   `MultiPointMeasurement.swift` and no longer exists in the repo.
-2. Drag in `MultiPointMeasurement.swift` from
-   `phase0/ios/BoxOpPhase0/` (Copy items if needed, target checked).
+1. If you still have `PointToPointMeasurement.swift` in the project,
+   **delete** it (select it → Delete → "Move to Trash") — it's been
+   replaced by `MultiPointMeasurement.swift` and no longer exists in the
+   repo.
+2. Drag in any files you don't have yet from `phase0/ios/BoxOpPhase0/` —
+   as of this writing that's `MultiPointMeasurement.swift` and
+   `PolygonGeometry.swift` (Copy items if needed, target checked).
 3. Re-drag `ARMeasureView.swift` and `ARMeasureScreen.swift` on top of
-   the existing ones, choosing **Replace** — both were rewritten to
-   support an unlimited number of points instead of a fixed two.
-4. `ContentView.swift` did not change this time; leave it as-is.
+   the existing ones, choosing **Replace** — both keep changing as this
+   spike grows (unlimited points, then Close Shape/area/rectangle/angle,
+   then height/volume).
+4. `ContentView.swift` and `CapabilityDetector.swift`/`CapabilityMatrix.swift`/
+   `CapabilityReportView.swift` are untouched; leave them as-is.
 
 ## 3. Add the required permission strings
 
@@ -119,18 +122,31 @@ generalized version needs its first real-device run):
 4. Tap **Add Point** again to confirm the second point — the segment
    turns solid teal and locks in, and a new live segment starts from
    there. Repeat for as many points as you want; there's no limit.
-5. **Undo Last Point** removes only the most recent point. **Clear All**
-   wipes everything and lets you keep measuring from scratch. **Finish**
-   freezes the geometry and shows the final total distance across every
-   segment.
-6. From **Finished**, **New Measurement** clears and starts right back
+5. Once you have 3+ points, a **Close Shape** button appears. Tap it to
+   connect the last point back to the first — you'll see area, perimeter,
+   the interior angle at each vertex, and (if the 4 points form one) a
+   "Rectangle" label with length × width instead of a generic "Polygon".
+   If your points aren't well aligned to a single plane, a warning banner
+   says so and calls the area approximate rather than hiding it.
+6. After closing, the primary button becomes **Set Height Point**: aim
+   the reticle above or below the shape (e.g. up a wall from a floor
+   shape) — you'll see a live height preview — then confirm. This gives
+   you a volume (base area × height), shown as an orange marker/line in
+   the scene.
+7. **Undo Last Point** undoes whatever you did most recently — the
+   height point, then un-closing the shape, then the last base point, in
+   that order. **Clear All** wipes everything and lets you keep measuring
+   from scratch. **Finish** freezes the geometry and shows the final
+   summary (distance, or area/perimeter/volume if closed).
+8. From **Finished**, **New Measurement** clears and starts right back
    up in Measuring; **Clear** wipes everything and returns to the start
    screen.
-7. Compare the on-screen distances against a real tape measure at a few
+9. Compare the on-screen distances against a real tape measure at a few
    distances and angles — that's `phase0/shared/BENCHMARK_PROTOCOL.md`.
    **Do not treat any small discrepancy as something to "fix" in the
    app** — see that document's section 8 before touching the measurement
-   code over accuracy concerns.
+   code over accuracy concerns. Area/volume have no benchmark yet — that's
+   a good next real-device task once basic length is reconfirmed.
 
 ## Troubleshooting
 
@@ -159,3 +175,12 @@ generalized version needs its first real-device run):
   LiDAR (like the one already validated), accuracy should hold up much
   better over distance and time. This is exactly what
   `phase0/shared/BENCHMARK_PROTOCOL.md` exists to measure precisely.
+- **"Close Shape" never appears** → it only shows once you have 3 or
+  more confirmed points and haven't already closed the shape.
+- **Area/rectangle result looks wrong, or the coplanarity warning shows
+  up every time** → your tapped points aren't landing on a single flat
+  plane (easy to do by hand). Try placing points more carefully along
+  one real flat surface, or treat the number as approximate — that's
+  exactly what the warning is for, not a bug to "fix" by hiding it.
+- **"Set Height Point" is disabled** → same cause as "Add Point" being
+  disabled: the reticle needs to be resting on a valid surface first.

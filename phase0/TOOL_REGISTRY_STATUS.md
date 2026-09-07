@@ -21,20 +21,19 @@ Status values (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 30):
 
 | Tool | Status | Notes |
 |---|---|---|
-| Line / Polyline | `VALIDATING` (iOS only) | Point-to-point ran on real hardware with a tape-measure baseline: `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, 3mm repeatability at 20in, preliminary). Being generalized from fixed two-point to an unlimited-point polyline (`MultiPointMeasurement.swift`) per `phase0/README.md`. Held at `VALIDATING`, not `PRODUCTION_READY`, until calibration/error-source work in `phase0/shared/BENCHMARK_PROTOCOL.md` section 8 is done and it's run on more than one device. Android not started. |
-| Height | `SPECIFIED` | |
-| Distance Meter | `SPECIFIED` | |
-| Angle | `SPECIFIED` | |
-| Polyline | `SPECIFIED` | |
-| Rectangle | `SPECIFIED` | |
+| Line / Polyline | `VALIDATING` (iOS only) | Point-to-point ran on real hardware with a tape-measure baseline: `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, 3mm repeatability at 20in, preliminary). Generalized to an unlimited-point polyline (`MultiPointMeasurement.swift`). Held at `VALIDATING`, not `PRODUCTION_READY`, until calibration/error-source work in `phase0/shared/BENCHMARK_PROTOCOL.md` section 8 is done and it's run on more than one device. Android not started. |
+| Height | `SPECIFIED` | Distinct catalog tool (base + top point with gravity/world-up constraint); not implemented — the "height" in this build is the polygon-to-height-point perpendicular below, a different measurement. |
+| Distance Meter | `SPECIFIED` | Camera-to-target distance, distinct from Line — not implemented. |
+| Angle | `PROTOTYPE` (iOS only) | Interior angle at every vertex of the current polyline/polygon (`PolygonGeometry.angleDegrees`/`interiorAngles`), plus a live preview at the last confirmed point while still placing points. Not run on real hardware; not yet the dedicated 3-point A-B-C tool from the catalog (this is angle-as-a-property-of-the-polyline, which subsumes it for a closed shape but not for two arbitrary rays). |
+| Polygon/Poly | `PROTOTYPE` (iOS only) | "Close Shape" turns the open polyline into a closed polygon: perimeter, planar area via Newell's method (`PolygonGeometry.area`), and a planarity-deviation warning when points aren't well-fit by a single plane. Not run on real hardware. |
+| Rectangle | `PROTOTYPE` (iOS only) | Automatic detection layered on the closed-polygon path when exactly 4 points are closed and pass a side/angle tolerance check (`PolygonGeometry.rectangleCheck`) — not a separate dedicated 4-point tool/interaction. Reports length × width when detected. Not run on real hardware. |
 | Circle | `SPECIFIED` | |
-| Polygon/Poly | `SPECIFIED` | |
-| Cube/Cuboid/Box | `SPECIFIED` | Primary logistics tool — highest product priority once Line/Height land. |
+| Cube/Cuboid/Box | `SPECIFIED` (see Standard Geometric Volume below for the related but different path that does exist) | Primary logistics tool — a dedicated 3-axis box interaction is still not implemented. |
 | Cylinder | `SPECIFIED` | Detailed in `docs/24_AR_CAPABILITIES_ADDENDUM.md` section 1. |
-| Area (derived) | `SPECIFIED` | Depends on Rectangle/Circle/Polygon. |
-| Perimeter (derived) | `SPECIFIED` | Depends on Rectangle/Circle/Polygon. |
-| Surface Area (derived) | `SPECIFIED` | Depends on Cuboid/Cylinder. |
-| Standard Geometric Volume (derived) | `SPECIFIED` | Depends on Cuboid/Cylinder. |
+| Area (derived) | `PROTOTYPE` (iOS only) | Via the Polygon/Rectangle path above. |
+| Perimeter (derived) | `PROTOTYPE` (iOS only) | Via the Polygon/Rectangle path above. |
+| Surface Area (derived) | `SPECIFIED` | Depends on Cuboid/Cylinder, neither implemented. |
+| Standard Geometric Volume (derived) | `PROTOTYPE` (iOS only) — partial | Implemented as **closed-polygon-base × one height point**, not the catalog's dedicated Cuboid (L×W×H) or Cylinder (πr²h) tools. When the base is detected as a Rectangle this is numerically equivalent to cuboid volume; for any other closed base it's a more general prism volume the catalog doesn't name yet. Not run on real hardware; not validated against a known volume. |
 
 ## Level B — Advanced geometry
 

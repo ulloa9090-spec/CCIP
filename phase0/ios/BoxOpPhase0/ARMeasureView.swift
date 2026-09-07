@@ -47,6 +47,8 @@ struct ARMeasureView: UIViewRepresentable {
         private var confirmedMarkerNodes: [SCNNode] = []
         private var confirmedSegmentNodes: [SCNNode] = []
         private var renderedPoints: [SIMD3<Float>] = []
+        private var renderedIsClosed = false
+        private var renderedHeightPoint: SIMD3<Float>?
 
         private var liveMarkerNode: SCNNode?
         private var liveSegmentNode: SCNNode?
@@ -94,12 +96,17 @@ struct ARMeasureView: UIViewRepresentable {
             return SIMD3<Float>(t.columns.3.x, t.columns.3.y, t.columns.3.z)
         }
 
-        // MARK: - Confirmed geometry (rebuilt whenever the point list changes)
+        // MARK: - Confirmed geometry (rebuilt whenever points/closed/height change)
 
         func syncConfirmedNodes() {
             guard let arView = arView else { return }
-            let currentPoints = parent.measurement.confirmedPoints
-            guard currentPoints != renderedPoints else { return }
+            let measurement = parent.measurement
+            let currentPoints = measurement.confirmedPoints
+
+            let needsRebuild = currentPoints != renderedPoints
+                || measurement.isClosed != renderedIsClosed
+                || measurement.heightPoint != renderedHeightPoint
+            guard needsRebuild else { return }
 
             confirmedMarkerNodes.forEach { $0.removeFromParentNode() }
             confirmedSegmentNodes.forEach { $0.removeFromParentNode() }
@@ -114,8 +121,19 @@ struct ARMeasureView: UIViewRepresentable {
                     addLine(from: currentPoints[i], to: currentPoints[i + 1], in: arView, color: .systemTeal, opacity: 1.0)
                 )
             }
+            if measurement.isClosed, currentPoints.count >= 3,
+               let first = currentPoints.first, let last = currentPoints.last {
+                confirmedSegmentNodes.append(addLine(from: last, to: first, in: arView, color: .systemTeal, opacity: 1.0))
+            }
+            if let heightPoint = measurement.heightPoint, currentPoints.count >= 3 {
+                confirmedMarkerNodes.append(addMarker(at: heightPoint, in: arView, color: .systemOrange, opacity: 1.0))
+                let footpoint = PolygonGeometry.footpoint(of: heightPoint, onPlaneOf: currentPoints)
+                confirmedSegmentNodes.append(addLine(from: footpoint, to: heightPoint, in: arView, color: .systemOrange, opacity: 1.0))
+            }
 
             renderedPoints = currentPoints
+            renderedIsClosed = measurement.isClosed
+            renderedHeightPoint = measurement.heightPoint
         }
 
         // MARK: - Live (tentative) geometry, updated in place every frame
@@ -127,16 +145,33 @@ struct ARMeasureView: UIViewRepresentable {
                 liveMarkerNode = addMarker(at: position, in: arView, color: .white, opacity: 0.85)
             }
 
-            guard let lastConfirmed = parent.measurement.lastPoint else {
+            let measurement = parent.measurement
+            let liveSegmentEndpoints: (from: SIMD3<Float>, to: SIMD3<Float>)?
+            if measurement.isClosed {
+                // Waiting for the height point: preview the perpendicular
+                // segment from the reticle down/up to the base plane.
+                if measurement.heightPoint == nil, measurement.confirmedPoints.count >= 3 {
+                    let footpoint = PolygonGeometry.footpoint(of: position, onPlaneOf: measurement.confirmedPoints)
+                    liveSegmentEndpoints = (footpoint, position)
+                } else {
+                    liveSegmentEndpoints = nil
+                }
+            } else if let lastConfirmed = measurement.lastPoint {
+                liveSegmentEndpoints = (lastConfirmed, position)
+            } else {
+                liveSegmentEndpoints = nil
+            }
+
+            guard let (from, to) = liveSegmentEndpoints else {
                 liveSegmentNode?.removeFromParentNode()
                 liveSegmentNode = nil
                 return
             }
 
             if let liveSegmentNode {
-                updateLine(liveSegmentNode, from: lastConfirmed, to: position)
+                updateLine(liveSegmentNode, from: from, to: to)
             } else {
-                liveSegmentNode = addLine(from: lastConfirmed, to: position, in: arView, color: .white, opacity: 0.6)
+                liveSegmentNode = addLine(from: from, to: to, in: arView, color: .white, opacity: 0.6)
             }
         }
 
