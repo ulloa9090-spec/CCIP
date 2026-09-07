@@ -21,7 +21,7 @@ Status values (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 30):
 
 | Tool | Status | Notes |
 |---|---|---|
-| Line | `PROTOTYPE` (iOS only) | Implemented: `phase0/ios/BoxOpPhase0/ARMeasureView.swift` + `ARMeasureScreen.swift` + `PointToPointMeasurement.swift`. Not yet run on real hardware (`phase0/README.md` "Next task") — do not promote past `PROTOTYPE` until it has. Android not started. |
+| Line / Polyline | `VALIDATING` (iOS only) | Point-to-point ran on real hardware with a tape-measure baseline: `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, 3mm repeatability at 20in, preliminary). Being generalized from fixed two-point to an unlimited-point polyline (`MultiPointMeasurement.swift`) per `phase0/README.md`. Held at `VALIDATING`, not `PRODUCTION_READY`, until calibration/error-source work in `phase0/shared/BENCHMARK_PROTOCOL.md` section 8 is done and it's run on more than one device. Android not started. |
 | Height | `SPECIFIED` | |
 | Distance Meter | `SPECIFIED` | |
 | Angle | `SPECIFIED` | |

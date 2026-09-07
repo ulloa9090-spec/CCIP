@@ -57,12 +57,13 @@ phase0/
 
 | Platform | Capability detection | AR point-to-point measurement |
 |---|---|---|
-| iOS | **PASS on real hardware** — `evidence/ios/RESULT.md` (`iPhone18,2`, iOS 26.6.1, Tier C/LiDAR) | Implemented (`ARMeasureView.swift`, `ARMeasureScreen.swift`, `PointToPointMeasurement.swift`), **not yet run on real hardware** |
+| iOS | **PASS on real hardware** — `evidence/ios/RESULT.md` (`iPhone18,2`, iOS 26.6.1, Tier C/LiDAR) | **Ran on real hardware** — `evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias, preliminary, not calibrated — see `shared/BENCHMARK_PROTOCOL.md` section 8). Now being generalized from fixed two points to an unlimited-point polyline. |
 | Android | Implemented, **not yet run on real hardware** | Not started |
 
-iOS ships two tabs now: **Capabilities** (validated) and **Measure** (the
-point-to-point spike, awaiting its own real-device run). Android still
-ships capability detection only.
+iOS ships two tabs now: **Capabilities** (validated) and **Measure**
+(point-to-point validated with a real accuracy baseline, currently being
+upgraded to continuous multi-point measurement). Android still ships
+capability detection only.
 
 This was built up one slice at a time rather than all at once, per
 `docs/03_CLAUDE_CODE_RULES.md` rule 2 ("one roadmap phase/task at a time")

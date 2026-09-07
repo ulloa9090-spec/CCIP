@@ -102,3 +102,37 @@ with real ground-truth data. Until then, precision claims in any UI or
 documentation must stay qualitative (`measured` / `estimated` / `low
 confidence`), per `docs/01_PRODUCT_VISION.md` ("Trust") and
 `docs/16_TESTING_VALIDATION.md`.
+
+## 8. Do not calibrate yet
+
+A first real baseline exists for iOS point-to-point
+(`phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md`): a consistent
+positive bias of roughly +5 to +7 mm across 10–40 in, good short-run
+repeatability, no evidence yet that error scales with distance. Until a
+future task explicitly revisits this section:
+
+- **Do not** compensate by subtracting a hardcoded offset derived from
+  one baseline.
+- **Do not** introduce calibration constants into the measurement code.
+- **Preserve raw AR measurement behavior** — the displayed number is
+  exactly what the raycast produced, nothing between them.
+- A new UI/interaction increment (e.g. multi-point/polyline measurement)
+  **must not hide or artificially correct** the existing baseline; if
+  anything, expose more of the raw signal (per-segment method/source),
+  not less.
+
+Rationale: one baseline on one device cannot distinguish the open error
+sources below from each other, so any constant derived from it would be
+overfit noise dressed up as calibration. Revisit only after controlled
+tests isolate which source(s) actually dominate:
+
+- manual endpoint placement (human tap/reticle precision);
+- raycast target selection (which plane/point actually got hit);
+- existing-plane geometry accuracy;
+- estimated-plane fallback accuracy;
+- camera pose / tracking stability over the measurement;
+- LiDAR / scene reconstruction quality (current raycast path doesn't use
+  it yet — see `POINT_TO_POINT_BENCHMARK.md` "an unexercised path");
+- user motion during capture;
+- viewing angle relative to the measured line;
+- surface texture and lighting.
