@@ -86,7 +86,7 @@ struct ARMeasureScreen: View {
         if !measurement.isClosed {
             if let livePoint, let liveSegment = measurement.liveSegmentDistance(to: livePoint) {
                 resultCard(
-                    primary: String(format: "%.3f m", liveSegment),
+                    primary: UnitFormatting.feetAndInches(meters: liveSegment),
                     secondary: "current segment" + sourceSuffix
                 )
             }
@@ -95,21 +95,21 @@ struct ARMeasureScreen: View {
             }
             if measurement.pointCount > 1 {
                 resultCard(
-                    primary: String(format: "total: %.3f m", measurement.liveTotalDistance(includingLivePoint: livePoint)),
+                    primary: "total: " + UnitFormatting.feetAndInches(meters: measurement.liveTotalDistance(includingLivePoint: livePoint)),
                     secondary: "\(measurement.pointCount) points \u{00B7} \(measurement.segmentDistances.count) segments"
                 )
             }
         } else if measurement.heightPoint == nil {
             closedShapeSummary
             if let livePoint, let liveHeight = measurement.liveHeight(with: livePoint) {
-                resultCard(primary: String(format: "%.3f m", liveHeight), secondary: "live height preview")
+                resultCard(primary: UnitFormatting.feetAndInches(meters: liveHeight), secondary: "live height preview")
             }
         } else {
             if let volume = measurement.volume {
-                resultCard(primary: String(format: "%.3f m\u{00B3}", volume), secondary: "volume")
+                resultCard(primary: UnitFormatting.cubicFeet(cubicMeters: volume), secondary: "volume")
             }
             if let height = measurement.height {
-                resultCard(primary: String(format: "%.3f m", height), secondary: "height")
+                resultCard(primary: UnitFormatting.feetAndInches(meters: height), secondary: "height")
             }
         }
     }
@@ -120,15 +120,15 @@ struct ARMeasureScreen: View {
             closedShapeSummary
             if measurement.heightPoint != nil {
                 if let volume = measurement.volume {
-                    resultCard(primary: String(format: "%.3f m\u{00B3}", volume), secondary: "volume")
+                    resultCard(primary: UnitFormatting.cubicFeet(cubicMeters: volume), secondary: "volume")
                 }
                 if let height = measurement.height {
-                    resultCard(primary: String(format: "%.3f m", height), secondary: "height")
+                    resultCard(primary: UnitFormatting.feetAndInches(meters: height), secondary: "height")
                 }
             }
         } else {
             resultCard(
-                primary: String(format: "total: %.3f m", measurement.totalDistance),
+                primary: "total: " + UnitFormatting.feetAndInches(meters: measurement.totalDistance),
                 secondary: "\(measurement.pointCount) points \u{00B7} \(measurement.segmentDistances.count) segments"
             )
         }
@@ -139,14 +139,14 @@ struct ARMeasureScreen: View {
     @ViewBuilder
     private var closedShapeSummary: some View {
         if let area = measurement.area {
-            resultCard(primary: String(format: "%.3f m\u{00B2}", area), secondary: measurement.shapeLabel)
+            resultCard(primary: UnitFormatting.squareFeet(squareMeters: area), secondary: measurement.shapeLabel)
         }
         if let perimeter = measurement.perimeter {
-            resultCard(primary: String(format: "%.3f m", perimeter), secondary: "perimeter")
+            resultCard(primary: UnitFormatting.feetAndInches(meters: perimeter), secondary: "perimeter")
         }
         if let rectangleCheck = measurement.rectangleCheck, rectangleCheck.isRectangle {
             resultCard(
-                primary: String(format: "%.3f \u{00D7} %.3f m", rectangleCheck.length, rectangleCheck.width),
+                primary: "\(UnitFormatting.feetAndInches(meters: rectangleCheck.length)) \u{00D7} \(UnitFormatting.feetAndInches(meters: rectangleCheck.width))",
                 secondary: "length \u{00D7} width"
             )
         }
@@ -155,7 +155,7 @@ struct ARMeasureScreen: View {
             resultCard(primary: anglesText, secondary: "interior angles")
         }
         if let planarity = measurement.planarityDeviation, planarity > 0.02 {
-            readoutCapsule(String(format: "\u{26A0} points aren't perfectly coplanar (\u{00B1}%.0f mm) \u{00B7} area is approximate", planarity * 1000))
+            readoutCapsule("\u{26A0} points aren't perfectly coplanar (\u{00B1}" + UnitFormatting.inches(meters: planarity) + ") \u{00B7} area is approximate")
         }
     }
 

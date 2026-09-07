@@ -28,6 +28,16 @@ Two screens, built up one Phase 0 slice at a time
    see `docs/25_MEASUREMENT_TOOLS_CATALOG.md` and
    `phase0/TOOL_REGISTRY_STATUS.md` for exactly what's real vs. `SPECIFIED`.
 
+All Measure-tab results display in **feet and inches** (`UnitFormatting.swift`)
+per user request — a display-layer conversion only; every internal
+computation still happens in meters, ARKit's native unit
+(`docs/14_LOCALIZATION_LANGUAGE.md` "Measurement units": typed
+conversion, never string manipulation, convert only at presentation
+time). Note: `docs/21_AR_MEASUREMENT_SYSTEM.md` "Units" names
+millimeters as the eventual canonical persisted unit once records are
+saved — nothing is persisted yet in this Phase 0 spike, so that's a real
+but not-yet-relevant gap, tracked here rather than silently ignored.
+
 - **Source**: `BoxOpPhase0/*.swift`
 - **Setup & run on a real iPhone**: see `SETUP.md`
 - **Required Info.plist keys**: see `Info-Additions.md` (unchanged — AR
