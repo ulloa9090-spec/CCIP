@@ -34,8 +34,16 @@ struct ARMeasureScreen: View {
             ARMeasureView(
                 state: state,
                 measurement: measurement,
+                toolMode: toolMode,
                 livePoint: $livePoint,
-                raycastSource: $raycastSource
+                raycastSource: $raycastSource,
+                onAcceptSuggestedRectangle: { corners in
+                    guard measurement.isEmpty else { return }
+                    for corner in corners {
+                        measurement.addPoint(corner)
+                    }
+                    measurement.closeShape()
+                }
             )
             .ignoresSafeArea()
 
@@ -108,7 +116,7 @@ struct ARMeasureScreen: View {
                 : "Height captured \u{00B7} tap Finish"
         }
         if measurement.isEmpty {
-            return "Tap Add Point to place the first point"
+            return "Tap Add Point to place the first point \u{2014} or double-tap a suggested rectangle"
         }
         return "Point \(measurement.pointCount) placed \u{00B7} move to the next point"
     }

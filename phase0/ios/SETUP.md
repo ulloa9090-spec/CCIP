@@ -122,6 +122,15 @@ generalized version needs its first real-device run):
    second or two so ARKit can find a plane.
 2. Tap **Start Measure**. The reticle turns solid white once it's
    resting on a valid surface.
+2b. In **Length** mode, before you place any point, the app is also
+   watching the camera feed for a real rectangular object or surface
+   (a book, a door, a screen). When it finds one it can confirm with a
+   raycast, you'll see a **yellow outline** appear around it with a
+   "Double-tap to measure" label. **Double-tap anywhere on screen** to
+   accept it — this places all four corner points and closes the shape
+   in one step, skipping steps 3-5 below entirely. If no yellow outline
+   appears, just keep placing points manually as usual; this is a
+   best-effort suggestion, not a requirement.
 3. Tap **Add Point** to confirm the first point (a teal sphere appears).
    Move the phone toward the next point you want to measure — you'll see
    a white tentative line follow the reticle live, with a yellow text
@@ -179,6 +188,13 @@ generalized version needs its first real-device run):
 - **Measure tab is black or frozen** → this screen needs a real device;
   it cannot run in the Simulator (no camera, no ARKit). Make sure the
   run destination is your iPhone, not a simulator.
+- **No yellow rectangle suggestion ever appears** → this is a
+  best-effort detector, not guaranteed: it needs decent lighting, a
+  genuinely rectangular object with visible edges/contrast, all four
+  corners on a surface ARKit has already mapped (move the phone around
+  a bit first), and only runs while you're in Length mode with zero
+  points placed. Nothing is broken if it just doesn't trigger — keep
+  placing points manually.
 - **"Add Point" stays greyed out** → the reticle isn't resting on any
   detected/estimated surface yet. Move the phone slowly over the area
   you want to measure first (this is what "world tracking" is doing)

@@ -796,10 +796,76 @@ using a dashed-line style, not necessarily a fix for the "not smooth"
 complaint if that turns out to mean something else (jagged rendering,
 choppy tracking, or a preference for a solid ring).
 
-**Next recommended task**: sync `ARMeasureScreen.swift` to the Xcode
-project and try both Length and Angle modes on the iPhone. Revisit the
-two dismissed clarifying questions (shape auto-suggestion scope,
-reticle smoothness complaint) when the user is ready to specify what
-they meant. Also still open: Cube wireframe and 1-foot threshold
-real-device confirmation, Cylinder/Distance Meter/dedicated Height
-tools, and the Android capability-detection real-device run.
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureScreen.swift` to the Xcode project and try both Length and
+Angle modes on the iPhone. Revisit the reticle-smoothness clarifying
+question when the user is ready to specify what they meant. Also still
+open: Cube wireframe and 1-foot threshold real-device confirmation,
+Cylinder/Distance Meter/dedicated Height tools, and the Android
+capability-detection real-device run.
+
+## Completion report — camera-based rectangle suggestion (Vision + double-tap)
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift` (new
+`Vision`-based detection/suggestion logic, double-tap gesture),
+`ARMeasureScreen.swift` (wires up `onAcceptSuggestedRectangle`, updated
+instruction text), `phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: this is the previously-dismissed "sugerencias
+cuando detecta figuras cuadradas" question, now answered explicitly by
+the user: the camera itself should identify a shape and suggest it, with
+a double-tap taking the measurement automatically — the largest of the
+three options originally offered (camera-based CV detection, not manual
+point auto-suggestion). Implemented via Apple's documented pattern for
+this exact scenario (`Vision`'s `VNDetectRectanglesRequest` run against
+`ARFrame.capturedImage`, throttled to ~3Hz per Apple's "no more than 10
+times per second" guidance, one request in flight at a time): while in
+Length mode with no points placed yet, each AR frame may trigger a
+rectangle-detection pass; a found rectangle's four corners (normalized
+to Vision's coordinate space) are converted to view-space points via
+`ARFrame.displayTransform(for:viewportSize:)` — verified against a real
+working ARKit+Vision rectangle-detection example, not guessed — then
+each corner is raycast the same way the center reticle already is. Only
+shown as a suggestion if all four corners land on real geometry. A
+`UITapGestureRecognizer` (`numberOfTapsRequired = 2`) on the `ARSCNView`
+accepts the current suggestion, reporting the four world-space corners
+back to `ARMeasureScreen` through a new `onAcceptSuggestedRectangle`
+closure — kept as a closure rather than making `measurement` a
+`@Binding`, preserving the file's existing "this view owns only the AR
+scene; `ARMeasureScreen` owns the state machine" separation. Accepting
+adds all four points and calls `closeShape()` in one step, matching
+"con un doble tap se tome la medida en automático".
+
+**Tests/results**: no new pure-math geometry was added (this is
+ARKit/Vision/SceneKit glue, which the XCTest suite deliberately doesn't
+cover) — not run in this environment or the user's Xcode. The
+coordinate-conversion approach (Vision normalized corner → `NormalizedPoint
+.cgPoint` → `displayTransform` → viewport scale → `raycastQuery`) was
+cross-checked against Apple's Vision/ARKit documentation and a real
+public ARKit+Vision rectangle-detection project rather than assumed,
+given how error-prone this specific conversion is known to be, but has
+not been confirmed by an actual compile or device run.
+
+**Limitations**: real, meaningful gaps until real-device evidence
+exists: (1) orientation is hardcoded to `.portrait`/`.right` matching
+the app's portrait-only deployment setting — correct for this build,
+but a latent bug if that setting ever changes; (2) the `isDetectingRectangle`
+throttle flag is a plain, unsynchronized `Bool` read/written across
+threads (matches the simplicity of Apple's own sample code for this
+exact scenario, not a custom shortcut); (3) detection quality (false
+positives, missed detections, how it behaves with multiple rectangular
+objects in frame) is entirely unknown without a real device test; (4)
+this is unrelated to and does not address the "mirilla no se ve
+fluida" (reticle smoothness) question, which remains open and
+unclarified.
+
+**Next recommended task**: sync `ARMeasureView.swift` and
+`ARMeasureScreen.swift` to the Xcode project and test the suggestion
+flow on a real rectangular object (a book, a laptop lid, a door) under
+normal indoor lighting — first real signal on whether Vision's
+detector, the corner-raycast conversion, and the double-tap gesture all
+actually work together on device. Also still open: the reticle-smoothness
+clarification, Cube wireframe and 1-foot threshold real-device
+confirmation, Cylinder/Distance Meter/dedicated Height tools, and the
+Android capability-detection real-device run.

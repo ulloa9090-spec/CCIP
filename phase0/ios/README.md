@@ -30,15 +30,28 @@ Two screens, built up one Phase 0 slice at a time
    automatic shape recognition: Square/Rectangle at 4 points, an
    equilateral/right/isosceles/generic Triangle at 3 points, or a Circle
    at 5+ points if they fit one within tolerance — all still manual, the
-   app only labels the shape you already traced, no auto-suggestion),
-   then optionally
+   app only labels the shape you already traced), then optionally
    place one **height point** to derive a volume (base area × height —
    the same pattern Apple's Measure app uses for room volume). Once the
    height point is set, the AR scene draws the **full wireframe
    box/prism** — every top-face edge and every vertical edge, each with
    its own in-scene label — not just the single height line, matching
    the "Cube" tool look in dedicated AR measuring apps (per user
-   reference). This generalizes the earlier fixed two-point spike, which **did** run on
+   reference).
+
+   **New**: before placing any points in **Length** mode, the app also
+   runs `Vision`'s `VNDetectRectanglesRequest` against the live camera
+   feed (throttled to a few times a second, per Apple's own guidance)
+   looking for a real rectangular object/surface. When it finds one and
+   all four corners raycast onto real geometry, it draws a yellow
+   suggested outline with a "Double-tap to measure" label; double-tapping
+   the screen accepts it, adding all four points and closing the shape
+   in one step, per explicit user request. This is a separate, 2D-image
+   rectangle detector from the 3D point-based `PolygonGeometry
+   .rectangleCheck` used after manual placement — the two aren't
+   related and can disagree (Vision might suggest a shape our own
+   tolerance check later doesn't confirm as a rectangle, or vice versa).
+   This generalizes the earlier fixed two-point spike, which **did** run on
    real hardware and produced a first accuracy baseline — see
    `../evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias,
    preliminary, **not calibrated** — see

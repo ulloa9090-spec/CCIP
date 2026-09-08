@@ -1,6 +1,7 @@
 import ARKit
 import SceneKit
 import SwiftUI
+import Vision
 import simd
 
 /// Continuous multi-point AR measurement surface. While `state == .measuring`
@@ -9,11 +10,22 @@ import simd
 /// `measurement.confirmedPoints` (an unlimited, ordered polyline — see
 /// `MultiPointMeasurement.swift`). This view owns only the AR scene and the
 /// continuous raycast; `ARMeasureScreen` owns the state machine and buttons.
+///
+/// In `.length` mode, before any point has been placed, this also runs
+/// `Vision`'s `VNDetectRectanglesRequest` against the camera feed and, when
+/// a rectangle is found and all four corners raycast onto real geometry,
+/// shows it as a yellow suggested outline; a double-tap accepts it via
+/// `onAcceptSuggestedRectangle`, which the host screen uses to add all four
+/// points and close the shape in one step — per explicit user request
+/// ("si el sensor o la cámara identifican una figura debería sugerirla y
+/// con un doble tap se tome la medida en automático").
 struct ARMeasureView: UIViewRepresentable {
     let state: ARMeasureState
     let measurement: MultiPointMeasurement
+    let toolMode: MeasureToolMode
     @Binding var livePoint: SIMD3<Float>?
     @Binding var raycastSource: RaycastSource?
+    var onAcceptSuggestedRectangle: (([SIMD3<Float>]) -> Void)?
 
     func makeUIView(context: Context) -> ARSCNView {
         let arView = ARSCNView(frame: .zero)
@@ -24,6 +36,10 @@ struct ARMeasureView: UIViewRepresentable {
         configuration.planeDetection = [.horizontal, .vertical]
         arView.session.run(configuration)
 
+        let doubleTap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleDoubleTap))
+        doubleTap.numberOfTapsRequired = 2
+        arView.addGestureRecognizer(doubleTap)
+
         context.coordinator.arView = arView
         return arView
     }
@@ -33,6 +49,9 @@ struct ARMeasureView: UIViewRepresentable {
         context.coordinator.syncConfirmedNodes()
         if state != .measuring {
             context.coordinator.hideLiveVisuals()
+        }
+        if toolMode != .length || !measurement.isEmpty || state != .measuring {
+            context.coordinator.clearSuggestion()
         }
     }
 
@@ -54,6 +73,13 @@ struct ARMeasureView: UIViewRepresentable {
         private var liveMarkerNode: SCNNode?
         private var liveSegmentNode: SCNNode?
         private var liveLabelNode: SCNNode?
+
+        private var suggestionMarkerNodes: [SCNNode] = []
+        private var suggestionSegmentNodes: [SCNNode] = []
+        private var suggestionLabelNode: SCNNode?
+        private var suggestedCorners: [SIMD3<Float>]?
+        private var isDetectingRectangle = false
+        private var lastDetectionTime: CFTimeInterval = 0
 
         init(parent: ARMeasureView) {
             self.parent = parent
@@ -77,6 +103,117 @@ struct ARMeasureView: UIViewRepresentable {
             parent.livePoint = hit.position
             parent.raycastSource = hit.source
             showLiveVisuals(at: hit.position, in: arView)
+
+            if parent.toolMode == .length, parent.measurement.isEmpty {
+                detectRectangleIfNeeded(in: frame, arView: arView)
+            }
+        }
+
+        // MARK: - Camera-based rectangle suggestion (Vision)
+
+        /// Runs `VNDetectRectanglesRequest` on the current camera frame, at
+        /// most a few times per second (Apple's own guidance for Vision
+        /// requests during an AR session is "no more than 10 times per
+        /// second" to avoid hurting frame rate), and only one request in
+        /// flight at a time.
+        private func detectRectangleIfNeeded(in frame: ARFrame, arView: ARSCNView) {
+            guard !isDetectingRectangle else { return }
+            let now = CACurrentMediaTime()
+            guard now - lastDetectionTime > 0.3 else { return }
+            lastDetectionTime = now
+            isDetectingRectangle = true
+
+            let pixelBuffer = frame.capturedImage
+            let request = VNDetectRectanglesRequest { [weak self] request, _ in
+                defer { self?.isDetectingRectangle = false }
+                guard let self else { return }
+                guard let observation = (request.results as? [VNRectangleObservation])?.first else {
+                    DispatchQueue.main.async { self.clearSuggestion() }
+                    return
+                }
+                self.raycastDetectedRectangle(observation, arView: arView)
+            }
+            request.maximumObservations = 1
+            request.minimumConfidence = 0.8
+            request.minimumAspectRatio = 0.2
+
+            // The app is portrait-only (see the target's deployment info),
+            // so the back camera's landscape sensor buffer is always
+            // rotated the same way -- .right is the standard orientation
+            // for a portrait UI with the back camera.
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right, options: [:])
+            DispatchQueue.global(qos: .userInitiated).async {
+                try? handler.perform([request])
+            }
+        }
+
+        /// Converts the detected rectangle's four corners (normalized to
+        /// the *captured image*, not the screen) into view-space points via
+        /// `ARFrame.displayTransform`, then raycasts each one the same way
+        /// the center reticle does. Only shows a suggestion if all four
+        /// corners land on real geometry -- a partial rectangle would be a
+        /// confusing, unmeasurable suggestion.
+        private func raycastDetectedRectangle(_ observation: VNRectangleObservation, arView: ARSCNView) {
+            guard let frame = arView.session.currentFrame else { return }
+            let viewportSize = arView.bounds.size
+            guard viewportSize.width > 0, viewportSize.height > 0 else { return }
+
+            let displayTransform = frame.displayTransform(for: .portrait, viewportSize: viewportSize)
+            let scaleTransform = CGAffineTransform(scaleX: viewportSize.width, y: viewportSize.height)
+            let normalizedCorners = [
+                observation.topLeft, observation.topRight, observation.bottomRight, observation.bottomLeft
+            ]
+
+            var worldCorners: [SIMD3<Float>] = []
+            for corner in normalizedCorners {
+                let screenPoint = corner.cgPoint.applying(displayTransform).applying(scaleTransform)
+                guard let query = arView.raycastQuery(from: screenPoint, allowing: .existingPlaneGeometry, alignment: .any),
+                      let result = arView.session.raycast(query).first else {
+                    DispatchQueue.main.async { self.clearSuggestion() }
+                    return
+                }
+                worldCorners.append(position(from: result))
+            }
+
+            DispatchQueue.main.async {
+                self.showSuggestion(corners: worldCorners, in: arView)
+            }
+        }
+
+        private func showSuggestion(corners: [SIMD3<Float>], in arView: ARSCNView) {
+            clearSuggestion()
+            suggestedCorners = corners
+
+            for corner in corners {
+                suggestionMarkerNodes.append(addMarker(at: corner, in: arView, color: .systemYellow, opacity: 0.9))
+            }
+            for i in 0 ..< corners.count {
+                let a = corners[i]
+                let b = corners[(i + 1) % corners.count]
+                suggestionSegmentNodes.append(addLine(from: a, to: b, in: arView, color: .systemYellow, opacity: 0.9))
+            }
+            suggestionLabelNode = addLabel(
+                text: "Double-tap to measure",
+                at: PolygonGeometry.centroid(of: corners) + SIMD3<Float>(0, 0.02, 0),
+                in: arView,
+                color: .systemYellow
+            )
+        }
+
+        func clearSuggestion() {
+            suggestionMarkerNodes.forEach { $0.removeFromParentNode() }
+            suggestionSegmentNodes.forEach { $0.removeFromParentNode() }
+            suggestionLabelNode?.removeFromParentNode()
+            suggestionMarkerNodes.removeAll()
+            suggestionSegmentNodes.removeAll()
+            suggestionLabelNode = nil
+            suggestedCorners = nil
+        }
+
+        @objc func handleDoubleTap() {
+            guard let corners = suggestedCorners else { return }
+            parent.onAcceptSuggestedRectangle?(corners)
+            clearSuggestion()
         }
 
         private func reticleRaycast(in arView: ARSCNView) -> (position: SIMD3<Float>, source: RaycastSource)? {
