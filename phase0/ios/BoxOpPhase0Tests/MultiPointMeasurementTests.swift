@@ -37,7 +37,7 @@ final class MultiPointMeasurementTests: XCTestCase {
 
     // MARK: - Perimeter
 
-    func testPerimeterOfClosedRectangle() {
+    func testPerimeterOfClosedRectangle() throws {
         var measurement = MultiPointMeasurement()
         measurement.addPoint(SIMD3(0, 0, 0))
         measurement.addPoint(SIMD3(4, 0, 0))
@@ -45,7 +45,8 @@ final class MultiPointMeasurementTests: XCTestCase {
         measurement.addPoint(SIMD3(0, 3, 0))
         measurement.closeShape()
 
-        XCTAssertEqual(measurement.perimeter, 14, accuracy: epsilon)
+        let perimeter = try XCTUnwrap(measurement.perimeter)
+        XCTAssertEqual(perimeter, 14, accuracy: epsilon)
     }
 
     func testPerimeterIsNilWhenNotClosed() {
