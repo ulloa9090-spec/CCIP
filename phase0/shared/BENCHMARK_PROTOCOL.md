@@ -120,6 +120,11 @@ future task explicitly revisits this section:
   **must not hide or artificially correct** the existing baseline; if
   anything, expose more of the raw signal (per-segment method/source),
   not less.
+- This rule applies equally to **angle** measurements, not just
+  distance: a first data point (`TOOL_REGISTRY_STATUS.md` "Angle" row,
+  2026-09-08) measured a geometrically-90° corner as 88.8° — the raw
+  value, not rounded or snapped toward 90°, for the same reason as
+  above.
 
 Rationale: one baseline on one device cannot distinguish the open error
 sources below from each other, so any constant derived from it would be

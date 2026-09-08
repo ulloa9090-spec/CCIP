@@ -860,12 +860,57 @@ this is unrelated to and does not address the "mirilla no se ve
 fluida" (reticle smoothness) question, which remains open and
 unclarified.
 
-**Next recommended task**: sync `ARMeasureView.swift` and
-`ARMeasureScreen.swift` to the Xcode project and test the suggestion
-flow on a real rectangular object (a book, a laptop lid, a door) under
-normal indoor lighting — first real signal on whether Vision's
-detector, the corner-raycast conversion, and the double-tap gesture all
-actually work together on device. Also still open: the reticle-smoothness
-clarification, Cube wireframe and 1-foot threshold real-device
-confirmation, Cylinder/Distance Meter/dedicated Height tools, and the
-Android capability-detection real-device run.
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` and `ARMeasureScreen.swift` to the Xcode project
+and test the suggestion flow on a real rectangular object under normal
+indoor lighting. Also still open: the reticle-smoothness clarification,
+Cube wireframe and 1-foot threshold real-device confirmation,
+Cylinder/Distance Meter/dedicated Height tools, and the Android
+capability-detection real-device run.
+
+## Completion report — fixed a real build error + first Angle real-device data point
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift` (1-line
+fix), `phase0/TOOL_REGISTRY_STATUS.md`, `phase0/shared/BENCHMARK_PROTOCOL.md`,
+this file.
+
+**Implementation summary**: two things from the user's testing. (1) A
+real compile error, "Value of type 'CGPoint' has no member 'cgPoint'"
+— the earlier rectangle-suggestion code assumed `VNRectangleObservation`
+corners return the newer Vision `NormalizedPoint` type (with a
+`.cgPoint` accessor), but the classic completion-handler-based
+`VNDetectRectanglesRequest` this code actually uses still returns plain
+`CGPoint` directly, matching the real working example this was based
+on. Removed the incorrect `.cgPoint` access. (2) The user tested the
+new dedicated Angle tool on a laptop's corner (geometrically 90°) and
+got 88.8° — asked why. This is not a bug: it's normal AR tap-placement
+imprecision, the same category of error already documented for
+distance (`evidence/ios/POINT_TO_POINT_BENCHMARK.md`'s +5 to +7mm
+bias). Per the project's standing no-calibration rule
+(`shared/BENCHMARK_PROTOCOL.md` section 8, now explicitly extended to
+angle), this was **not** rounded or snapped toward 90° — recorded as-is
+in `TOOL_REGISTRY_STATUS.md` as the Angle tool's first real-hardware
+data point, moving it from `PROTOTYPE` to `VALIDATING`.
+
+**Tests/results**: the CGPoint fix is not independently testable
+without a real compile (still pending confirmation the corrected code
+actually builds). The 88.8° angle measurement is itself the "test" for
+this entry — real, hand-verified as normal-magnitude error rather than
+a defect, and recorded as evidence rather than corrected away.
+
+**Limitations**: single data point on a single device/angle — not
+enough to characterize angle-measurement error the way the 4-distance
+point-to-point benchmark did. The rectangle-suggestion feature (the
+actual reason for the CGPoint bug) still has zero real-device
+confirmation that the fix compiles or that detection/raycast/double-tap
+actually work end-to-end.
+
+**Next recommended task**: sync `ARMeasureView.swift` to the Xcode
+project, confirm it compiles, and test the rectangle-suggestion flow on
+a real object. Separately, more angle measurements against more known
+angles (a carpenter's square, a book's corner, etc.) would turn this
+one data point into a real baseline the way the distance one already
+is. Also still open: the reticle-smoothness clarification, Cube
+wireframe and 1-foot threshold real-device confirmation,
+Cylinder/Distance Meter/dedicated Height tools, and the Android
+capability-detection real-device run.
