@@ -1039,11 +1039,78 @@ on-demand version should make that easier to evaluate cleanly. Scan
 quality itself (lighting, contrast, distance/angle sensitivity) remains
 otherwise exactly as tuned in the previous entry.
 
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` and `ARMeasureScreen.swift` to the Xcode project
+and test **Scan for Rectangle** on a real rectangular object, holding
+the phone steady for the single scan — this should now show either a
+stable, correctly placed outline or nothing, with no in-between
+flicker. Also still open: the reticle-smoothness clarification, Cube
+wireframe and 1-foot threshold confirmation, Cylinder/Distance
+Meter/dedicated Height tools, and the Android capability-detection
+real-device run.
+
+## Completion report — screenshot button for the Measure tab
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift`,
+`ARMeasureScreen.swift`, `phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+this file.
+
+**Implementation summary**: per explicit user request ("Tambien añade
+un boton para tomar el captura de pantalla"), added a camera-icon
+button (top-right corner, visible any time past the idle screen) that
+captures the current AR scene together with the SwiftUI overlay
+(readout cards, buttons) as a single image and opens the system share
+sheet. This needed care because `ARSCNView` renders via Metal, and the
+classic screenshot techniques (`CALayer.render(in:)`, and in some
+reported cases `UIView.drawHierarchy(in:afterScreenUpdates:)` applied
+directly to a Metal-backed view) are documented to not reliably
+capture that content — it can come back black. Research on this
+(Firecrawl) turned up one concrete data point specific to RealityKit's
+`ARView` (`sceneview/sceneview#983`, capturing black on real devices
+via `drawHierarchy`) but nothing definitive naming this codebase's
+actual stack, SceneKit's `ARSCNView` — so rather than trust an
+adjacent-but-different negative result, went with a technique that
+sidesteps the risk entirely: capture the AR content with ARKit's own
+purpose-built `ARSCNView.snapshot()` (which always works, being native
+to the framework), temporarily swap that resulting image in as a plain
+`UIImageView` in the exact same frame as the live AR view (hiding the
+live view underneath), screenshot the whole window with
+`drawHierarchy` (now nothing Metal-backed remains for it to fail on,
+so it correctly picks up the SwiftUI overlay too), then immediately
+restore the live AR view. Wired with the same on-demand,
+counter-compared trigger pattern already used for the Scan-for-
+Rectangle button (`screenshotRequestID` / `onScreenshotCaptured`) —
+no new architecture, just the established pattern applied to a new
+button. The resulting image opens a system `UIActivityViewController`
+share sheet rather than writing straight to Photos, deliberately, so
+no new Info.plist permission entry is required (the user's own choice
+of "Save Image" from the share sheet goes through the system's own
+Photos flow instead of this app calling `UIImageWriteToSavedPhotosAlbum`
+directly).
+
+**Tests/results**: no new pure-math geometry; this is UI/interaction
+plus a UIKit/ARKit compositing technique, outside the XCTest suite's
+scope by design. Not run in this environment (no macOS/Xcode/device
+access) or the user's Xcode yet — the swap-and-`drawHierarchy`
+approach is a well-established workaround for exactly this Metal-
+screenshot limitation, but hasn't been confirmed against this specific
+view hierarchy on real hardware.
+
+**Limitations**: only captures the Measure screen's own window
+content — no cropping/annotation/measurement overlay burned into the
+image beyond what's already on screen when the button is tapped. If
+the swap-based capture doesn't work as expected on real hardware (e.g.
+if the AR content still comes back blank, or the `UIImageView`
+stand-in causes a visible flash), the fallback path documented in
+`SETUP.md`'s Troubleshooting section is to report it as a real result
+rather than assume it's already handled.
+
 **Next recommended task**: sync `ARMeasureView.swift` and
-`ARMeasureScreen.swift` to the Xcode project and test **Scan for
-Rectangle** on a real rectangular object, holding the phone steady for
-the single scan — this should now show either a stable, correctly
-placed outline or nothing, with no in-between flicker. Also still
-open: the reticle-smoothness clarification, Cube wireframe and 1-foot
-threshold confirmation, Cylinder/Distance Meter/dedicated Height
-tools, and the Android capability-detection real-device run.
+`ARMeasureScreen.swift` to the Xcode project and test the new camera
+button — confirm the shared image shows both the AR scene and the
+overlay correctly with no black/blank regions and no visible flash
+during capture. Also still open: re-confirming the rectangle-
+suggestion orientation fix and Scan button on real hardware, the
+reticle-smoothness clarification, Cube wireframe and 1-foot threshold
+confirmation, Cylinder/Distance Meter/dedicated Height tools, and the
+Android capability-detection real-device run.

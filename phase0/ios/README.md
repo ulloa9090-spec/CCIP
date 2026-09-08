@@ -75,6 +75,21 @@ Two screens, built up one Phase 0 slice at a time
    see `docs/25_MEASUREMENT_TOOLS_CATALOG.md` and
    `phase0/TOOL_REGISTRY_STATUS.md` for exactly what's real vs. `SPECIFIED`.
 
+**New**: a camera button in the top-right corner (visible any time you're
+past the start screen, either tool mode) captures the AR scene together
+with the current SwiftUI overlay (readout cards, labels) as one image and
+opens the system share sheet, per explicit user request. `ARSCNView`
+renders via Metal, and the classic `CALayer.render(in:)`/
+`UIView.drawHierarchy` screenshot techniques don't reliably capture
+Metal-backed content on their own (it can come back black); this instead
+uses ARKit's own `ARSCNView.snapshot()` to capture the 3D scene correctly,
+temporarily swaps that snapshot in as a plain image view in the same spot,
+then screenshots the whole window (now Metal-free) to also pick up the
+SwiftUI overlay, and restores the live AR view immediately after. The
+share sheet (not a direct Photos-library write) is used deliberately so no
+new Info.plist permission is needed — saving goes through the system's own
+flow if the user picks "Save Image". Not yet run on real hardware.
+
 All Measure-tab results display in **feet and inches** (`UnitFormatting.swift`)
 per user request — a display-layer conversion only; every internal
 computation still happens in meters, ARKit's native unit

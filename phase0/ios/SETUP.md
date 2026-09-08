@@ -176,6 +176,12 @@ generalized version needs its first real-device run):
    app** — see that document's section 8 before touching the measurement
    code over accuracy concerns. Area/volume have no benchmark yet — that's
    a good next real-device task once basic length is reconfirmed.
+10. A small **camera button** sits in the top-right corner any time you're
+    past the start screen (Measuring or Finished, either tool mode). Tap
+    it to capture the AR scene together with whatever's currently on
+    screen (readout cards, labels) as one image, then use the system
+    share sheet that appears to save it to Photos or send it anywhere
+    else — nothing is saved automatically.
 
 ## Troubleshooting
 
@@ -223,6 +229,13 @@ generalized version needs its first real-device run):
   exactly what the warning is for, not a bug to "fix" by hiding it.
 - **"Set Height Point" is disabled** → same cause as "Add Point" being
   disabled: the reticle needs to be resting on a valid surface first.
+- **Tapped the camera button and the share sheet shows a black or
+  half-blank image** → this would mean the AR content didn't get captured
+  correctly (a known risk with Metal-rendered views); the code works
+  around it by swapping in `ARSCNView.snapshot()`'s own image before
+  taking the full-screen capture, but this hasn't been confirmed on real
+  hardware yet — if you see this, it's a real, worth-reporting result, not
+  something to assume is already fixed.
 - **A segment's text label is missing, flickers, or looks wrong from some
   angles** → the labels use `SCNText` with a billboard constraint so they
   always face the camera; a documented SceneKit gotcha is `SCNText`

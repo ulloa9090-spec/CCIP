@@ -29,6 +29,8 @@ struct ARMeasureScreen: View {
     @State private var raycastSource: RaycastSource?
     @State private var toolMode: MeasureToolMode = .length
     @State private var scanRequestID = 0
+    @State private var screenshotRequestID = 0
+    @State private var capturedScreenshot: UIImage?
 
     var body: some View {
         ZStack {
@@ -39,12 +41,16 @@ struct ARMeasureScreen: View {
                 livePoint: $livePoint,
                 raycastSource: $raycastSource,
                 scanRequestID: scanRequestID,
+                screenshotRequestID: screenshotRequestID,
                 onAcceptSuggestedRectangle: { corners in
                     guard measurement.isEmpty else { return }
                     for corner in corners {
                         measurement.addPoint(corner)
                     }
                     measurement.closeShape()
+                },
+                onScreenshotCaptured: { image in
+                    capturedScreenshot = image
                 }
             )
             .ignoresSafeArea()
@@ -60,8 +66,40 @@ struct ARMeasureScreen: View {
             }
             .padding(.bottom, 24)
         }
+        .overlay(alignment: .topTrailing) {
+            if state != .idle {
+                screenshotButton
+            }
+        }
         .navigationTitle("AR Measure")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: Binding(
+            get: { capturedScreenshot != nil },
+            set: { isPresented in if !isPresented { capturedScreenshot = nil } }
+        )) {
+            if let capturedScreenshot {
+                ShareSheet(activityItems: [capturedScreenshot])
+            }
+        }
+    }
+
+    /// Captures the AR scene plus the SwiftUI overlay (readout cards,
+    /// buttons) as one image the user can save or share, per explicit user
+    /// request. See `ARMeasureView.Coordinator.captureFullScreenshot(of:)`
+    /// for why this needs a swap-to-snapshot trick rather than a plain
+    /// window screenshot (Metal-backed `ARSCNView` content doesn't reliably
+    /// capture otherwise).
+    private var screenshotButton: some View {
+        Button {
+            screenshotRequestID += 1
+        } label: {
+            Image(systemName: "camera.fill")
+                .font(.body)
+                .padding(10)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .padding(.top, 8)
+        .padding(.trailing, 16)
     }
 
     // MARK: - Reticle
@@ -357,6 +395,21 @@ struct ARMeasureScreen: View {
             }
         }
     }
+}
+
+/// Thin wrapper around `UIActivityViewController` so the captured screenshot
+/// can go through the system share sheet -- lets the user pick "Save Image"
+/// themselves via the system's own Photos flow, which needs no
+/// `NSPhotoLibraryAddUsageDescription` entry from this app (unlike calling
+/// `UIImageWriteToSavedPhotosAlbum` directly would).
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {

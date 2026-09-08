@@ -31,7 +31,9 @@ struct ARMeasureView: UIViewRepresentable {
     @Binding var livePoint: SIMD3<Float>?
     @Binding var raycastSource: RaycastSource?
     var scanRequestID: Int = 0
+    var screenshotRequestID: Int = 0
     var onAcceptSuggestedRectangle: (([SIMD3<Float>]) -> Void)?
+    var onScreenshotCaptured: ((UIImage) -> Void)?
 
     func makeUIView(context: Context) -> ARSCNView {
         let arView = ARSCNView(frame: .zero)
@@ -60,6 +62,7 @@ struct ARMeasureView: UIViewRepresentable {
             context.coordinator.clearSuggestion()
         }
         context.coordinator.handleScanRequest(id: scanRequestID)
+        context.coordinator.handleScreenshotRequest(id: screenshotRequestID)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -88,6 +91,7 @@ struct ARMeasureView: UIViewRepresentable {
         private var suggestedCorners: [SIMD3<Float>]?
         private var isDetectingRectangle = false
         private var lastHandledScanID = 0
+        private var lastHandledScreenshotID = 0
 
         init(parent: ARMeasureView) {
             self.parent = parent
@@ -235,6 +239,56 @@ struct ARMeasureView: UIViewRepresentable {
             guard let corners = suggestedCorners else { return }
             parent.onAcceptSuggestedRectangle?(corners)
             clearSuggestion()
+        }
+
+        // MARK: - Screenshot (on demand)
+
+        /// Called on every `updateUIView`; captures one composited screenshot
+        /// only when `screenshotRequestID` actually changed (the user just
+        /// tapped the screenshot button) -- same on-demand-by-counter pattern
+        /// as `handleScanRequest` above.
+        func handleScreenshotRequest(id: Int) {
+            guard id != lastHandledScreenshotID, let arView else { return }
+            lastHandledScreenshotID = id
+            if let image = captureFullScreenshot(of: arView) {
+                parent.onScreenshotCaptured?(image)
+            }
+        }
+
+        /// `ARSCNView` renders via Metal, and the classic screenshot
+        /// techniques (`CALayer.render(in:)`, and in some reported cases
+        /// `UIView.drawHierarchy(in:afterScreenUpdates:)` on a Metal-backed
+        /// view directly) are documented to not reliably capture Metal
+        /// content -- it can come back black. `ARSCNView.snapshot()` is
+        /// ARKit's own purpose-built method for exactly this and always
+        /// works, but it only captures the 3D scene, not the SwiftUI
+        /// overlay (readout cards, buttons) drawn on top of it.
+        ///
+        /// To get both in one image: temporarily swap the live AR view for a
+        /// plain `UIImageView` showing that snapshot (same frame, so nothing
+        /// shifts), hide the live AR view, then screenshot the whole window
+        /// with `drawHierarchy` -- which now has no Metal content left to
+        /// fail on -- and restore the live AR view afterward.
+        private func captureFullScreenshot(of arView: ARSCNView) -> UIImage? {
+            guard let window = arView.window, let superview = arView.superview else { return nil }
+            let arSnapshot = arView.snapshot()
+
+            let standIn = UIImageView(image: arSnapshot)
+            standIn.frame = arView.frame
+            standIn.contentMode = .scaleAspectFill
+            standIn.clipsToBounds = true
+            superview.insertSubview(standIn, aboveSubview: arView)
+            arView.isHidden = true
+
+            defer {
+                standIn.removeFromSuperview()
+                arView.isHidden = false
+            }
+
+            let renderer = UIGraphicsImageRenderer(bounds: window.bounds)
+            return renderer.image { _ in
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
         }
 
         private func reticleRaycast(in arView: ARSCNView) -> (position: SIMD3<Float>, source: RaycastSource)? {
