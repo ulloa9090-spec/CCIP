@@ -135,14 +135,23 @@ struct ARMeasureView: UIViewRepresentable {
                 self.raycastDetectedRectangle(observation, arView: arView)
             }
             request.maximumObservations = 1
-            request.minimumConfidence = 0.8
-            request.minimumAspectRatio = 0.2
+            request.minimumSize = 0.25
+            request.minimumConfidence = 0.9
+            request.minimumAspectRatio = 0.3
+            request.quadratureTolerance = 20
 
-            // The app is portrait-only (see the target's deployment info),
-            // so the back camera's landscape sensor buffer is always
-            // rotated the same way -- .right is the standard orientation
-            // for a portrait UI with the back camera.
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .right, options: [:])
+            // .up, not a portrait-corrected value like .right: ARFrame's
+            // capturedImage buffer's orientation never changes when the
+            // device rotates (per Apple's own "Tracking and Altering
+            // Images" sample, RectangleDetector.swift), and the corners
+            // this request returns get fed straight into
+            // ARFrame.displayTransform below, which itself expects
+            // points in that same *uncorrected* captured-image space.
+            // Passing .right here made Vision report corners in a
+            // rotated coordinate space that no longer matched what
+            // displayTransform expects -- the actual cause of the
+            // suggested outline landing in the wrong place.
+            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up, options: [:])
             DispatchQueue.global(qos: .userInitiated).async {
                 try? handler.perform([request])
             }

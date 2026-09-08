@@ -945,10 +945,59 @@ the two ray segments' own labels, which sit at their midpoints — for a
 very acute angle the vertex and segment labels could end up visually
 close together; a real-device look will tell if that needs adjusting.
 
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` to the Xcode project and confirm the angle label
+renders correctly at the vertex, live and after finishing, without
+overlapping the ray labels. Also still open: the reticle-smoothness
+clarification, the rectangle-suggestion feature's first real-device
+test, Cube wireframe and 1-foot threshold confirmation,
+Cylinder/Distance Meter/dedicated Height tools, and the Android
+capability-detection real-device run.
+
+## Completion report — fixed rectangle-suggestion orientation bug
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: real-device testing confirmed the angle
+label and everything else from the last increment works, but the
+camera-based rectangle suggestion (previous increment) shows its
+yellow outline in the wrong place. Rather than guess again after
+already getting one Vision API detail wrong (the `NormalizedPoint`/
+`CGPoint` mixup), downloaded and read Apple's own official sample
+project for this exact task — "Tracking and Altering Images"
+(`RectangleDetector.swift`, fetched directly from
+`developer.apple.com/tutorials/.../TrackingAndAlteringImages.zip`).
+It uses `VNImageRequestHandler(cvPixelBuffer:orientation: .up)` with an
+explicit comment: "the pixel buffer's orientation doesn't change even
+when the device rotates." This codebase had used `orientation: .right`
+(the correct value for a portrait *photo capture*, but wrong here) --
+because the detected corners get fed straight into
+`ARFrame.displayTransform`, which itself expects points in the
+captured image's own *uncorrected* coordinate space, `.right` made
+Vision internally reorient its output into a rotated space that no
+longer matched, producing exactly the "outline in the wrong place"
+symptom reported. Fixed to `.up`. While in there, also replaced the
+originally-guessed detection tuning constants
+(`minimumConfidence`/`minimumAspectRatio`) with Apple's own sample's
+proven values, and added two parameters the original didn't set at all
+(`minimumSize`, `quadratureTolerance`).
+
+**Tests/results**: root cause and fix verified against Apple's actual
+shipping sample source code, not inferred from documentation snippets
+or third-party blog posts alone. Not yet re-tested on the user's real
+device -- this is a diagnosed and fixed bug awaiting real-hardware
+confirmation, not a verified-working fix yet.
+
+**Limitations**: this fixes the specific "wrong place" symptom
+diagnosed from the user's description; it does not address detection
+reliability in general (lighting, contrast, how well it distinguishes
+real rectangular objects from other shapes) -- those remain unknown
+until re-tested.
+
 **Next recommended task**: sync `ARMeasureView.swift` to the Xcode
-project and confirm the angle label renders correctly at the vertex,
-live and after finishing, without overlapping the ray labels. Also
-still open: the reticle-smoothness clarification, the
-rectangle-suggestion feature's first real-device test, Cube wireframe
-and 1-foot threshold confirmation, Cylinder/Distance Meter/dedicated
-Height tools, and the Android capability-detection real-device run.
+project and re-test the rectangle-suggestion flow on the same object
+that showed the bug, to confirm the outline now lands correctly. Also
+still open: the reticle-smoothness clarification, Cube wireframe and
+1-foot threshold confirmation, Cylinder/Distance Meter/dedicated Height
+tools, and the Android capability-detection real-device run.
