@@ -11,22 +11,54 @@ enum UnitFormatting {
     private static let squareFeetPerSquareMeter: Double = 10.7639104167
     private static let cubicFeetPerCubicMeter: Double = 35.3146667215
 
-    /// `"4' 3.2""`-style feet-and-inches string for a length given in
-    /// meters. Guards the classic off-by-one where a rounded remainder
-    /// displays as `12.0"` instead of rolling into the next foot.
+    /// Below this many total inches, a length displays as inches-only
+    /// rather than switching to feet notation -- matching Apple's own
+    /// Measure app, which shows a laptop's edges as `12"`/`8½"` rather
+    /// than `1' 0"`/`0' 8½"`.
+    private static let inchesOnlyCeiling = 36.0
+
+    /// Rounds to the nearest 1/8" and formats it the way Apple's Measure
+    /// app does: plain inches-and-fraction below 3 feet (`8½"`, `12"`),
+    /// feet-and-inches at or above that (`4' 6½"`) -- using real Unicode
+    /// fraction glyphs, not `"N/8"` text. A whole-number-only remainder
+    /// (or the zero-inches side of a whole-feet value) omits the leading
+    /// `0` the same way Apple's does for a pure fraction under an inch.
     static func feetAndInches(meters: Float) -> String {
         let totalInches = Double(meters) * inchesPerMeter
         let sign = totalInches < 0 ? "-" : ""
         let magnitude = abs(totalInches)
 
-        var feet = Int(magnitude / 12)
-        var remainderInches = magnitude - Double(feet) * 12
-        if remainderInches >= 11.95 {
-            feet += 1
-            remainderInches = 0
+        let totalEighths = (magnitude * 8).rounded()
+        var wholeInches = Int(totalEighths / 8)
+        var eighths = Int(totalEighths.truncatingRemainder(dividingBy: 8))
+        if eighths == 8 {
+            eighths = 0
+            wholeInches += 1
+        }
+        let glyph = fractionGlyph(for: eighths)
+
+        if Double(wholeInches) < inchesOnlyCeiling {
+            let numberPart = wholeInches == 0 ? (glyph.isEmpty ? "0" : glyph) : "\(wholeInches)\(glyph)"
+            return "\(sign)\(numberPart)\""
         }
 
-        return String(format: "%@%d' %.1f\"", sign, feet, remainderInches)
+        let feet = wholeInches / 12
+        let remainderInches = wholeInches % 12
+        let inchesPart = remainderInches == 0 ? (glyph.isEmpty ? "0" : glyph) : "\(remainderInches)\(glyph)"
+        return "\(sign)\(feet)' \(inchesPart)\""
+    }
+
+    private static func fractionGlyph(for eighths: Int) -> String {
+        switch eighths {
+        case 1: return "\u{215B}" // 1/8
+        case 2: return "\u{00BC}" // 1/4
+        case 3: return "\u{215C}" // 3/8
+        case 4: return "\u{00BD}" // 1/2
+        case 5: return "\u{215D}" // 5/8
+        case 6: return "\u{00BE}" // 3/4
+        case 7: return "\u{215E}" // 7/8
+        default: return ""
+        }
     }
 
     /// Inches only, for small values where a feet-and-inches split would
@@ -41,46 +73,5 @@ enum UnitFormatting {
 
     static func cubicFeet(cubicMeters: Float) -> String {
         String(format: "%.2f ft\u{00B3}", Double(cubicMeters) * cubicFeetPerCubicMeter)
-    }
-
-    /// New, additive: `"4' 3-5/8""`-style feet-and-nearest-1/8-inch string.
-    /// Not wired into any screen yet -- `feetAndInches(meters:)` above stays
-    /// the display format actually shown in `ARMeasureScreen.swift`. Added
-    /// solely so `UnitFormattingTests.swift` has real 1/8" rounding behavior
-    /// to validate, per explicit request.
-    static func feetAndInchesFraction(meters: Float) -> String {
-        let totalInches = Double(meters) * inchesPerMeter
-        let sign = totalInches < 0 ? "-" : ""
-        let magnitude = abs(totalInches)
-
-        let totalEighths = (magnitude * 8).rounded()
-        var wholeInches = Int(totalEighths / 8)
-        var eighths = Int(totalEighths.truncatingRemainder(dividingBy: 8))
-        if eighths == 8 {
-            eighths = 0
-            wholeInches += 1
-        }
-
-        var feet = wholeInches / 12
-        var remainderInches = wholeInches % 12
-        if remainderInches == 12 {
-            remainderInches = 0
-            feet += 1
-        }
-
-        if eighths == 0 {
-            return String(format: "%@%d' %d\"", sign, feet, remainderInches)
-        }
-
-        let divisor = gcd(eighths, 8)
-        let reducedNumerator = eighths / divisor
-        let reducedDenominator = 8 / divisor
-        return String(format: "%@%d' %d-%d/%d\"", sign, feet, remainderInches, reducedNumerator, reducedDenominator)
-    }
-
-    private static func gcd(_ a: Int, _ b: Int) -> Int {
-        var a = a, b = b
-        while b != 0 { (a, b) = (b, a % b) }
-        return a
     }
 }

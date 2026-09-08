@@ -539,9 +539,57 @@ still **unconfirmed on real hardware**. Label legibility over a busy
 background (the laptop keyboard) looked fine in the screenshots, but
 that's one lighting condition, not a systematic check.
 
-**Next recommended task**: same device, same session if possible — run
-Close Shape on the laptop's screen bezel or a book (a known rectangle),
-check whether it's correctly labeled "Rectangle" given the current
-tolerances, compare reported length/width/area against a physical
-measurement, then add a height point for a volume check. Also still
+**Next recommended task (superseded, see below)**: same device, same
+session if possible — run Close Shape on the laptop's screen bezel or
+a book (a known rectangle), check whether it's correctly labeled
+"Rectangle" given the current tolerances, compare reported length/
+width/area against a physical measurement, then add a height point for
+a volume check. Also still open: the Android capability-detection
+real-device run.
+
+## Completion report — Apple Measure-style fraction display
+
+**Files changed**: `phase0/ios/BoxOpPhase0/UnitFormatting.swift`
+(rewritten `feetAndInches`, removed the now-redundant
+`feetAndInchesFraction`/`gcd`), `phase0/ios/BoxOpPhase0Tests/UnitFormattingTests.swift`
+(rewritten to match), `phase0/ios/README.md`, this file.
+
+**Implementation summary**: after seeing the real-device output
+("total: 1.050 m" before the display-layer files were synced, then
+decimal feet-inches like "0' 8.2"" after), the user pasted a screenshot
+of Apple's own Measure app measuring a laptop (`12"`, `8½"`) and asked
+for that exact look. Rewrote `UnitFormatting.feetAndInches(meters:)` to
+round to the nearest 1/8" and render with real Unicode fraction glyphs
+(½, ¼, ⅜, etc.) instead of decimal tenths or `"N/8"` text, and to stay
+in plain inches notation below 3 feet (36in) rather than switching to
+`"1' 0""`-style feet notation right at the 12in/24in marks -- matching
+the evidence in the screenshot exactly (a 12in edge shown as `12"`, not
+`1'`). A sub-inch value (or a whole-feet value with no leftover inches)
+omits its leading `0` the same way Apple's does, e.g. `½"` alone rather
+than `0½"`. Since `ARMeasureScreen.swift`/`ARMeasureView.swift` already
+called `UnitFormatting.feetAndInches` everywhere, no UI code changed --
+only the function's internals. The separate `feetAndInchesFraction`
+function (added earlier purely so the 1/8" rounding test had something
+real to validate) is now redundant, since `feetAndInches` itself does
+that rounding, and was removed rather than left as dead code.
+
+**Tests/results**: rewrote every `UnitFormattingTests.swift` case to
+the new hand-verified expected strings (all glyph-based now); not yet
+re-run in Xcode by the user since this edit -- that's the immediate
+next step, not assumed to still pass untested.
+
+**Limitations**: the exact 3-foot inches/feet threshold and the
+leading-zero-omission rule for whole-feet-plus-fraction values (e.g.
+`3' ½"`) are my best-effort inference from Apple's known Measure
+behavior plus the one reference screenshot (which only showed values
+under 13in) -- not confirmed against an Apple screenshot of a longer
+measurement. If real-device testing shows a mismatch at the threshold
+or in edge formatting, that's a real finding to bring back, not
+something to assume is already right.
+
+**Next recommended task**: re-run the XCTest suite in Xcode to confirm
+the rewritten `UnitFormattingTests.swift` passes, then re-test the
+Measure tab on the iPhone to confirm the new fraction-based display
+looks right in practice (segment labels, total, and eventually area/
+perimeter/rectangle/volume once Close Shape is tested). Also still
 open: the Android capability-detection real-device run.

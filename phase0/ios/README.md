@@ -44,10 +44,15 @@ per user request — a display-layer conversion only; every internal
 computation still happens in meters, ARKit's native unit
 (`docs/14_LOCALIZATION_LANGUAGE.md` "Measurement units": typed
 conversion, never string manipulation, convert only at presentation
-time). Note: `docs/21_AR_MEASUREMENT_SYSTEM.md` "Units" names
-millimeters as the eventual canonical persisted unit once records are
-saved — nothing is persisted yet in this Phase 0 spike, so that's a real
-but not-yet-relevant gap, tracked here rather than silently ignored.
+time). The display format matches Apple's own Measure app, per the
+user's direct reference screenshot: rounded to the nearest 1/8" with
+real Unicode fraction glyphs (`8½"`, not `8-1/2"` or `8.5"`), and shown
+as inches-only below 3 feet (`12"`, not `1' 0"`) rather than always
+switching to feet notation. Note: `docs/21_AR_MEASUREMENT_SYSTEM.md`
+"Units" names millimeters as the eventual canonical persisted unit once
+records are saved — nothing is persisted yet in this Phase 0 spike, so
+that's a real but not-yet-relevant gap, tracked here rather than
+silently ignored.
 
 Deterministic unit tests now cover the pure math layer —
 `BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests,UnitFormattingTests}.swift`
