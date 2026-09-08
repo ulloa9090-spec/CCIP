@@ -20,4 +20,10 @@ This project also declares the [Firecrawl](https://firecrawl.dev) MCP server, wh
 claude mcp login firecrawl
 ```
 
-Claude Code will prompt to approve both project-scoped servers the first time you open the repo.
+This project also declares the [Supabase](https://supabase.com) MCP server, which gives Claude access to your Supabase projects (database, migrations, logs, edge functions). Like Firecrawl, it uses OAuth:
+
+```bash
+claude mcp login supabase
+```
+
+Claude Code will prompt to approve all three project-scoped servers the first time you open the repo.
