@@ -26,9 +26,15 @@ Two screens, built up one Phase 0 slice at a time
    real hardware and produced a first accuracy baseline — see
    `../evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias,
    preliminary, **not calibrated** — see
-   `../shared/BENCHMARK_PROTOCOL.md` section 8 for why not yet). None of
-   the multi-point/closed-shape/volume additions have run on real
-   hardware yet. Still not implemented: dedicated Cuboid/Cylinder tools,
+   `../shared/BENCHMARK_PROTOCOL.md` section 8 for why not yet). The
+   multi-point polyline, its feet/inches display, and the per-segment
+   in-scene labels **have now run on real hardware** (iPhone18,2,
+   2026-09-08) — multiple segments measured with live labels updating
+   correctly and the finished total showing in feet/inches as designed.
+   **Not yet confirmed on real hardware**: Close Shape/area/rectangle
+   detection/interior angles/height/volume — none of those were
+   exercised in the run so far, only the open polyline. Still not
+   implemented: dedicated Cuboid/Cylinder tools,
    Circle, Wall, curved/smooth geometry, sessions, or CV assistance —
    see `docs/25_MEASUREMENT_TOOLS_CATALOG.md` and
    `phase0/TOOL_REGISTRY_STATUS.md` for exactly what's real vs. `SPECIFIED`.

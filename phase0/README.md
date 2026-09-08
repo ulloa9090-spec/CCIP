@@ -493,8 +493,55 @@ real-device AR tracking accuracy, which is still governed by
 `evidence/ios/POINT_TO_POINT_BENCHMARK.md` and the open rectangle-
 tolerance question in `TOOL_REGISTRY_STATUS.md`.
 
-**Next recommended task**: run the full Measure-tab flow on the real
-iPhone (in-scene labels, Close Shape on a known rectangle, height/
-volume, and whether a genuinely rectangular object gets correctly
-detected given the 6° angle tolerance flagged earlier). Also still
+**Next recommended task (superseded, see below)**: run the full
+Measure-tab flow on the real iPhone (in-scene labels, Close Shape on a
+known rectangle, height/volume, and whether a genuinely rectangular
+object gets correctly detected given the 6° angle tolerance flagged
+earlier). Also still open: the Android capability-detection real-device
+run.
+
+## Completion report — real-hardware confirmation: multi-point polyline, feet/inches, in-scene labels
+
+**Files changed**: `phase0/ios/README.md`, `phase0/TOOL_REGISTRY_STATUS.md`,
+this file. No source changed — this is a real-device evidence entry.
+
+**Implementation summary**: the user ran the Measure tab on their
+iPhone (`iPhone18,2`) and placed a 6-point open polyline around a real
+object (a laptop, per the screenshots). Along the way, two stale files
+in the user's local Xcode project (`ARMeasureView.swift`,
+`ARMeasureScreen.swift` — predating this session's feet/inches and
+in-scene-label work) had to be identified and updated (via `git pull`
++ manual file copy/replace) before the new behavior actually appeared;
+this mirrors the earlier `UnitFormatting.swift`-missing issue and is
+now a known recurring friction point worth calling out explicitly:
+**this repo does not maintain the user's Xcode project file list
+automatically** — every session that touches `BoxOpPhase0/*.swift`
+needs the user to re-sync changed/new files into their own project, and
+"it builds" is not proof every file is current, only that whatever
+Xcode already has compiles.
+
+**Tests/results**: **first real-hardware confirmation** that (1) the
+generalized multi-point polyline (beyond the original fixed two-point
+spike) measures correctly across multiple segments and a live/active
+segment; (2) `UnitFormatting.feetAndInches` displays correctly in both
+per-segment in-scene labels and the bottom result cards on a real
+device, not just in unit tests; (3) the in-scene `SCNText` +
+`SCNBillboardConstraint` labels render correctly, positioned and
+legible, on real hardware — the two risks flagged in the earlier
+Context7/Firecrawl verification pass (invisible-from-some-angles,
+render cost) did not manifest in this run, though it was a short,
+single-session test, not a stress test.
+
+**Limitations**: only an open polyline was tested — Close Shape, area,
+perimeter, interior angles, rectangle detection (including the
+flagged-as-possibly-too-strict 6° tolerance), and height/volume are
+still **unconfirmed on real hardware**. Label legibility over a busy
+background (the laptop keyboard) looked fine in the screenshots, but
+that's one lighting condition, not a systematic check.
+
+**Next recommended task**: same device, same session if possible — run
+Close Shape on the laptop's screen bezel or a book (a known rectangle),
+check whether it's correctly labeled "Rectangle" given the current
+tolerances, compare reported length/width/area against a physical
+measurement, then add a height point for a volume check. Also still
 open: the Android capability-detection real-device run.
