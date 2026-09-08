@@ -11,18 +11,18 @@ enum UnitFormatting {
     private static let squareFeetPerSquareMeter: Double = 10.7639104167
     private static let cubicFeetPerCubicMeter: Double = 35.3146667215
 
-    /// Below this many total inches, a length displays as inches-only
-    /// rather than switching to feet notation -- matching Apple's own
-    /// Measure app, which shows a laptop's edges as `12"`/`8½"` rather
-    /// than `1' 0"`/`0' 8½"`.
-    private static let inchesOnlyCeiling = 36.0
+    /// Below one foot (12 inches), a length displays as inches-only;
+    /// at 12 inches or more it switches to feet-and-inches notation --
+    /// per explicit user direction (show only inches until the length
+    /// completes a foot).
+    private static let inchesOnlyCeiling = 12.0
 
-    /// Rounds to the nearest 1/8" and formats it the way Apple's Measure
-    /// app does: plain inches-and-fraction below 3 feet (`8½"`, `12"`),
-    /// feet-and-inches at or above that (`4' 6½"`) -- using real Unicode
-    /// fraction glyphs, not `"N/8"` text. A whole-number-only remainder
-    /// (or the zero-inches side of a whole-feet value) omits the leading
-    /// `0` the same way Apple's does for a pure fraction under an inch.
+    /// Rounds to the nearest 1/8" and formats it as inches-only below
+    /// one foot (`8½"`, `11"`) and feet-and-inches at 12 inches or more
+    /// (`1' 0"`, `4' 6½"`) -- using real Unicode fraction glyphs, not
+    /// `"N/8"` text. A whole-number-only remainder (or the zero-inches
+    /// side of a whole-feet value) omits the leading `0` the same way a
+    /// pure fraction under an inch does (e.g. `½"`, not `0½"`).
     static func feetAndInches(meters: Float) -> String {
         let totalInches = Double(meters) * inchesPerMeter
         let sign = totalInches < 0 ? "-" : ""

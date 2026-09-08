@@ -52,11 +52,12 @@ per user request — a display-layer conversion only; every internal
 computation still happens in meters, ARKit's native unit
 (`docs/14_LOCALIZATION_LANGUAGE.md` "Measurement units": typed
 conversion, never string manipulation, convert only at presentation
-time). The display format matches Apple's own Measure app, per the
-user's direct reference screenshot: rounded to the nearest 1/8" with
-real Unicode fraction glyphs (`8½"`, not `8-1/2"` or `8.5"`), and shown
-as inches-only below 3 feet (`12"`, not `1' 0"`) rather than always
-switching to feet notation. Note: `docs/21_AR_MEASUREMENT_SYSTEM.md`
+time). The display format is rounded to the nearest 1/8" with real
+Unicode fraction glyphs (`8½"`, not `8-1/2"` or `8.5"`), shown as
+inches-only below one foot and switching to feet-and-inches at 12
+inches or more (`11"` but `1' 0"`) — per explicit user direction, after
+an earlier version used a 3-foot threshold inferred from a reference
+screenshot that turned out not to be what was wanted. Note: `docs/21_AR_MEASUREMENT_SYSTEM.md`
 "Units" names millimeters as the eventual canonical persisted unit once
 records are saved — nothing is persisted yet in this Phase 0 spike, so
 that's a real but not-yet-relevant gap, tracked here rather than

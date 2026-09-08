@@ -707,11 +707,52 @@ behavior). The five remaining requested tools (Cylinder, Distance
 Meter, dedicated Height, dedicated Angle, and the bottom-panel badge
 restyle) are not started.
 
-**Next recommended task**: run the XCTest suite in Xcode, then update
-the Xcode project with the three changed source files and try Close
-Shape + Set Height Point on a real box-shaped object to see the full
-wireframe on real hardware. Also still open: whether to proceed next
-with Cylinder (the most novel remaining tool) or one of the smaller
-ones (Distance Meter, dedicated Height/Angle), the Apple-style fraction
-display confirmation, and the Android capability-detection real-device
-run.
+**Next recommended task (superseded, see below)**: run the XCTest suite
+in Xcode, then update the Xcode project with the three changed source
+files and try Close Shape + Set Height Point on a real box-shaped
+object to see the full wireframe on real hardware. Also still open:
+whether to proceed next with Cylinder (the most novel remaining tool)
+or one of the smaller ones (Distance Meter, dedicated Height/Angle),
+the Apple-style fraction display confirmation, and the Android
+capability-detection real-device run.
+
+## Completion report — corrected feet/inches threshold to 1 foot
+
+**Files changed**: `phase0/ios/BoxOpPhase0/UnitFormatting.swift`,
+`phase0/ios/BoxOpPhase0Tests/UnitFormattingTests.swift`,
+`phase0/ios/README.md`, this file.
+
+**Implementation summary**: the earlier fraction-display rewrite
+inferred a 3-foot (36in) inches-only threshold from the user's Apple
+Measure reference screenshot (which showed a 12in edge as `12"`, not
+`1' 0"`). The user has now explicitly said the app should show inches
+only until the length "completa los pies" (completes a foot) — i.e.
+the standard 12in = 1ft cutover, not 36in. Changed
+`inchesOnlyCeiling` from `36.0` to `12.0`: below 12 inches shows plain
+inches (`11"`), 12 inches or more switches to feet-and-inches (`1' 0"`,
+`1' ½"`). This means the app's behavior at exactly 12in now
+deliberately differs from the pasted Apple screenshot's own `12"` —
+noted here rather than silently reconciled, since the two inputs
+(the screenshot and this explicit instruction) genuinely conflict at
+that one boundary value, and the user's direct instruction takes
+precedence.
+
+**Tests/results**: rewrote the boundary tests in
+`UnitFormattingTests.swift` around the new 12in threshold (11in stays
+inches-only, 12in and 12.5in switch to feet notation) and fixed one
+now-incorrect expectation (`8in` example instead of `24in`, since 24in
+now correctly returns `"2' 0""` rather than `"24""`). Not yet re-run in
+the user's Xcode.
+
+**Limitations**: not confirmed on real hardware yet — this was reported
+as a mismatch from the user's own on-device observation before the
+threshold fix, so the fix itself still needs the same on-device
+confirmation the original claim lacked.
+
+**Next recommended task**: sync the corrected `UnitFormatting.swift` to
+the Xcode project (this is the only file that changed), re-run the
+XCTest suite, and re-check the Measure tab on the iPhone to confirm
+inches-only below 12in and feet-and-inches at 12in and above. Also
+still open: Close Shape + Cube wireframe real-device confirmation,
+Cylinder/Distance Meter/dedicated Height-Angle tools, and the Android
+capability-detection real-device run.

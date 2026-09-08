@@ -3,28 +3,29 @@ import XCTest
 
 /// Deterministic tests against the existing `UnitFormatting` implementation.
 /// Expected strings were hand-derived from the actual formatting code --
-/// including its 1/8" rounding and its "inches-only below 3 feet" rule,
-/// matching Apple's Measure app look (`8½"`, `12"`, `4' 6½"`) rather than
-/// the earlier decimal-inches format. `feetAndInches` is what
-/// `ARMeasureScreen.swift` actually displays; there is no separate
-/// "fraction" variant anymore -- this function *is* the 1/8" rounding
-/// behavior these tests exercise.
+/// including its 1/8" rounding and its "inches-only below one foot" rule
+/// (per explicit user direction: show only inches until the length
+/// completes a foot, then switch to feet-and-inches). Uses real Unicode
+/// fraction glyphs (`8½"`), not decimal tenths or `"N/8"` text.
+/// `feetAndInches` is what `ARMeasureScreen.swift` actually displays;
+/// there is no separate "fraction" variant -- this function *is* the 1/8"
+/// rounding behavior these tests exercise.
 final class UnitFormattingTests: XCTestCase {
 
-    // MARK: - Meters -> feet/inches conversion (Apple Measure style)
+    // MARK: - Meters -> feet/inches conversion
 
-    func testOneFootExactlyStaysInInchesNotation() {
-        // 12" is still below the 3-foot threshold, matching Apple's own
-        // display of a 12"-long object as "12"", not "1' 0"".
-        XCTAssertEqual(UnitFormatting.feetAndInches(meters: 0.3048), "12\"")
+    func testOneFootExactlySwitchesToFeetNotation() {
+        // 12" is the threshold itself -- at or above one foot, it's
+        // feet-and-inches, not inches-only.
+        XCTAssertEqual(UnitFormatting.feetAndInches(meters: 0.3048), "1' 0\"")
     }
 
     func testOneInchExactly() {
         XCTAssertEqual(UnitFormatting.feetAndInches(meters: 0.0254), "1\"")
     }
 
-    func testOneMeterSwitchesToFeetNotation() {
-        // 1m ~= 39.37in, at/above the 3-foot (36in) threshold.
+    func testOneMeterInFeetAndInches() {
+        // 1m ~= 39.37in -> rounds to 39-3/8in -> 3' 3-3/8".
         XCTAssertEqual(UnitFormatting.feetAndInches(meters: 1), "3' 3\u{215C}\"") // 3' 3-3/8"
     }
 
@@ -36,22 +37,22 @@ final class UnitFormattingTests: XCTestCase {
         XCTAssertEqual(UnitFormatting.feetAndInches(meters: 0), "0\"")
     }
 
-    func testJustBelowThreeFootThresholdStaysInInches() {
-        let meters = Float(35.0 / 39.3700787401575)
-        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "35\"")
+    func testJustBelowOneFootThresholdStaysInInches() {
+        let meters = Float(11.0 / 39.3700787401575)
+        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "11\"")
     }
 
-    func testAtThreeFootThresholdSwitchesToFeetNotation() {
-        let meters = Float(36.0 / 39.3700787401575)
-        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "3' 0\"")
+    func testAtOneFootThresholdSwitchesToFeetNotation() {
+        let meters = Float(12.0 / 39.3700787401575)
+        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "1' 0\"")
     }
 
-    func testWholeFeetWithFractionalInchesOmitsZero() {
-        // 36.5" = 3' + 1/2" -- the whole-inch remainder is 0, so only the
+    func testWholeFootWithFractionalInchesOmitsZero() {
+        // 12.5" = 1' + 1/2" -- the whole-inch remainder is 0, so only the
         // fraction glyph shows, matching how a sub-inch value alone omits
         // its leading "0".
-        let meters = Float(36.5 / 39.3700787401575)
-        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "3' \u{00BD}\"") // 3' 1/2"
+        let meters = Float(12.5 / 39.3700787401575)
+        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "1' \u{00BD}\"") // 1' 1/2"
     }
 
     // MARK: - Area / volume conversion
@@ -82,13 +83,13 @@ final class UnitFormattingTests: XCTestCase {
     }
 
     func testExactWholeInchesOmitsFraction() {
-        let meters = Float(24.0 / 39.3700787401575) // exactly 24" (still < 36" threshold)
-        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "24\"")
+        let meters = Float(8.0 / 39.3700787401575) // exactly 8" (below the 1-foot threshold)
+        XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "8\"")
     }
 
     func testSubInchFractionOmitsLeadingZero() {
         // 0.5" == 4/8" -> reduces to 1/2, and the whole-inches part (0) is
-        // omitted the way Apple shows a pure fraction alone.
+        // omitted the way a pure fraction under an inch shows alone.
         let meters = Float(0.5 / 39.3700787401575)
         XCTAssertEqual(UnitFormatting.feetAndInches(meters: meters), "\u{00BD}\"") // 1/2"
     }
