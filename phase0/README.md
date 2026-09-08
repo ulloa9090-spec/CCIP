@@ -995,9 +995,55 @@ reliability in general (lighting, contrast, how well it distinguishes
 real rectangular objects from other shapes) -- those remain unknown
 until re-tested.
 
-**Next recommended task**: sync `ARMeasureView.swift` to the Xcode
-project and re-test the rectangle-suggestion flow on the same object
-that showed the bug, to confirm the outline now lands correctly. Also
-still open: the reticle-smoothness clarification, Cube wireframe and
-1-foot threshold confirmation, Cylinder/Distance Meter/dedicated Height
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` to the Xcode project and re-test the
+rectangle-suggestion flow on the same object that showed the bug, to
+confirm the outline now lands correctly. Also still open: the
+reticle-smoothness clarification, Cube wireframe and 1-foot threshold
+confirmation, Cylinder/Distance Meter/dedicated Height tools, and the
+Android capability-detection real-device run.
+
+## Completion report — Scan button replaces continuous rectangle detection
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift`,
+`ARMeasureScreen.swift`, `phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: real-device testing showed the orientation
+fix wasn't the whole story — the user shared a reference screenshot
+(a tablet measured with a stable dotted outline and dimension labels)
+and reported the detection itself "se ve muy muy rápido" (flickery/
+unstable), asking for a capture button instead of continuous
+background scanning. The previous design ran `VNDetectRectanglesRequest`
+automatically every ~0.3s with each detection fully independent of the
+last — no temporal smoothing or persistence, so the outline could
+appear, disappear, or jump between consecutive detections even when
+pointed at the same still object. Replaced this with an explicit
+**Scan for Rectangle** button (shown only in Length mode before any
+point is placed): tapping it increments a `scanRequestID` passed into
+`ARMeasureView`, which the `Coordinator` compares against the last one
+it handled in `updateUIView` and, on change, runs exactly one detection
+pass against the current frame via `handleScanRequest(id:)`. No
+background Vision workload happens at all unless the button is
+tapped — a stable, user-controlled result instead of a continuously
+refreshing one.
+
+**Tests/results**: no new pure-math geometry; this is UI/interaction
+flow, outside the XCTest suite's scope by design. Not run in this
+environment or the user's Xcode yet.
+
+**Limitations**: still real-device-unconfirmed whether the orientation
+fix (previous entry) actually resolved the "wrong place" symptom, since
+the flicker made it hard for the user to judge that separately — this
+on-demand version should make that easier to evaluate cleanly. Scan
+quality itself (lighting, contrast, distance/angle sensitivity) remains
+otherwise exactly as tuned in the previous entry.
+
+**Next recommended task**: sync `ARMeasureView.swift` and
+`ARMeasureScreen.swift` to the Xcode project and test **Scan for
+Rectangle** on a real rectangular object, holding the phone steady for
+the single scan — this should now show either a stable, correctly
+placed outline or nothing, with no in-between flicker. Also still
+open: the reticle-smoothness clarification, Cube wireframe and 1-foot
+threshold confirmation, Cylinder/Distance Meter/dedicated Height
 tools, and the Android capability-detection real-device run.

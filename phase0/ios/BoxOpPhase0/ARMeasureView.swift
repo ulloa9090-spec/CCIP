@@ -11,20 +11,26 @@ import simd
 /// `MultiPointMeasurement.swift`). This view owns only the AR scene and the
 /// continuous raycast; `ARMeasureScreen` owns the state machine and buttons.
 ///
-/// In `.length` mode, before any point has been placed, this also runs
-/// `Vision`'s `VNDetectRectanglesRequest` against the camera feed and, when
-/// a rectangle is found and all four corners raycast onto real geometry,
-/// shows it as a yellow suggested outline; a double-tap accepts it via
+/// In `.length` mode, before any point has been placed, tapping **Scan for
+/// Rectangle** (see `ARMeasureScreen`) runs `Vision`'s
+/// `VNDetectRectanglesRequest` once against the current camera frame; when a
+/// rectangle is found and all four corners raycast onto real geometry, it's
+/// shown as a yellow suggested outline. A double-tap accepts it via
 /// `onAcceptSuggestedRectangle`, which the host screen uses to add all four
 /// points and close the shape in one step — per explicit user request
 /// ("si el sensor o la cámara identifican una figura debería sugerirla y
-/// con un doble tap se tome la medida en automático").
+/// con un doble tap se tome la medida en automático"). This used to run
+/// continuously in the background every ~0.3s, but that produced a
+/// flickery, unstable-looking outline with no frame-to-frame persistence;
+/// an explicit scan button (per user feedback) gives a single, stable
+/// result on demand instead.
 struct ARMeasureView: UIViewRepresentable {
     let state: ARMeasureState
     let measurement: MultiPointMeasurement
     let toolMode: MeasureToolMode
     @Binding var livePoint: SIMD3<Float>?
     @Binding var raycastSource: RaycastSource?
+    var scanRequestID: Int = 0
     var onAcceptSuggestedRectangle: (([SIMD3<Float>]) -> Void)?
 
     func makeUIView(context: Context) -> ARSCNView {
@@ -53,6 +59,7 @@ struct ARMeasureView: UIViewRepresentable {
         if toolMode != .length || !measurement.isEmpty || state != .measuring {
             context.coordinator.clearSuggestion()
         }
+        context.coordinator.handleScanRequest(id: scanRequestID)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -80,7 +87,7 @@ struct ARMeasureView: UIViewRepresentable {
         private var suggestionLabelNode: SCNNode?
         private var suggestedCorners: [SIMD3<Float>]?
         private var isDetectingRectangle = false
-        private var lastDetectionTime: CFTimeInterval = 0
+        private var lastHandledScanID = 0
 
         init(parent: ARMeasureView) {
             self.parent = parent
@@ -104,24 +111,28 @@ struct ARMeasureView: UIViewRepresentable {
             parent.livePoint = hit.position
             parent.raycastSource = hit.source
             showLiveVisuals(at: hit.position, in: arView)
-
-            if parent.toolMode == .length, parent.measurement.isEmpty {
-                detectRectangleIfNeeded(in: frame, arView: arView)
-            }
         }
 
-        // MARK: - Camera-based rectangle suggestion (Vision)
+        // MARK: - Camera-based rectangle suggestion (Vision, on demand)
 
-        /// Runs `VNDetectRectanglesRequest` on the current camera frame, at
-        /// most a few times per second (Apple's own guidance for Vision
-        /// requests during an AR session is "no more than 10 times per
-        /// second" to avoid hurting frame rate), and only one request in
-        /// flight at a time.
-        private func detectRectangleIfNeeded(in frame: ARFrame, arView: ARSCNView) {
+        /// Called on every `updateUIView`; runs a single detection pass only
+        /// when `scanRequestID` actually changed (i.e. the user just tapped
+        /// **Scan for Rectangle**) -- not continuously. An earlier version
+        /// ran this automatically every ~0.3s, but with no persistence
+        /// between independent detections the outline flickered and jumped;
+        /// a single on-demand result, requested explicitly, is stable.
+        func handleScanRequest(id: Int) {
+            guard id != lastHandledScanID, let arView, let frame = arView.session.currentFrame else { return }
+            lastHandledScanID = id
+            detectRectangleOnce(in: frame, arView: arView)
+        }
+
+        /// Runs `VNDetectRectanglesRequest` once on the given camera frame.
+        /// Guards against overlapping requests, though with on-demand
+        /// scanning (rather than the earlier continuous polling) that's
+        /// mostly a safety net against rapid double-taps of the scan button.
+        private func detectRectangleOnce(in frame: ARFrame, arView: ARSCNView) {
             guard !isDetectingRectangle else { return }
-            let now = CACurrentMediaTime()
-            guard now - lastDetectionTime > 0.3 else { return }
-            lastDetectionTime = now
             isDetectingRectangle = true
 
             let pixelBuffer = frame.capturedImage

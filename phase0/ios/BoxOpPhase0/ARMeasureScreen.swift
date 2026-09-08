@@ -28,6 +28,7 @@ struct ARMeasureScreen: View {
     @State private var livePoint: SIMD3<Float>?
     @State private var raycastSource: RaycastSource?
     @State private var toolMode: MeasureToolMode = .length
+    @State private var scanRequestID = 0
 
     var body: some View {
         ZStack {
@@ -37,6 +38,7 @@ struct ARMeasureScreen: View {
                 toolMode: toolMode,
                 livePoint: $livePoint,
                 raycastSource: $raycastSource,
+                scanRequestID: scanRequestID,
                 onAcceptSuggestedRectangle: { corners in
                     guard measurement.isEmpty else { return }
                     for corner in corners {
@@ -116,7 +118,7 @@ struct ARMeasureScreen: View {
                 : "Height captured \u{00B7} tap Finish"
         }
         if measurement.isEmpty {
-            return "Tap Add Point to place the first point \u{2014} or double-tap a suggested rectangle"
+            return "Tap Add Point to place the first point \u{2014} or tap Scan for Rectangle to try automatic detection"
         }
         return "Point \(measurement.pointCount) placed \u{00B7} move to the next point"
     }
@@ -269,6 +271,15 @@ struct ARMeasureScreen: View {
 
         case .measuring:
             VStack(spacing: 10) {
+                if toolMode == .length, measurement.isEmpty {
+                    Button("Scan for Rectangle") {
+                        scanRequestID += 1
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .tint(.yellow)
+                }
+
                 Button(primaryButtonTitle) {
                     primaryButtonAction()
                 }

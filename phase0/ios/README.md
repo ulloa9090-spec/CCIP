@@ -42,18 +42,22 @@ Two screens, built up one Phase 0 slice at a time
    the "Cube" tool look in dedicated AR measuring apps (per user
    reference).
 
-   **New**: before placing any points in **Length** mode, the app also
-   runs `Vision`'s `VNDetectRectanglesRequest` against the live camera
-   feed (throttled to a few times a second, per Apple's own guidance)
-   looking for a real rectangular object/surface. When it finds one and
-   all four corners raycast onto real geometry, it draws a yellow
-   suggested outline with a "Double-tap to measure" label; double-tapping
-   the screen accepts it, adding all four points and closing the shape
-   in one step, per explicit user request. This is a separate, 2D-image
-   rectangle detector from the 3D point-based `PolygonGeometry
-   .rectangleCheck` used after manual placement — the two aren't
-   related and can disagree (Vision might suggest a shape our own
-   tolerance check later doesn't confirm as a rectangle, or vice versa).
+   **New**: before placing any points in **Length** mode, a **Scan for
+   Rectangle** button appears. Tapping it runs `Vision`'s
+   `VNDetectRectanglesRequest` once against the current camera frame
+   looking for a real rectangular object/surface (an earlier version ran
+   this continuously in the background every ~0.3s, but with no
+   frame-to-frame persistence that looked flickery and unstable — an
+   explicit, on-demand scan is stable instead, per user feedback). When
+   it finds one and all four corners raycast onto real geometry, it
+   draws a yellow suggested outline with a "Double-tap to measure"
+   label; double-tapping the screen accepts it, adding all four points
+   and closing the shape in one step, per explicit user request. This is
+   a separate, 2D-image rectangle detector from the 3D point-based
+   `PolygonGeometry.rectangleCheck` used after manual placement — the
+   two aren't related and can disagree (Vision might suggest a shape our
+   own tolerance check later doesn't confirm as a rectangle, or vice
+   versa).
    This generalizes the earlier fixed two-point spike, which **did** run on
    real hardware and produced a first accuracy baseline — see
    `../evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias,
