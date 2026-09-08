@@ -1,0 +1,140 @@
+/*
+ * Palette tokens copied from the dataviz skill's reference/palette.md
+ * (already validated — categorical slot 7 "violet" as the single accent,
+ * the fixed status palette for the gauge's severity arc). Do not hand-pick
+ * new hex values here; if the brand needs a different accent, re-run
+ * scripts/validate_palette.js against it first.
+ */
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page-plane: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --border: rgba(11, 11, 11, 0.1);
+  --accent: #4a3aa7;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --page-plane: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #9085e9;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+
+.dashboard-header {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 16px;
+  padding: 24px;
+}
+
+/* --- Stat tile --- */
+
+.stat-tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-tile__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.stat-tile__value {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: proportional-nums;
+}
+
+.stat-tile__delta {
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stat-tile__delta[data-direction="up"][data-good="true"],
+.stat-tile__delta[data-direction="down"][data-good="false"] {
+  color: var(--good);
+}
+
+.stat-tile__delta[data-direction="down"][data-good="true"],
+.stat-tile__delta[data-direction="up"][data-good="false"] {
+  color: var(--critical);
+}
+
+/* --- Radial gauge --- */
+
+.radial-gauge {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.radial-gauge__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  align-self: flex-start;
+}
+
+.radial-gauge__figure {
+  position: relative;
+  width: 96px;
+  height: 96px;
+}
+
+.radial-gauge__value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: proportional-nums;
+}
+
+.radial-gauge__caption {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
