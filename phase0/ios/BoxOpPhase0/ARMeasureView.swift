@@ -166,7 +166,7 @@ struct ARMeasureView: UIViewRepresentable {
 
             var worldCorners: [SIMD3<Float>] = []
             for corner in normalizedCorners {
-                let screenPoint = corner.cgPoint.applying(displayTransform).applying(scaleTransform)
+                let screenPoint = corner.applying(displayTransform).applying(scaleTransform)
                 guard let query = arView.raycastQuery(from: screenPoint, allowing: .existingPlaneGeometry, alignment: .any),
                       let result = arView.session.raycast(query).first else {
                     DispatchQueue.main.async { self.clearSuggestion() }
