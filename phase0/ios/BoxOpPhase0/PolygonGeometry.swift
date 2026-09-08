@@ -75,6 +75,17 @@ enum PolygonGeometry {
         simd_distance(point, footpoint(of: point, onPlaneOf: basePoints))
     }
 
+    /// `basePoints` translated by the same offset that carries the base
+    /// plane to `heightPoint` -- the "top face" corners of a right
+    /// prism/cuboid whose base is `basePoints` and whose height is the
+    /// perpendicular distance to `heightPoint`. Used to draw the full
+    /// wireframe box (every edge, not just the one height line) once a
+    /// height point is set on a closed shape.
+    static func extrudedCorners(of basePoints: [SIMD3<Float>], toward heightPoint: SIMD3<Float>) -> [SIMD3<Float>] {
+        let offset = heightPoint - footpoint(of: heightPoint, onPlaneOf: basePoints)
+        return basePoints.map { $0 + offset }
+    }
+
     /// Interior angle in degrees at `vertex`, formed by its two neighbors.
     static func angleDegrees(at vertex: SIMD3<Float>, previous: SIMD3<Float>, next: SIMD3<Float>) -> Float {
         let u = previous - vertex

@@ -151,6 +151,39 @@ struct ARMeasureView: UIViewRepresentable {
                     in: arView,
                     color: .systemOrange
                 ))
+
+                // Full wireframe box/prism: extrude every base corner by
+                // the same offset that carries the base plane to the
+                // height point, then draw the resulting top face and
+                // vertical edges -- turns the single height line above
+                // into a complete labeled "Cube" (works for any closed
+                // base, not just a 4-point rectangle).
+                let topCorners = PolygonGeometry.extrudedCorners(of: currentPoints, toward: heightPoint)
+                for corner in topCorners {
+                    confirmedMarkerNodes.append(addMarker(at: corner, in: arView, color: .systemOrange, opacity: 1.0))
+                }
+                for i in 0 ..< topCorners.count {
+                    let a = topCorners[i]
+                    let b = topCorners[(i + 1) % topCorners.count]
+                    confirmedSegmentNodes.append(addLine(from: a, to: b, in: arView, color: .systemOrange, opacity: 1.0))
+                    confirmedLabelNodes.append(addLabel(
+                        text: UnitFormatting.feetAndInches(meters: simd_distance(a, b)),
+                        at: labelPosition(from: a, to: b),
+                        in: arView,
+                        color: .systemOrange
+                    ))
+                }
+                for i in 0 ..< currentPoints.count {
+                    let base = currentPoints[i]
+                    let top = topCorners[i]
+                    confirmedSegmentNodes.append(addLine(from: base, to: top, in: arView, color: .systemOrange, opacity: 1.0))
+                    confirmedLabelNodes.append(addLabel(
+                        text: UnitFormatting.feetAndInches(meters: simd_distance(base, top)),
+                        at: labelPosition(from: base, to: top),
+                        in: arView,
+                        color: .systemOrange
+                    ))
+                }
             }
 
             renderedPoints = currentPoints

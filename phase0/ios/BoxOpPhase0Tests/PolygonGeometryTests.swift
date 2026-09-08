@@ -247,6 +247,28 @@ final class PolygonGeometryTests: XCTestCase {
         )
     }
 
+    // MARK: - Extruded corners (full wireframe box/prism)
+
+    func testExtrudedCornersTranslateEveryBasePointByTheHeightOffset() {
+        let rectangleBase: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(4, 0, 0), SIMD3(4, 3, 0), SIMD3(0, 3, 0)
+        ]
+        let heightPoint = SIMD3<Float>(2, 1.5, 5)
+        // footpoint is (2, 1.5, 0) (hand-verified above), so the offset
+        // carrying the base plane to the height point is exactly (0,0,5)
+        // -- every base corner should shift by exactly that.
+        let topCorners = PolygonGeometry.extrudedCorners(of: rectangleBase, toward: heightPoint)
+        let expected: [SIMD3<Float>] = [
+            SIMD3(0, 0, 5), SIMD3(4, 0, 5), SIMD3(4, 3, 5), SIMD3(0, 3, 5)
+        ]
+        XCTAssertEqual(topCorners.count, expected.count)
+        for (actual, expectedCorner) in zip(topCorners, expected) {
+            XCTAssertEqual(actual.x, expectedCorner.x, accuracy: epsilon)
+            XCTAssertEqual(actual.y, expectedCorner.y, accuracy: epsilon)
+            XCTAssertEqual(actual.z, expectedCorner.z, accuracy: epsilon)
+        }
+    }
+
     // MARK: - Edge / zero cases
 
     func testAreaOfEmptyOrTooFewPointsIsZero() {

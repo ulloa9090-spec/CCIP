@@ -166,6 +166,27 @@ final class MultiPointMeasurementTests: XCTestCase {
         let volume = try XCTUnwrap(measurement.volume)
         XCTAssertEqual(height, 5, accuracy: epsilon)
         XCTAssertEqual(volume, 60, accuracy: epsilon)
+
+        let topCorners = try XCTUnwrap(measurement.extrudedTopCorners)
+        XCTAssertEqual(topCorners.count, 4)
+        let expected: [SIMD3<Float>] = [
+            SIMD3(0, 0, 5), SIMD3(4, 0, 5), SIMD3(4, 3, 5), SIMD3(0, 3, 5)
+        ]
+        for (actual, expectedCorner) in zip(topCorners, expected) {
+            XCTAssertEqual(actual.x, expectedCorner.x, accuracy: epsilon)
+            XCTAssertEqual(actual.y, expectedCorner.y, accuracy: epsilon)
+            XCTAssertEqual(actual.z, expectedCorner.z, accuracy: epsilon)
+        }
+    }
+
+    func testExtrudedTopCornersIsNilBeforeHeightPointIsSet() {
+        var measurement = MultiPointMeasurement()
+        measurement.addPoint(SIMD3(0, 0, 0))
+        measurement.addPoint(SIMD3(4, 0, 0))
+        measurement.addPoint(SIMD3(4, 3, 0))
+        measurement.addPoint(SIMD3(0, 3, 0))
+        measurement.closeShape()
+        XCTAssertNil(measurement.extrudedTopCorners)
     }
 
     func testHeightAndVolumeAreNilBeforeHeightPointIsSet() {

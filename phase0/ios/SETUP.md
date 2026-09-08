@@ -134,8 +134,11 @@ generalized version needs its first real-device run):
 6. After closing, the primary button becomes **Set Height Point**: aim
    the reticle above or below the shape (e.g. up a wall from a floor
    shape) — you'll see a live height preview with its own label — then
-   confirm. This gives you a volume (base area × height), shown as an
-   orange marker/line/label in the scene.
+   confirm. This gives you a volume (base area × height). Once
+   confirmed, the scene draws the **full box/prism wireframe** — the
+   top face's edges and every vertical edge, each labeled with its own
+   length — not just a single height line, so it looks like a proper
+   3D box outline (matching the "Cube" tool in other AR measuring apps).
 7. **Undo Last Point** undoes whatever you did most recently — the
    height point, then un-closing the shape, then the last base point, in
    that order. **Clear All** wipes everything and lets you keep measuring

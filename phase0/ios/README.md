@@ -25,8 +25,12 @@ Two screens, built up one Phase 0 slice at a time
    app only labels the shape you already traced, no auto-suggestion),
    then optionally
    place one **height point** to derive a volume (base area × height —
-   the same pattern Apple's Measure app uses for room volume). This
-   generalizes the earlier fixed two-point spike, which **did** run on
+   the same pattern Apple's Measure app uses for room volume). Once the
+   height point is set, the AR scene draws the **full wireframe
+   box/prism** — every top-face edge and every vertical edge, each with
+   its own in-scene label — not just the single height line, matching
+   the "Cube" tool look in dedicated AR measuring apps (per user
+   reference). This generalizes the earlier fixed two-point spike, which **did** run on
    real hardware and produced a first accuracy baseline — see
    `../evidence/ios/POINT_TO_POINT_BENCHMARK.md` (+5 to +7mm bias,
    preliminary, **not calibrated** — see

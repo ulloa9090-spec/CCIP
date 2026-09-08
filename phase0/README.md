@@ -647,11 +647,71 @@ check). Reuses `sideTolerance`/`angleToleranceDegrees` defaults from
 Rectangle rather than deriving new ones — untested whether that's
 appropriate for triangles specifically.
 
-**Next recommended task**: run the XCTest suite in Xcode for the new
-tests' first pass/fail signal, then update the Xcode project with
-`PolygonGeometry.swift`, `MultiPointMeasurement.swift`, and
-`ARMeasureScreen.swift` and try Close Shape on a real square, triangle,
-and a hand-traced circle (e.g. a coin or a round object) on the iPhone
-to see whether the tolerances hold up on real tap data. Also still
-open: confirming the Apple-style fraction display in practice, and the
-Android capability-detection real-device run.
+**Next recommended task (superseded, see below)**: run the XCTest suite
+in Xcode for the new tests' first pass/fail signal, then update the
+Xcode project with `PolygonGeometry.swift`, `MultiPointMeasurement.swift`,
+and `ARMeasureScreen.swift` and try Close Shape on a real square,
+triangle, and a hand-traced circle (e.g. a coin or a round object) on
+the iPhone to see whether the tolerances hold up on real tap data. Also
+still open: confirming the Apple-style fraction display in practice,
+and the Android capability-detection real-device run.
+
+## Completion report — dedicated Cube/Cuboid wireframe visualization
+
+**Files changed**: `phase0/ios/BoxOpPhase0/PolygonGeometry.swift`
+(added `extrudedCorners(of:toward:)`), `MultiPointMeasurement.swift`
+(added `extrudedTopCorners`), `ARMeasureView.swift` (draws the full
+wireframe once a height point is set), `phase0/ios/BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests}.swift`
+(new tests), `phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: the user shared two screenshots of a
+third-party AR measuring app — its tool picker (Line & Height, Angle,
+Distance, Cube, Volume, Cylinder) and a live measurement showing a
+kitchen island as a fully-labeled 3D box (every edge shown, plus a
+compact H/S/V/P summary) — and asked for these to be part of the
+project. Given the scope of six distinct tools, used `AskUserQuestion`
+to prioritize rather than guess; the user picked the dedicated
+Cube/Cuboid tool first. Rather than building a parallel 8-corner-tap
+capture flow, extended the existing closed-base + height-point
+mechanism (already fewer taps: N base points + 1 height point) to draw
+the **complete wireframe** once the height point is set —
+`PolygonGeometry.extrudedCorners(of:toward:)` translates every base
+corner by the exact offset that carries the base plane to the height
+point (reusing the existing `footpoint` math), and
+`ARMeasureView.swift` draws each top-face edge and each vertical edge
+individually, each with its own in-scene label, instead of the single
+height line that was there before. Works for any closed base shape,
+not just 4-point rectangles (a triangular or pentagonal base gets a
+full labeled prism too), which is a superset of the reference app's
+box-only tool. Deliberately scoped to the AR-scene visualization (the
+functional gap) rather than also restyling the bottom result panel to
+match the reference's compact "H=1.20 m / S=1.05 m² / V=1.26 m³ /
+P=4.4 m" badge look — the existing separate cards already show the same
+numbers; that's a cosmetic follow-up, not implemented here, and worth
+confirming the user still wants before doing it.
+
+**Tests/results**: added a hand-verified test confirming
+`extrudedCorners` translates a rectangle's 4 corners by exactly the
+expected offset (derived from the already-verified footpoint/height
+test case), and a matching `MultiPointMeasurement.extrudedTopCorners`
+test plus its nil-before-height-point-set case. Not run in this
+environment; not yet run in the user's Xcode.
+
+**Limitations**: not run on real hardware — the wireframe assumes a
+true right prism (vertical walls perpendicular to the base plane),
+which is correct for typical furniture/boxes but will look wrong if
+the user's height point isn't aimed straight up/down from the base (no
+guard against that yet, same as the existing single-height-line
+behavior). The five remaining requested tools (Cylinder, Distance
+Meter, dedicated Height, dedicated Angle, and the bottom-panel badge
+restyle) are not started.
+
+**Next recommended task**: run the XCTest suite in Xcode, then update
+the Xcode project with the three changed source files and try Close
+Shape + Set Height Point on a real box-shaped object to see the full
+wireframe on real hardware. Also still open: whether to proceed next
+with Cylinder (the most novel remaining tool) or one of the smaller
+ones (Distance Meter, dedicated Height/Angle), the Apple-style fraction
+display confirmation, and the Android capability-detection real-device
+run.

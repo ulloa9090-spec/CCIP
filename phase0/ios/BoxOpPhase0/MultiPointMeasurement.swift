@@ -198,6 +198,15 @@ struct MultiPointMeasurement {
         return area * height
     }
 
+    /// Top-face corners of the box/prism formed by extruding the closed
+    /// base straight along its own normal by the height point -- the
+    /// full "Cube" wireframe (`ARMeasureView.swift` draws every edge
+    /// between these and the base points), not just a single height line.
+    var extrudedTopCorners: [SIMD3<Float>]? {
+        guard isClosed, confirmedPoints.count >= 3, let heightPoint else { return nil }
+        return PolygonGeometry.extrudedCorners(of: confirmedPoints, toward: heightPoint)
+    }
+
     /// Live preview of `height`/would-be volume using a not-yet-confirmed
     /// point, shown while closed and waiting for the height point.
     func liveHeight(with livePoint: SIMD3<Float>) -> Float? {
