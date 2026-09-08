@@ -112,6 +112,10 @@ enum PolygonGeometry {
         let isRectangle: Bool
         let length: Float
         let width: Float
+        /// A rectangle whose length and width are also approximately
+        /// equal, within the same `sideTolerance` used for the opposite
+        /// sides above.
+        let isSquare: Bool
     }
 
     static func rectangleCheck(
@@ -130,11 +134,78 @@ enum PolygonGeometry {
             return abs(a - b) / max(a, b) <= sideTolerance
         }
         let sidesOK = approxEqual(sides[0], sides[2]) && approxEqual(sides[1], sides[3])
+        let isRectangle = anglesOK && sidesOK
+        let length = max(sides[0], sides[1])
+        let width = min(sides[0], sides[1])
 
         return RectangleCheck(
-            isRectangle: anglesOK && sidesOK,
-            length: max(sides[0], sides[1]),
-            width: min(sides[0], sides[1])
+            isRectangle: isRectangle,
+            length: length,
+            width: width,
+            isSquare: isRectangle && approxEqual(length, width)
         )
+    }
+
+    /// Classification of a closed 3-point shape by side/angle shape,
+    /// independent of the Rectangle path above (which only applies to
+    /// exactly 4 points). A triangle can be more than one of these at
+    /// once (an equilateral triangle is also isosceles); callers pick
+    /// whichever is most specific for display.
+    struct TriangleClassification {
+        let isEquilateral: Bool
+        let isIsosceles: Bool
+        let isRightTriangle: Bool
+    }
+
+    static func triangleClassification(
+        points: [SIMD3<Float>],
+        sideTolerance: Float = 0.08,
+        angleToleranceDegrees: Float = 6
+    ) -> TriangleClassification? {
+        guard points.count == 3 else { return nil }
+
+        let sides = (0 ..< 3).map { simd_distance(points[$0], points[($0 + 1) % 3]) }
+        let angles = interiorAngles(points: points, closed: true)
+
+        func approxEqual(_ a: Float, _ b: Float) -> Bool {
+            guard max(a, b) > 0 else { return true }
+            return abs(a - b) / max(a, b) <= sideTolerance
+        }
+        let equalSidePairs = [
+            approxEqual(sides[0], sides[1]),
+            approxEqual(sides[1], sides[2]),
+            approxEqual(sides[0], sides[2])
+        ]
+        let equalSideCount = equalSidePairs.filter { $0 }.count
+
+        return TriangleClassification(
+            isEquilateral: equalSideCount == 3,
+            isIsosceles: equalSideCount >= 1,
+            isRightTriangle: angles.contains { abs($0 - 90) <= angleToleranceDegrees }
+        )
+    }
+
+    /// Result of checking whether a closed shape's points lie
+    /// approximately on a common circle around their centroid: every
+    /// point's distance from the centroid ("radius") stays within
+    /// `radiusTolerance` of the mean. Requires at least 5 points --
+    /// fewer than that overlaps with Triangle/Rectangle detection above
+    /// and isn't enough to distinguish a circle from an arbitrary
+    /// polygon.
+    struct CircleCheck {
+        let isCircle: Bool
+        let radius: Float
+    }
+
+    static func circleCheck(points: [SIMD3<Float>], radiusTolerance: Float = 0.08) -> CircleCheck? {
+        guard points.count >= 5 else { return nil }
+
+        let center = centroid(of: points)
+        let radii = points.map { simd_distance($0, center) }
+        let meanRadius = radii.reduce(0, +) / Float(radii.count)
+        guard meanRadius > 0 else { return CircleCheck(isCircle: false, radius: 0) }
+
+        let maxDeviation = radii.map { abs($0 - meanRadius) / meanRadius }.max() ?? 0
+        return CircleCheck(isCircle: maxDeviation <= radiusTolerance, radius: meanRadius)
     }
 }

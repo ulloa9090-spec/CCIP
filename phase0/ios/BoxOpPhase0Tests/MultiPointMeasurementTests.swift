@@ -95,6 +95,62 @@ final class MultiPointMeasurementTests: XCTestCase {
         XCTAssertEqual(irregular.shapeLabel, "Polygon")
     }
 
+    func testShapeLabelDetectsSquare() {
+        var square = MultiPointMeasurement()
+        square.addPoint(SIMD3(0, 0, 0))
+        square.addPoint(SIMD3(3, 0, 0))
+        square.addPoint(SIMD3(3, 3, 0))
+        square.addPoint(SIMD3(0, 3, 0))
+        square.closeShape()
+        XCTAssertEqual(square.shapeLabel, "Square")
+    }
+
+    func testShapeLabelDistinguishesTriangleTypes() {
+        var equilateral = MultiPointMeasurement()
+        equilateral.addPoint(SIMD3(0, 0, 0))
+        equilateral.addPoint(SIMD3(2, 0, 0))
+        equilateral.addPoint(SIMD3(1, Float(3).squareRoot(), 0))
+        equilateral.closeShape()
+        XCTAssertEqual(equilateral.shapeLabel, "Equilateral Triangle")
+
+        var right = MultiPointMeasurement()
+        right.addPoint(SIMD3(0, 0, 0))
+        right.addPoint(SIMD3(3, 0, 0))
+        right.addPoint(SIMD3(0, 4, 0))
+        right.closeShape()
+        XCTAssertEqual(right.shapeLabel, "Right Triangle")
+
+        var isosceles = MultiPointMeasurement()
+        isosceles.addPoint(SIMD3(0, 0, 0))
+        isosceles.addPoint(SIMD3(4, 0, 0))
+        isosceles.addPoint(SIMD3(2, 3, 0))
+        isosceles.closeShape()
+        XCTAssertEqual(isosceles.shapeLabel, "Isosceles Triangle")
+
+        var scalene = MultiPointMeasurement()
+        scalene.addPoint(SIMD3(0, 0, 0))
+        scalene.addPoint(SIMD3(5, 0, 0))
+        scalene.addPoint(SIMD3(2, 3, 0))
+        scalene.closeShape()
+        XCTAssertEqual(scalene.shapeLabel, "Triangle")
+    }
+
+    func testShapeLabelDetectsCircle() throws {
+        let sqrt3: Float = Float(3).squareRoot()
+        var hexagon = MultiPointMeasurement()
+        hexagon.addPoint(SIMD3(2, 0, 0))
+        hexagon.addPoint(SIMD3(1, sqrt3, 0))
+        hexagon.addPoint(SIMD3(-1, sqrt3, 0))
+        hexagon.addPoint(SIMD3(-2, 0, 0))
+        hexagon.addPoint(SIMD3(-1, -sqrt3, 0))
+        hexagon.addPoint(SIMD3(1, -sqrt3, 0))
+        hexagon.closeShape()
+
+        XCTAssertEqual(hexagon.shapeLabel, "Circle")
+        let circleCheck = try XCTUnwrap(hexagon.circleCheck)
+        XCTAssertEqual(circleCheck.radius, 2, accuracy: epsilon)
+    }
+
     // MARK: - Height and volume
 
     func testHeightAndVolumeOfClosedRectangleWithHeightPoint() throws {

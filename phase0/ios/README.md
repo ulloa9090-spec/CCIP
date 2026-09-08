@@ -19,7 +19,11 @@ Two screens, built up one Phase 0 slice at a time
    segment gets the same treatment, updated in place every AR frame.
    Optionally **Close Shape** to turn
    the polyline into a polygon (perimeter, planar area, interior angles,
-   automatic rectangle detection with length×width), then optionally
+   automatic shape recognition: Square/Rectangle at 4 points, an
+   equilateral/right/isosceles/generic Triangle at 3 points, or a Circle
+   at 5+ points if they fit one within tolerance — all still manual, the
+   app only labels the shape you already traced, no auto-suggestion),
+   then optionally
    place one **height point** to derive a volume (base area × height —
    the same pattern Apple's Measure app uses for room volume). This
    generalizes the earlier fixed two-point spike, which **did** run on

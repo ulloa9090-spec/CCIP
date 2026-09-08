@@ -87,6 +87,16 @@ final class PolygonGeometryTests: XCTestCase {
         XCTAssertTrue(check.isRectangle)
         XCTAssertEqual(check.length, 4, accuracy: epsilon)
         XCTAssertEqual(check.width, 3, accuracy: epsilon)
+        XCTAssertFalse(check.isSquare)
+    }
+
+    func testRectangleCheckDetectsSquare() throws {
+        let square: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(3, 0, 0), SIMD3(3, 3, 0), SIMD3(0, 3, 0)
+        ]
+        let check = try XCTUnwrap(PolygonGeometry.rectangleCheck(points: square))
+        XCTAssertTrue(check.isRectangle)
+        XCTAssertTrue(check.isSquare)
     }
 
     func testRectangleCheckRejectsParallelogramWithNonRightAngles() {
@@ -110,6 +120,92 @@ final class PolygonGeometryTests: XCTestCase {
     func testRectangleCheckReturnsNilForNonQuadrilateral() {
         let triangle: [SIMD3<Float>] = [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)]
         XCTAssertNil(PolygonGeometry.rectangleCheck(points: triangle))
+    }
+
+    // MARK: - Triangle classification
+
+    func testTriangleClassificationDetectsEquilateral() throws {
+        // Side length 2; apex at (1, sqrt(3), 0) -- all three sides exactly 2.
+        let equilateral: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(2, 0, 0), SIMD3(1, Float(3).squareRoot(), 0)
+        ]
+        let classification = try XCTUnwrap(PolygonGeometry.triangleClassification(points: equilateral))
+        XCTAssertTrue(classification.isEquilateral)
+        XCTAssertTrue(classification.isIsosceles) // equilateral implies isosceles
+        XCTAssertFalse(classification.isRightTriangle) // 60/60/60, not 90
+    }
+
+    func testTriangleClassificationDetectsRightTriangle() throws {
+        // The 3-4-5 right triangle: scalene, with a 90deg angle at the origin.
+        let rightTriangle: [SIMD3<Float>] = [SIMD3(0, 0, 0), SIMD3(3, 0, 0), SIMD3(0, 4, 0)]
+        let classification = try XCTUnwrap(PolygonGeometry.triangleClassification(points: rightTriangle))
+        XCTAssertTrue(classification.isRightTriangle)
+        XCTAssertFalse(classification.isEquilateral)
+        XCTAssertFalse(classification.isIsosceles)
+    }
+
+    func testTriangleClassificationDetectsIsoscelesNonRight() throws {
+        // Symmetric triangle: base (0,0,0)-(4,0,0), apex (2,3,0) --
+        // the two slanted sides are both sqrt(13), the base is 4, and no
+        // angle is near 90deg (hand-verified: ~56.3/56.3/67.4deg).
+        let isosceles: [SIMD3<Float>] = [SIMD3(0, 0, 0), SIMD3(4, 0, 0), SIMD3(2, 3, 0)]
+        let classification = try XCTUnwrap(PolygonGeometry.triangleClassification(points: isosceles))
+        XCTAssertTrue(classification.isIsosceles)
+        XCTAssertFalse(classification.isEquilateral)
+        XCTAssertFalse(classification.isRightTriangle)
+    }
+
+    func testTriangleClassificationDetectsScaleneNonRight() throws {
+        // Hand-verified scalene triangle (sides 5, sqrt(18), sqrt(13); all
+        // pairwise different beyond the 8% tolerance) with no angle near
+        // 90deg (hand-verified: ~56.3/45/78.7deg).
+        let scalene: [SIMD3<Float>] = [SIMD3(0, 0, 0), SIMD3(5, 0, 0), SIMD3(2, 3, 0)]
+        let classification = try XCTUnwrap(PolygonGeometry.triangleClassification(points: scalene))
+        XCTAssertFalse(classification.isEquilateral)
+        XCTAssertFalse(classification.isIsosceles)
+        XCTAssertFalse(classification.isRightTriangle)
+    }
+
+    func testTriangleClassificationReturnsNilForNonTriangle() {
+        let rectangle: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(4, 0, 0), SIMD3(4, 3, 0), SIMD3(0, 3, 0)
+        ]
+        XCTAssertNil(PolygonGeometry.triangleClassification(points: rectangle))
+    }
+
+    // MARK: - Circle detection
+
+    func testCircleCheckAcceptsRegularHexagonOnACircle() throws {
+        // 6 points evenly spaced on a radius-2 circle in the XY plane --
+        // every point is exactly radius 2 from the centroid (0,0,0).
+        let sqrt3: Float = Float(3).squareRoot()
+        let hexagon: [SIMD3<Float>] = [
+            SIMD3(2, 0, 0), SIMD3(1, sqrt3, 0), SIMD3(-1, sqrt3, 0),
+            SIMD3(-2, 0, 0), SIMD3(-1, -sqrt3, 0), SIMD3(1, -sqrt3, 0)
+        ]
+        let check = try XCTUnwrap(PolygonGeometry.circleCheck(points: hexagon))
+        XCTAssertTrue(check.isCircle)
+        XCTAssertEqual(check.radius, 2, accuracy: epsilon)
+    }
+
+    func testCircleCheckRejectsDistortedHexagon() {
+        // Same hexagon as above but one vertex dragged far out to (-5,0,0)
+        // -- hand-verified the resulting per-point radius deviation from
+        // the shifted centroid is far beyond the 8% tolerance.
+        let sqrt3: Float = Float(3).squareRoot()
+        let distorted: [SIMD3<Float>] = [
+            SIMD3(2, 0, 0), SIMD3(1, sqrt3, 0), SIMD3(-1, sqrt3, 0),
+            SIMD3(-5, 0, 0), SIMD3(-1, -sqrt3, 0), SIMD3(1, -sqrt3, 0)
+        ]
+        let check = PolygonGeometry.circleCheck(points: distorted)
+        XCTAssertEqual(check?.isCircle, false)
+    }
+
+    func testCircleCheckReturnsNilForFewerThanFivePoints() {
+        let square: [SIMD3<Float>] = [
+            SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(1, 1, 0), SIMD3(0, 1, 0)
+        ]
+        XCTAssertNil(PolygonGeometry.circleCheck(points: square))
     }
 
     // MARK: - Planarity tolerance

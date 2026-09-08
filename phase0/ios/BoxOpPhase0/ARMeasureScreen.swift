@@ -150,6 +150,9 @@ struct ARMeasureScreen: View {
                 secondary: "length \u{00D7} width"
             )
         }
+        if let circleCheck = measurement.circleCheck, circleCheck.isCircle {
+            resultCard(primary: UnitFormatting.feetAndInches(meters: circleCheck.radius), secondary: "radius")
+        }
         if !measurement.interiorAngles.isEmpty {
             let anglesText = measurement.interiorAngles.map { String(format: "%.0f\u{00B0}", $0) }.joined(separator: ", ")
             resultCard(primary: anglesText, secondary: "interior angles")

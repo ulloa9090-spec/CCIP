@@ -587,9 +587,71 @@ measurement. If real-device testing shows a mismatch at the threshold
 or in edge formatting, that's a real finding to bring back, not
 something to assume is already right.
 
-**Next recommended task**: re-run the XCTest suite in Xcode to confirm
-the rewritten `UnitFormattingTests.swift` passes, then re-test the
-Measure tab on the iPhone to confirm the new fraction-based display
-looks right in practice (segment labels, total, and eventually area/
-perimeter/rectangle/volume once Close Shape is tested). Also still
-open: the Android capability-detection real-device run.
+**Next recommended task (superseded, see below)**: re-run the XCTest
+suite in Xcode to confirm the rewritten `UnitFormattingTests.swift`
+passes, then re-test the Measure tab on the iPhone to confirm the new
+fraction-based display looks right in practice (segment labels, total,
+and eventually area/perimeter/rectangle/volume once Close Shape is
+tested). Also still open: the Android capability-detection real-device
+run.
+
+## Completion report — shape recognition: Square, Triangle types, Circle
+
+**Files changed**: `phase0/ios/BoxOpPhase0/PolygonGeometry.swift`
+(added `RectangleCheck.isSquare`, `TriangleClassification`,
+`triangleClassification(points:)`, `CircleCheck`, `circleCheck(points:)`),
+`MultiPointMeasurement.swift` (exposed `triangleClassification`,
+`circleCheck`, extended `shapeLabel`), `ARMeasureScreen.swift` (shows
+circle radius in `closedShapeSummary`), `phase0/ios/BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests}.swift`
+(new tests), `phase0/ios/README.md`, `phase0/TOOL_REGISTRY_STATUS.md`,
+this file.
+
+**Implementation summary**: per explicit request ("que la app reconozca
+geometrías o formas"), and after clarifying via `AskUserQuestion` that
+the user meant extending shape *labeling* on Close Shape (not
+mid-measurement auto-suggestion, which stays explicitly out of scope,
+and not camera-based CV shape detection, a much larger feature).
+Extended `shapeLabel` beyond Rectangle/Polygon: exactly 4 points now
+also detect "Square" (a Rectangle whose length ≈ width, same 8%
+tolerance); exactly 3 points classify as "Equilateral Triangle",
+"Right Triangle", "Isosceles Triangle", or generic "Triangle" (same
+8% side / 6° angle tolerances as Rectangle, reused rather than
+reinvented); 5+ points check whether they fit a common circle within
+8% radius deviation from centroid and label "Circle" with its radius
+shown. All three build on the same manual Close Shape flow already in
+place — the user still places every point; the app only labels what
+resulted. Note: "Circle" already existed as a catalog tool
+(`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 11, "center + edge" or
+"3+ points on circumference" capture) with a different intended
+capture flow than this generic-polygon-fit approach; "Square" and
+"Triangle" are not catalog-named tools at all, and are new labels
+layered on the existing Rectangle/Polygon path, same pattern as how
+Rectangle itself isn't a separate dedicated tool.
+
+**Tests/results**: added hand-verified deterministic tests for all new
+`PolygonGeometry` functions (equilateral/right/isosceles/scalene
+triangles with hand-computed side lengths and angles; a regular hexagon
+exactly inscribed in a radius-2 circle, and the same hexagon with one
+point dragged far off-circle to confirm rejection; a square vs. a 4×3
+rectangle for `isSquare`) and for `MultiPointMeasurement.shapeLabel`'s
+new cases. Not run in this environment; not yet run in the user's
+Xcode.
+
+**Limitations**: none of this has run on real hardware — a real
+AR-tapped "circle" (traced by hand around a round object) will have far
+more radius scatter than the exact hand-constructed test hexagon, so
+the 8% circle tolerance is just as unvalidated as the existing 6°
+rectangle-angle tolerance flagged earlier, and for the same reason
+(no real-device evidence yet on tap-tracing noise for this specific
+check). Reuses `sideTolerance`/`angleToleranceDegrees` defaults from
+Rectangle rather than deriving new ones — untested whether that's
+appropriate for triangles specifically.
+
+**Next recommended task**: run the XCTest suite in Xcode for the new
+tests' first pass/fail signal, then update the Xcode project with
+`PolygonGeometry.swift`, `MultiPointMeasurement.swift`, and
+`ARMeasureScreen.swift` and try Close Shape on a real square, triangle,
+and a hand-traced circle (e.g. a coin or a round object) on the iPhone
+to see whether the tolerances hold up on real tap data. Also still
+open: confirming the Apple-style fraction display in practice, and the
+Android capability-detection real-device run.

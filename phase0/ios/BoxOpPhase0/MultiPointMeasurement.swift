@@ -151,11 +151,38 @@ struct MultiPointMeasurement {
         return PolygonGeometry.rectangleCheck(points: confirmedPoints)
     }
 
-    /// `"Polyline"` while open, `"Rectangle"` once closed and detected as
-    /// one, `"Polygon"` for any other closed shape.
+    /// Only meaningful for a closed 3-point shape (see `PolygonGeometry
+    /// .triangleClassification`) -- `nil` for any other point count.
+    var triangleClassification: PolygonGeometry.TriangleClassification? {
+        guard isClosed else { return nil }
+        return PolygonGeometry.triangleClassification(points: confirmedPoints)
+    }
+
+    /// Only meaningful for a closed shape with 5+ points -- `nil`
+    /// otherwise, since fewer points can't be distinguished from a
+    /// Triangle/Rectangle/generic Polygon (see `PolygonGeometry
+    /// .circleCheck`).
+    var circleCheck: PolygonGeometry.CircleCheck? {
+        guard isClosed else { return nil }
+        return PolygonGeometry.circleCheck(points: confirmedPoints)
+    }
+
+    /// `"Polyline"` while open; once closed, the most specific shape the
+    /// points fit: `"Square"`/`"Rectangle"` (4 points), an equilateral/
+    /// right/isosceles/generic `"Triangle"` (3 points), `"Circle"` (5+
+    /// points, if they fit one), or `"Polygon"` as the fallback.
     var shapeLabel: String {
         guard isClosed else { return "Polyline" }
-        if let rectangleCheck, rectangleCheck.isRectangle { return "Rectangle" }
+        if let rectangleCheck, rectangleCheck.isRectangle {
+            return rectangleCheck.isSquare ? "Square" : "Rectangle"
+        }
+        if let triangleClassification {
+            if triangleClassification.isEquilateral { return "Equilateral Triangle" }
+            if triangleClassification.isRightTriangle { return "Right Triangle" }
+            if triangleClassification.isIsosceles { return "Isosceles Triangle" }
+            return "Triangle"
+        }
+        if let circleCheck, circleCheck.isCircle { return "Circle" }
         return "Polygon"
     }
 
