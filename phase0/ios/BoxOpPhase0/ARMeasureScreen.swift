@@ -41,10 +41,20 @@ struct ARMeasureScreen: View {
 
     // MARK: - Reticle
 
+    /// A target/crosshair-style reticle (segmented ring + center dot),
+    /// per user reference, instead of a plain circle outline -- same
+    /// meaning as before (translucent while searching for a surface,
+    /// solid white once the reticle is resting on one).
     private var reticle: some View {
-        Circle()
-            .strokeBorder(livePoint == nil ? .white.opacity(0.5) : .white, lineWidth: 2)
-            .frame(width: 18, height: 18)
+        let color: Color = livePoint == nil ? .white.opacity(0.5) : .white
+        return ZStack {
+            Circle()
+                .stroke(color, style: StrokeStyle(lineWidth: 2, dash: [6, 5]))
+                .frame(width: 28, height: 28)
+            Circle()
+                .fill(color)
+                .frame(width: 4, height: 4)
+        }
     }
 
     // MARK: - Top readout
