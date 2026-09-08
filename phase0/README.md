@@ -454,3 +454,47 @@ documented real-world report that `SCNText` is expensive to render at
 scale (many labels/long text) -- not yet stress-tested here, and not
 pre-optimized without device evidence it's actually a problem. No code
 changed as a result of this pass; `TOOL_REGISTRY_STATUS.md` unaffected.
+
+## Completion report — first successful test run (Cmd+U) + 4 real bugs fixed
+
+**Files changed**: `phase0/ios/BoxOpPhase0Tests/MultiPointMeasurementTests.swift`
+(3 fixes), `phase0/ios/BoxOpPhase0Tests/PolygonGeometryTests.swift`
+(1 fix), `phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: the user built the `BoxOpPhase0Tests` Unit
+Testing Bundle target in Xcode per `SETUP.md` section 7 and ran `Cmd+U`
+for the first time. This surfaced 4 real Swift compiler errors that
+were invisible without an actual build: `Float?` values
+(`measurement.area`, `.height`, `.volume`, `.perimeter`, and
+`PolygonGeometry.RectangleCheck?.length`/`.width` via optional
+chaining) passed directly, or via `?? default`, into
+`XCTAssertEqual(_:_:accuracy:)` -- Swift's type checker cannot reliably
+resolve this pattern across XCTest's many `XCTAssertEqual` overloads.
+Fixed all 4 by unwrapping with `try XCTUnwrap(...)` before the
+assertion instead. These were bugs in the test code only --
+`PolygonGeometry.swift` and `MultiPointMeasurement.swift` were never
+touched. A separate, unrelated setup issue also surfaced and was
+resolved along the way: `UnitFormatting.swift` had never been added to
+the user's Xcode project (only existed in the repo), which is why
+`UnitFormattingTests.swift` initially reported "Cannot find
+'UnitFormatting' in scope" for every single test -- adding the file to
+the `BoxOpPhase0` target (not the test target) resolved it.
+
+**Tests/results**: **all three suites now pass on real Xcode (`Cmd+U`),
+confirmed by the user** -- `PolygonGeometryTests`,
+`MultiPointMeasurementTests`, `UnitFormattingTests` all green. This is
+the first real compiler/runtime confirmation that
+`PolygonGeometry`/`MultiPointMeasurement`/`UnitFormatting` behave
+exactly as hand-derived, not just "should" per manual review.
+
+**Limitations**: this validates the pure math layer only, on the
+Simulator (no AR/camera involved) -- it says nothing new about
+real-device AR tracking accuracy, which is still governed by
+`evidence/ios/POINT_TO_POINT_BENCHMARK.md` and the open rectangle-
+tolerance question in `TOOL_REGISTRY_STATUS.md`.
+
+**Next recommended task**: run the full Measure-tab flow on the real
+iPhone (in-scene labels, Close Shape on a known rectangle, height/
+volume, and whether a genuinely rectangular object gets correctly
+detected given the 6° angle tolerance flagged earlier). Also still
+open: the Android capability-detection real-device run.

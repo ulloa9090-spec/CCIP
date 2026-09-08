@@ -14,11 +14,19 @@ Status values (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 30):
 behind Line/Polyline, Angle, Polygon, Rectangle, Area, Perimeter, and
 Standard Geometric Volume (all iOS) now has deterministic XCTest coverage —
 `phase0/ios/BoxOpPhase0Tests/{PolygonGeometryTests,MultiPointMeasurementTests,UnitFormattingTests}.swift`.
-This confirms the geometry/unit-conversion code is internally correct
-against hand-verified values; it does **not** substitute for real-hardware
-validation (AR tracking noise, raycast source, device drift) — a tool's
-`VALIDATING`/`PRODUCTION_READY` status below still depends only on
-real-device evidence, per the gate in section 39 of the catalog.
+**Confirmed passing via `Cmd+U` in Xcode on the user's Mac (2026-09-08)** —
+all three suites green, after fixing two Swift compiler
+type-inference bugs found only by actually running them (`Float?`
+values passed unwrapped into `XCTAssertEqual(_:_:accuracy:)`, in
+`testRectangleCheckAcceptsTrueRectangle`, `testAreaOfClosedRectangle`,
+`testHeightAndVolumeOfClosedRectangleWithHeightPoint`, and
+`testPerimeterOfClosedRectangle`; fixed with `XCTUnwrap`, no production
+code touched). This confirms the geometry/unit-conversion code is
+internally correct against hand-verified values; it does **not**
+substitute for real-hardware validation (AR tracking noise, raycast
+source, device drift) — a tool's `VALIDATING`/`PRODUCTION_READY` status
+below still depends only on real-device evidence, per the gate in
+section 39 of the catalog.
 
 ## Prerequisite (not a tool, but gates everything below)
 
