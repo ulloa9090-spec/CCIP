@@ -1,0 +1,32 @@
+# pnpm moved lifecycle-script approval out of package.json's "pnpm" field
+# starting in v10.5 (as onlyBuiltDependencies) and replaced it with
+# allowBuilds in v11 — package.json's own field is silently ignored by
+# modern pnpm. Both keys are listed here for compatibility across the
+# pnpm versions contributors may have installed; each pnpm version reads
+# the key it understands and ignores the other.
+#
+# Every package below is a native module or binary-downloader that this
+# app genuinely needs at install time — not a blanket allow-all:
+# - better-sqlite3: compiles the native SQLite binding (persistence)
+# - electron: downloads the Electron runtime binary
+# - esbuild: downloads its native binary (used by Vite/electron-vite)
+# - onnxruntime-node, sharp: native deps of @huggingface/transformers
+#   (local embeddings pipeline)
+# - electron-winstaller, protobufjs: electron-builder's own toolchain
+onlyBuiltDependencies:
+  - better-sqlite3
+  - electron
+  - electron-winstaller
+  - esbuild
+  - onnxruntime-node
+  - protobufjs
+  - sharp
+
+allowBuilds:
+  better-sqlite3: true
+  electron: true
+  electron-winstaller: true
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
