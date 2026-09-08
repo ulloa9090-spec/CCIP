@@ -218,4 +218,39 @@ struct MultiPointMeasurement {
         guard let area, let liveHeight = liveHeight(with: livePoint) else { return nil }
         return area * liveHeight
     }
+
+    // MARK: - Dedicated Height tool (2-point: base, then top)
+
+    /// Vertical height between the base point (`confirmedPoints[0]`) and
+    /// the top point (`confirmedPoints[1]`) for the dedicated Height
+    /// tool -- `docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 5: "use
+    /// gravity/world-up constraints when valid". ARKit's default
+    /// `.gravity` world alignment already makes the world Y axis
+    /// vertical, so the vertical component is just the Y difference, not
+    /// the raw 3D distance between the two taps (which would also
+    /// include any horizontal drift between them).
+    var verticalHeight: Float? {
+        guard confirmedPoints.count == 2 else { return nil }
+        return abs(confirmedPoints[1].y - confirmedPoints[0].y)
+    }
+
+    /// How far the top point drifted sideways from directly above/below
+    /// the base point. There's no drag-to-correct in this AR prototype,
+    /// so the catalog's "allow manual correction when automatic vertical
+    /// alignment is uncertain" becomes: surface this number so the user
+    /// can judge it and Undo/re-tap if it's too large, rather than
+    /// silently folding it into a single diagonal distance.
+    var horizontalOffset: Float? {
+        guard confirmedPoints.count == 2 else { return nil }
+        let dx = confirmedPoints[1].x - confirmedPoints[0].x
+        let dz = confirmedPoints[1].z - confirmedPoints[0].z
+        return sqrt(dx * dx + dz * dz)
+    }
+
+    /// Live vertical height while aiming the top point, previewing what
+    /// `verticalHeight` would become if `livePoint` were confirmed next.
+    func liveVerticalHeight(with livePoint: SIMD3<Float>) -> Float? {
+        guard confirmedPoints.count == 1, let base = confirmedPoints.first else { return nil }
+        return abs(livePoint.y - base.y)
+    }
 }

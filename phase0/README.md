@@ -1175,15 +1175,102 @@ the in-scene label, or both) to keep investigating. The new shutter-row
 layout hasn't been visually confirmed on a real device/screen size yet
 either.
 
-**Next recommended task**: sync the latest `ARMeasureScreen.swift` to
-the Xcode project (clean build first, per the Troubleshooting note
-above) and confirm both (a) the angle display is back — in-scene label
-and result card — and (b) the new shutter-row buttons look and feel
-right at the reference's scale on a real device. If angles are still
-missing after a confirmed clean sync, report exactly which part is
-missing so the actual cause (not a guessed one) can be found. Also
-still open: the screenshot button's own first real-hardware test, the
+**Next recommended task (superseded, see below)**: sync the latest
+`ARMeasureScreen.swift` to the Xcode project (clean build first, per
+the Troubleshooting note above) and confirm both (a) the angle display
+is back — in-scene label and result card — and (b) the new shutter-row
+buttons look and feel right at the reference's scale on a real device.
+If angles are still missing after a confirmed clean sync, report
+exactly which part is missing so the actual cause (not a guessed one)
+can be found. Also still open: the screenshot button's own first
+real-hardware test, the rectangle-suggestion orientation fix and Scan
+button re-confirmation, the reticle-smoothness clarification, Cube
+wireframe and 1-foot threshold confirmation, Cylinder/Distance
+Meter/dedicated Height tools, and the Android capability-detection
+real-device run.
+
+## Completion report — dedicated Height tool
+
+**Files changed**: `phase0/ios/BoxOpPhase0/MultiPointMeasurement.swift`,
+`ARMeasureScreen.swift`, `ARMeasureView.swift`,
+`phase0/ios/BoxOpPhase0Tests/MultiPointMeasurementTests.swift`,
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: the user confirmed the shutter-row redesign
+and screenshot button both run well ("corre muy bien") and asked what's
+next; offered a choice between the Cylinder tool, a dedicated Distance
+Meter, a dedicated Height tool, and the still-unrun Android
+capability-detection validation — the user picked the dedicated Height
+tool. Added a third `MeasureToolMode.height` alongside Length/Angle: a
+2-tap flow (base point, then top point) that auto-finishes on the
+second point, per `docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 5
+("base point, top point... use gravity/world-up constraints when
+valid"). This is deliberately distinct from the existing
+polygon-to-height-point perpendicular (only reachable after closing a
+3+ point base, feeding a volume calculation) — that flow is unchanged
+and still exists side by side with this new standalone tool.
+
+The core of the catalog's requirement — "gravity/world-up constraints"
+— comes for free from ARKit: `ARWorldTrackingConfiguration`'s default
+`.gravity` world alignment already makes the world Y axis vertical, so
+`MultiPointMeasurement.verticalHeight` is simply
+`abs(confirmedPoints[1].y - confirmedPoints[0].y)`, not
+`simd_distance` between the two taps (which would also fold in any
+sideways drift between them). That drift is computed separately as
+`horizontalOffset` and surfaced rather than hidden: both in the result
+card (an "off vertical" warning once it passes ~2cm) and in the AR
+scene itself, where `ARMeasureView`'s new `drawHeightBreakdown(base:top:in:)`
+draws an "L" — a vertical segment (labeled with the true height) from
+the base straight up/down to the top point's height, plus, only past
+that same threshold, a second orange horizontal segment out to the
+actual top point (labeled with the offset) — live while aiming the top
+point and fixed once confirmed. The catalog's "allow manual correction
+when automatic vertical alignment is uncertain" has no drag-to-correct
+equivalent in this AR prototype, so it becomes: see the warning, tap
+Undo, and re-tap more carefully — the same pattern already used for the
+closed-shape planarity warning.
+
+The dedicated 2-tap flow reuses the shutter-row control pattern from
+the Angle tool (auto-finish in `primaryButtonAction`, no Close
+Shape/Finish needed) and gets its own picker segment, instruction text,
+result cards, and "New Height" finished-state label — following the
+same structure Angle mode established, not a new architecture.
+
+**Tests/results**: added five deterministic XCTest cases to
+`BoxOpPhase0Tests/MultiPointMeasurementTests.swift` covering
+`verticalHeight`/`horizontalOffset`/`liveVerticalHeight` — including
+the specific claim that matters most (`testVerticalHeightIsYDifferenceNotRawDistance`:
+a base/top pair with real sideways drift where the raw 3D distance
+[~2.06] and the correct vertical answer [2] would differ, proving the
+function isn't accidentally computing `simd_distance`), the
+below-base case (absolute value), and the nil guards before/without
+exactly the right point count. Not yet run — needs `Cmd+U` in Xcode
+(the existing test target already includes this file). Not run on
+real hardware in this environment (no macOS/Xcode access).
+
+**Limitations**: the vertical/horizontal split assumes ARKit's default
+`.gravity` world alignment is in effect (true for this app's
+`ARWorldTrackingConfiguration`, which never overrides
+`worldAlignment`) — if that ever changed, `verticalHeight` would no
+longer mean "true vertical". The 2cm offset-warning threshold is a
+guessed constant, not derived from any measured tolerance, same
+caveat as the existing 8%/6° rectangle/triangle tolerances. Not run on
+real hardware.
+
+**Next recommended task**: run `Cmd+U` in Xcode to confirm the five new
+Height-tool unit tests actually pass (they're written against the
+implementation but have never been compiled), then sync
+`MultiPointMeasurement.swift`, `ARMeasureScreen.swift`, and
+`ARMeasureView.swift` to the Xcode project and test the Height tool on
+a real vertical distance (a doorframe, a box, a wall) against a tape
+measure — first checking whether a careful, deliberately-vertical pair
+of taps gives a sensible height with little or no "off vertical"
+warning, then intentionally tapping the top point off to one side to
+confirm the warning and the orange segment appear as designed. Still
+open: the screenshot button's own first real-hardware test, the
+shutter-row redesign's own visual confirmation, the
 rectangle-suggestion orientation fix and Scan button re-confirmation,
 the reticle-smoothness clarification, Cube wireframe and 1-foot
-threshold confirmation, Cylinder/Distance Meter/dedicated Height
-tools, and the Android capability-detection real-device run.
+threshold confirmation, the Cylinder and Distance Meter tools, and the
+Android capability-detection real-device run.

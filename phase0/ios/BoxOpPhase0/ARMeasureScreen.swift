@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Which of the two tools the Measure tab is currently in. Chosen once,
-/// from the idle screen, before `Start Measure`.
+/// Which tool the Measure tab is currently in. Chosen once, from the idle
+/// screen, before `Start Measure`.
 enum MeasureToolMode: Hashable {
     /// The default, open-ended flow: continuous multi-point polyline,
     /// optionally closed into a shape, optionally given a height.
@@ -12,6 +12,14 @@ enum MeasureToolMode: Hashable {
     /// math as the interior-angle display on a closed shape; this mode
     /// only changes how few points it takes and how the result reads.
     case angle
+    /// A dedicated 2-tap height tool: base point, then top point --
+    /// auto-finishes on the second point. Distinct from the existing
+    /// base-polygon + height-point flow (a perpendicular to a *fitted
+    /// plane*, only reachable after closing a 3+ point shape): this is
+    /// the catalog's standalone Height tool (`docs/25_MEASUREMENT_TOOLS_CATALOG.md`
+    /// section 5), constrained to true vertical (gravity/world-up) rather
+    /// than the raw distance between the two taps.
+    case height
 }
 
 /// Continuous multi-point AR measurement: start, add as many base points as
@@ -112,9 +120,17 @@ struct ARMeasureScreen: View {
 
         case .finished:
             VStack(spacing: 6) {
-                readoutCapsule(toolMode == .angle ? "Angle measured" : "Measurement finished \u{00B7} \(measurement.shapeLabel)")
+                readoutCapsule(finishedHeadline)
                 finishedResultCards
             }
+        }
+    }
+
+    private var finishedHeadline: String {
+        switch toolMode {
+        case .angle: return "Angle measured"
+        case .height: return "Height measured"
+        case .length: return "Measurement finished \u{00B7} \(measurement.shapeLabel)"
         }
     }
 
@@ -125,6 +141,11 @@ struct ARMeasureScreen: View {
             case 1: return "First ray placed \u{00B7} aim the vertex, then tap Add Point"
             default: return "Vertex placed \u{00B7} aim the second ray, then tap Add Point"
             }
+        }
+        if toolMode == .height {
+            return measurement.isEmpty
+                ? "Tap Add Point to place the base point"
+                : "Base placed \u{00B7} aim straight up or down, then tap Add Point"
         }
         if measurement.isClosed {
             return measurement.heightPoint == nil
@@ -142,6 +163,10 @@ struct ARMeasureScreen: View {
         if toolMode == .angle {
             if let livePoint, let liveAngle = measurement.liveAngleAtLastPoint(with: livePoint) {
                 resultCard(primary: String(format: "%.1f\u{00B0}", liveAngle), secondary: "live angle")
+            }
+        } else if toolMode == .height {
+            if let livePoint, let liveHeight = measurement.liveVerticalHeight(with: livePoint) {
+                resultCard(primary: UnitFormatting.feetAndInches(meters: liveHeight), secondary: "live height")
             }
         } else if !measurement.isClosed {
             if let livePoint, let liveSegment = measurement.liveSegmentDistance(to: livePoint) {
@@ -178,6 +203,8 @@ struct ARMeasureScreen: View {
     private var finishedResultCards: some View {
         if toolMode == .angle {
             angleResultCards
+        } else if toolMode == .height {
+            heightResultCards
         } else if measurement.isClosed {
             closedShapeSummary
             if measurement.heightPoint != nil {
@@ -240,6 +267,22 @@ struct ARMeasureScreen: View {
         }
     }
 
+    /// The dedicated Height tool's result: the vertical (gravity/
+    /// world-up constrained) height between base and top point, per
+    /// `docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 5 -- not the raw
+    /// 3D distance between the two taps, which would also fold in any
+    /// horizontal drift. That drift is surfaced as its own warning
+    /// instead, mirroring the planarity warning already used for area.
+    @ViewBuilder
+    private var heightResultCards: some View {
+        if let height = measurement.verticalHeight {
+            resultCard(primary: UnitFormatting.feetAndInches(meters: height), secondary: "height")
+        }
+        if let offset = measurement.horizontalOffset, offset > 0.02 {
+            readoutCapsule("\u{26A0} " + UnitFormatting.feetAndInches(meters: offset) + " off vertical \u{00B7} height may be approximate")
+        }
+    }
+
     private var sourceSuffix: String {
         raycastSource.map { " \u{00B7} \($0.rawValue)" } ?? ""
     }
@@ -272,9 +315,10 @@ struct ARMeasureScreen: View {
                 Picker("Tool", selection: $toolMode) {
                     Text("Length").tag(MeasureToolMode.length)
                     Text("Angle").tag(MeasureToolMode.angle)
+                    Text("Height").tag(MeasureToolMode.height)
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 220)
+                .frame(maxWidth: 260)
 
                 Button("Start Measure") {
                     state = .measuring
@@ -322,7 +366,7 @@ struct ARMeasureScreen: View {
         case .finished:
             VStack(spacing: 14) {
                 HStack(spacing: 12) {
-                    Button(toolMode == .angle ? "New Angle" : "New Measurement") {
+                    Button(newMeasurementButtonTitle) {
                         measurement.clear()
                         state = .measuring
                     }
@@ -395,10 +439,21 @@ struct ARMeasureScreen: View {
     /// what `primaryButtonAction` below will actually do, since that
     /// button no longer carries a text label.
     private var primaryIcon: String {
+        if toolMode == .height, measurement.pointCount == 1 {
+            return "arrow.up"
+        }
         if measurement.isClosed {
             return measurement.heightPoint == nil ? "arrow.up" : "checkmark"
         }
         return "plus"
+    }
+
+    private var newMeasurementButtonTitle: String {
+        switch toolMode {
+        case .angle: return "New Angle"
+        case .height: return "New Height"
+        case .length: return "New Measurement"
+        }
     }
 
     private var primaryButtonDisabled: Bool {
@@ -411,10 +466,13 @@ struct ARMeasureScreen: View {
             measurement.setHeightPoint(livePoint)
         } else {
             measurement.addPoint(livePoint)
-            // Angle mode is a fixed 3-tap flow (ray endpoint, vertex, ray
-            // endpoint) -- no Close Shape/Finish needed, it's done as
-            // soon as the third point lands.
+            // Angle and Height modes are fixed short flows (3 taps, 2
+            // taps respectively) -- no Close Shape/Finish needed, each
+            // finishes automatically as soon as its last point lands.
             if toolMode == .angle, measurement.pointCount == 3 {
+                state = .finished
+            }
+            if toolMode == .height, measurement.pointCount == 2 {
                 state = .finished
             }
         }

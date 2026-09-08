@@ -8,8 +8,10 @@ Two screens, built up one Phase 0 slice at a time
    hardware** — see `../evidence/ios/RESULT.md` (PASS, `iPhone18,2`,
    iOS 26.6.1, Tier C/LiDAR).
 2. **Measure** — a segmented control on the idle screen picks the tool
-   before you start: **Length** (the default, described below) or
-   **Angle** — a dedicated 3-tap flow (ray endpoint, vertex, ray
+   before you start: **Length** (the default, described below),
+   **Angle**, or **Height**.
+
+   **Angle** is a dedicated 3-tap flow (ray endpoint, vertex, ray
    endpoint) that auto-finishes on the third point and shows the angle
    at the vertex plus both ray lengths, reusing the same
    `PolygonGeometry.angleDegrees`/`interiorAngles` math as the
@@ -17,6 +19,23 @@ Two screens, built up one Phase 0 slice at a time
    angle also floats in-scene right at the vertex — live while aiming
    the second ray, then fixed once confirmed — the same in-scene-label
    treatment every segment's length already gets, per user request.
+
+   **Height** is a dedicated 2-tap flow (base point, top point) that
+   auto-finishes on the second point — the catalog's standalone Height
+   tool (`docs/25_MEASUREMENT_TOOLS_CATALOG.md` section 5), distinct
+   from the polygon-to-height-point perpendicular described below (that
+   one needs a closed 3+ point base first and derives a volume; this one
+   is a simple two-tap vertical measurement on its own). The catalog
+   calls for "gravity/world-up constraints when valid" — ARKit's default
+   `.gravity` world alignment already makes the world Y axis vertical,
+   so the reported height is the Y-difference between the two taps, not
+   the raw 3D distance (which would also fold in any horizontal drift
+   between them). That drift is instead drawn and labeled separately, in
+   orange, as an "off vertical" warning once it's over about 2cm, both
+   in-scene (live while aiming, and in the finished "L"-shaped
+   breakdown) and in the bottom result card — there's no drag-to-correct
+   in this AR prototype, so the catalog's "allow manual correction"
+   becomes: see the warning, Undo, and re-tap more carefully.
 
    **Length** mode is the continuous multi-point AR measurement
    (`MultiPointMeasurement.swift`, `PolygonGeometry.swift`,

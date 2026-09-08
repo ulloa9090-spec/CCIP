@@ -332,16 +332,23 @@ struct ARMeasureView: UIViewRepresentable {
             for point in currentPoints {
                 confirmedMarkerNodes.append(addMarker(at: point, in: arView, color: .systemTeal, opacity: 1.0))
             }
-            for i in 0 ..< max(0, currentPoints.count - 1) {
-                let a = currentPoints[i]
-                let b = currentPoints[i + 1]
-                confirmedSegmentNodes.append(addLine(from: a, to: b, in: arView, color: .systemTeal, opacity: 1.0))
-                confirmedLabelNodes.append(addLabel(
-                    text: UnitFormatting.feetAndInches(meters: simd_distance(a, b)),
-                    at: labelPosition(from: a, to: b),
-                    in: arView,
-                    color: .white
-                ))
+            if parent.toolMode == .height, currentPoints.count == 2 {
+                // The dedicated Height tool draws its own vertical/
+                // horizontal breakdown instead of the plain diagonal
+                // segment below -- see `drawHeightBreakdown`.
+                drawHeightBreakdown(base: currentPoints[0], top: currentPoints[1], in: arView)
+            } else {
+                for i in 0 ..< max(0, currentPoints.count - 1) {
+                    let a = currentPoints[i]
+                    let b = currentPoints[i + 1]
+                    confirmedSegmentNodes.append(addLine(from: a, to: b, in: arView, color: .systemTeal, opacity: 1.0))
+                    confirmedLabelNodes.append(addLabel(
+                        text: UnitFormatting.feetAndInches(meters: simd_distance(a, b)),
+                        at: labelPosition(from: a, to: b),
+                        in: arView,
+                        color: .white
+                    ))
+                }
             }
             if parent.toolMode == .angle, currentPoints.count == 3, let angle = measurement.interiorAngles.first {
                 // The dedicated Angle tool's vertex is the middle point
@@ -416,6 +423,39 @@ struct ARMeasureView: UIViewRepresentable {
             renderedHeightPoint = measurement.heightPoint
         }
 
+        /// Draws the dedicated Height tool's result as an "L": a vertical
+        /// segment from the base up/down to the top point's height
+        /// (world Y, since ARKit's default `.gravity` world alignment
+        /// already makes Y vertical -- `docs/25_MEASUREMENT_TOOLS_CATALOG.md`
+        /// section 5's "gravity/world-up constraint"), labeled with the
+        /// true vertical height; plus, only if the two taps weren't well
+        /// aligned vertically, a second horizontal segment out to the
+        /// actual top point, labeled with that offset, so the
+        /// discrepancy is visible rather than silently folded into one
+        /// diagonal number.
+        private func drawHeightBreakdown(base: SIMD3<Float>, top: SIMD3<Float>, in arView: ARSCNView) {
+            let plumb = SIMD3<Float>(base.x, top.y, base.z)
+
+            confirmedSegmentNodes.append(addLine(from: base, to: plumb, in: arView, color: .systemTeal, opacity: 1.0))
+            confirmedLabelNodes.append(addLabel(
+                text: UnitFormatting.feetAndInches(meters: simd_distance(base, plumb)),
+                at: labelPosition(from: base, to: plumb),
+                in: arView,
+                color: .white
+            ))
+
+            let horizontalOffset = simd_distance(plumb, top)
+            if horizontalOffset > 0.02 {
+                confirmedSegmentNodes.append(addLine(from: plumb, to: top, in: arView, color: .systemOrange, opacity: 0.85))
+                confirmedLabelNodes.append(addLabel(
+                    text: UnitFormatting.feetAndInches(meters: horizontalOffset) + " off vertical",
+                    at: labelPosition(from: plumb, to: top),
+                    in: arView,
+                    color: .systemOrange
+                ))
+            }
+        }
+
         // MARK: - Live (tentative) geometry, updated in place every frame
 
         func showLiveVisuals(at position: SIMD3<Float>, in arView: ARSCNView) {
@@ -436,6 +476,14 @@ struct ARMeasureView: UIViewRepresentable {
                 } else {
                     liveSegmentEndpoints = nil
                 }
+            } else if parent.toolMode == .height, measurement.pointCount == 1, let base = measurement.lastPoint {
+                // Vertical-only live preview: the line only ever runs
+                // straight up/down from the base, so its length already
+                // *is* the true vertical height (no separate live label
+                // math needed -- `simd_distance(base, plumb)` below equals
+                // `abs(position.y - base.y)`).
+                let plumb = SIMD3<Float>(base.x, position.y, base.z)
+                liveSegmentEndpoints = (base, plumb)
             } else if let lastConfirmed = measurement.lastPoint {
                 liveSegmentEndpoints = (lastConfirmed, position)
             } else {

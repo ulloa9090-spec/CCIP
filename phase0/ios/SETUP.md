@@ -109,24 +109,54 @@ The app now has two tabs:
 benchmark, see `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md`; this
 generalized version needs its first real-device run):
 
-0. Before tapping **Start Measure**, use the **Length / Angle** switch
-   to pick the tool. **Length** is the flow below. **Angle** is a
-   dedicated 3-tap tool: tap **Add Point** to place the first ray's
-   endpoint, again for the vertex, again for the second ray's endpoint
-   — it finishes automatically on that third point and shows the angle
-   at the vertex plus both ray lengths. Once the vertex is placed, the
-   angle floats right there in the scene too, updating live as you aim
-   the second ray, exactly like the length labels on every segment. Use
-   **Undo Last Point**/**Clear All** the same way; **New Angle** starts
-   another one right away.
+0. Before tapping **Start Measure**, use the **Length / Angle / Height**
+   switch to pick the tool.
+   - **Length** is the open-ended flow below.
+   - **Angle** is a dedicated 3-tap tool: tap the center **+** button to
+     place the first ray's endpoint, again for the vertex, again for the
+     second ray's endpoint — it finishes automatically on that third
+     point and shows the angle at the vertex plus both ray lengths. Once
+     the vertex is placed, the angle floats right there in the scene
+     too, updating live as you aim the second ray, exactly like the
+     length labels on every segment.
+   - **Height** is a dedicated 2-tap tool: tap **+** to place the base
+     point, then aim straight up or down and tap again (the button
+     becomes an up-arrow) to place the top point — it finishes
+     automatically and reports the true **vertical** height between the
+     two, not the raw distance between your two taps. This matters
+     because it's easy for the second tap to land slightly off to one
+     side; the app draws this as an "L": a straight vertical segment
+     labeled with the real height, plus — only if your top tap drifted
+     more than about 2cm sideways from directly above/below the base —
+     a second, orange horizontal segment labeled with that sideways
+     offset, both live while aiming and in the finished result. If you
+     see that orange warning, the height number may be off; **Undo**
+     and re-tap the top point more carefully, aiming as close to
+     straight up/down from the base as you can.
+
+   In every mode, the center **+** button (see step 2b) places points,
+   **Undo** (circular arrow, left of it) undoes the most recent one, and
+   **Clear All**/**New Angle**/**New Height** reset and start over.
 1. A small circle **reticle** sits in the center of the screen at all
    times — this is where the next point will land, not something you
    tap. Point the phone at a real surface and move it slowly for a
    second or two so ARKit can find a plane.
 2. Tap **Start Measure**. The reticle turns solid white once it's
    resting on a valid surface.
-2b. In **Length** mode, before you place any point, a **Scan for
-   Rectangle** button appears above Add Point. Point the phone at a
+2b. While Measuring, the bottom control row has three big buttons,
+   camera-app style: **Undo** (circular arrow, left), the primary action
+   (a large circle with a **+** — or an up-arrow/checkmark depending on
+   what you're about to place — center), and a white **shutter-style
+   camera button** (right). Tap the center button to place the next
+   point wherever the reticle is currently resting. Tap the white button
+   any time to capture the AR scene together with whatever's currently
+   on screen (readout cards, labels) as one image, then use the system
+   share sheet that appears to save it to Photos or send it anywhere
+   else — nothing is saved automatically. Once **Finished**, the same
+   white camera button sits below the New Measurement/Angle/Height and
+   Clear buttons.
+2c. In **Length** mode, before you place any point, a **Scan for
+   Rectangle** button appears above the shutter row. Point the phone at a
    real rectangular object or surface (a book, a door, a screen) and
    tap it — this runs one detection pass on the current frame, not a
    continuous background scan, so hold the phone steady for that one
@@ -138,54 +168,47 @@ generalized version needs its first real-device run):
    appears, just tap **Scan for Rectangle** again from a different
    angle/distance, or keep placing points manually as usual; this is a
    best-effort suggestion, not a requirement.
-3. Tap **Add Point** to confirm the first point (a teal sphere appears).
-   Move the phone toward the next point you want to measure — you'll see
-   a white tentative line follow the reticle live, with a yellow text
-   label floating just above it showing its length, updating
+3. Tap the center **+** button to confirm the first point (a teal sphere
+   appears). Move the phone toward the next point you want to measure —
+   you'll see a white tentative line follow the reticle live, with a
+   yellow text label floating just above it showing its length, updating
    continuously in feet/inches as you move.
-4. Tap **Add Point** again to confirm the second point — the segment
-   turns solid teal and locks in with a white label over it, and a new
-   live segment (with its own live yellow label) starts from there.
-   Repeat for as many points as you want; there's no limit. Every
-   confirmed segment keeps its own label, always turned to face you.
-5. Once you have 3+ points, a **Close Shape** button appears. Tap it to
-   connect the last point back to the first — you'll see area, perimeter,
-   the interior angle at each vertex, and (if the 4 points form one) a
-   "Rectangle" label with length × width instead of a generic "Polygon".
-   If your points aren't well aligned to a single plane, a warning banner
-   says so and calls the area approximate rather than hiding it.
-6. After closing, the primary button becomes **Set Height Point**: aim
-   the reticle above or below the shape (e.g. up a wall from a floor
-   shape) — you'll see a live height preview with its own label — then
-   confirm. This gives you a volume (base area × height). Once
-   confirmed, the scene draws the **full box/prism wireframe** — the
-   top face's edges and every vertical edge, each labeled with its own
-   length — not just a single height line, so it looks like a proper
-   3D box outline (matching the "Cube" tool in other AR measuring apps).
-7. **Undo Last Point** undoes whatever you did most recently — the
-   height point, then un-closing the shape, then the last base point, in
-   that order. **Clear All** wipes everything and lets you keep measuring
-   from scratch. **Finish** freezes the geometry and shows the final
-   summary (distance, or area/perimeter/volume if closed).
-8. From **Finished**, **New Measurement** clears and starts right back
-   up in Measuring; **Clear** wipes everything and returns to the start
-   screen.
+4. Tap **+** again to confirm the second point — the segment turns solid
+   teal and locks in with a white label over it, and a new live segment
+   (with its own live yellow label) starts from there. Repeat for as
+   many points as you want; there's no limit. Every confirmed segment
+   keeps its own label, always turned to face you.
+5. Once you have 3+ points, a **Close Shape** button appears above the
+   shutter row. Tap it to connect the last point back to the first —
+   you'll see area, perimeter, the interior angle at each vertex, and
+   (if the 4 points form one) a "Rectangle" label with length × width
+   instead of a generic "Polygon". If your points aren't well aligned to
+   a single plane, a warning banner says so and calls the area
+   approximate rather than hiding it.
+6. After closing, the center button's icon becomes an up-arrow (this is
+   the existing polygon-to-height perpendicular, not the dedicated
+   Height tool from step 0): aim the reticle above or below the shape
+   (e.g. up a wall from a floor shape) — you'll see a live height
+   preview with its own label — then confirm. This gives you a volume
+   (base area × height). Once confirmed, the scene draws the **full
+   box/prism wireframe** — the top face's edges and every vertical edge,
+   each labeled with its own length — not just a single height line, so
+   it looks like a proper 3D box outline (matching the "Cube" tool in
+   other AR measuring apps).
+7. **Undo** undoes whatever you did most recently — the height point,
+   then un-closing the shape, then the last base point, in that order.
+   **Clear All** wipes everything and lets you keep measuring from
+   scratch. **Finish** freezes the geometry and shows the final summary
+   (distance, or area/perimeter/volume if closed).
+8. From **Finished**, **New Measurement** (or **New Angle**/**New
+   Height**) clears and starts right back up in Measuring; **Clear**
+   wipes everything and returns to the start screen.
 9. Compare the on-screen distances against a real tape measure at a few
    distances and angles — that's `phase0/shared/BENCHMARK_PROTOCOL.md`.
    **Do not treat any small discrepancy as something to "fix" in the
    app** — see that document's section 8 before touching the measurement
    code over accuracy concerns. Area/volume have no benchmark yet — that's
    a good next real-device task once basic length is reconfirmed.
-10. While Measuring, the bottom control row now has three big buttons,
-    camera-app style, per user reference: **Undo** (circular arrow, left),
-    the primary action (a large circle with a **+** — or an up-arrow once
-    a shape is closed and waiting for its height point — center), and a
-    white **shutter-style camera button** (right). Tap the white button to
-    capture the AR scene together with whatever's currently on screen
-    (readout cards, labels) as one image, then use the system share sheet
-    that appears to save it to Photos or send it anywhere else — nothing
-    is saved automatically. Once **Finished**, the same white camera
-    button sits below the New Measurement/Clear buttons.
 
 ## Troubleshooting
 
@@ -215,10 +238,10 @@ generalized version needs its first real-device run):
   phone around a bit first so it can find planes, then tap Scan again).
   Nothing is broken if one scan doesn't find anything — tap it again or
   keep placing points manually.
-- **"Add Point" stays greyed out** → the reticle isn't resting on any
-  detected/estimated surface yet. Move the phone slowly over the area
-  you want to measure first (this is what "world tracking" is doing)
-  until the reticle turns solid white, then try again.
+- **The center + button stays dimmed/unresponsive** → the reticle isn't
+  resting on any detected/estimated surface yet. Move the phone slowly
+  over the area you want to measure first (this is what "world tracking"
+  is doing) until the reticle turns solid white, then try again.
 - **The line/points look slightly off after moving around a lot** → this
   is normal drift for a phone with no depth sensor; on a device with
   LiDAR (like the one already validated), accuracy should hold up much
@@ -231,8 +254,17 @@ generalized version needs its first real-device run):
   plane (easy to do by hand). Try placing points more carefully along
   one real flat surface, or treat the number as approximate — that's
   exactly what the warning is for, not a bug to "fix" by hiding it.
-- **"Set Height Point" is disabled** → same cause as "Add Point" being
-  disabled: the reticle needs to be resting on a valid surface first.
+- **The center button (up-arrow, waiting for the height point) is
+  dimmed** → same cause as the + button being dimmed: the reticle needs
+  to be resting on a valid surface first.
+- **Height tool: the orange "off vertical" warning always shows up, even
+  when I try to tap straight up** → some sideways drift between the two
+  taps is normal and expected (the same order of tap-placement
+  imprecision already documented for distance and angle — see
+  `phase0/shared/BENCHMARK_PROTOCOL.md` section 8); it's flagged, not
+  hidden, once it passes about 2cm. Try resting your arm/hand against
+  something solid while aiming straight up from the base point, or
+  treat a small warning as expected measurement noise rather than a bug.
 - **A feature that was working before (e.g. the Angle tool's in-scene
   label) seems to have disappeared, or a change described in this repo
   doesn't show up when you run the app** → almost always a sync issue,

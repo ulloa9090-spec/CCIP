@@ -307,4 +307,53 @@ final class MultiPointMeasurementTests: XCTestCase {
         XCTAssertNil(measurement.area)
         XCTAssertNil(measurement.perimeter)
     }
+
+    // MARK: - Dedicated Height tool (2-point, gravity/world-up constrained)
+
+    func testVerticalHeightIsYDifferenceNotRawDistance() {
+        var measurement = MultiPointMeasurement()
+        measurement.addPoint(SIMD3(0, 0, 0))
+        measurement.addPoint(SIMD3(0.3, 2, 0.4))
+
+        // Raw 3D distance would be sqrt(0.3^2 + 2^2 + 0.4^2) ~= 2.0616 --
+        // verticalHeight must ignore the sideways drift and report just
+        // the Y difference.
+        XCTAssertEqual(measurement.verticalHeight ?? -1, 2, accuracy: epsilon)
+        XCTAssertEqual(measurement.horizontalOffset ?? -1, 0.5, accuracy: epsilon)
+    }
+
+    func testVerticalHeightUsesAbsoluteValueWhenTopIsBelowBase() {
+        var measurement = MultiPointMeasurement()
+        measurement.addPoint(SIMD3(0, 5, 0))
+        measurement.addPoint(SIMD3(0, 2, 0))
+
+        XCTAssertEqual(measurement.verticalHeight ?? -1, 3, accuracy: epsilon)
+        XCTAssertEqual(measurement.horizontalOffset ?? -1, 0, accuracy: epsilon)
+    }
+
+    func testVerticalHeightAndHorizontalOffsetAreNilBeforeTwoPoints() {
+        var measurement = MultiPointMeasurement()
+        XCTAssertNil(measurement.verticalHeight)
+        XCTAssertNil(measurement.horizontalOffset)
+
+        measurement.addPoint(SIMD3(0, 0, 0))
+        XCTAssertNil(measurement.verticalHeight)
+        XCTAssertNil(measurement.horizontalOffset)
+    }
+
+    func testLiveVerticalHeightPreviewsFromTheSingleBasePoint() {
+        var measurement = MultiPointMeasurement()
+        measurement.addPoint(SIMD3(1, 1, 1))
+
+        XCTAssertEqual(measurement.liveVerticalHeight(with: SIMD3(1, 4, 1)) ?? -1, 3, accuracy: epsilon)
+    }
+
+    func testLiveVerticalHeightIsNilWithoutExactlyOneConfirmedPoint() {
+        var measurement = MultiPointMeasurement()
+        XCTAssertNil(measurement.liveVerticalHeight(with: SIMD3(0, 1, 0)))
+
+        measurement.addPoint(SIMD3(0, 0, 0))
+        measurement.addPoint(SIMD3(0, 1, 0))
+        XCTAssertNil(measurement.liveVerticalHeight(with: SIMD3(0, 2, 0)))
+    }
 }
