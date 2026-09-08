@@ -73,6 +73,7 @@ struct ARMeasureView: UIViewRepresentable {
         private var liveMarkerNode: SCNNode?
         private var liveSegmentNode: SCNNode?
         private var liveLabelNode: SCNNode?
+        private var liveAngleLabelNode: SCNNode?
 
         private var suggestionMarkerNodes: [SCNNode] = []
         private var suggestionSegmentNodes: [SCNNode] = []
@@ -268,6 +269,19 @@ struct ARMeasureView: UIViewRepresentable {
                     color: .white
                 ))
             }
+            if parent.toolMode == .angle, currentPoints.count == 3, let angle = measurement.interiorAngles.first {
+                // The dedicated Angle tool's vertex is the middle point
+                // (ray-endpoint, vertex, ray-endpoint) -- same convention
+                // `PolygonGeometry.interiorAngles` already uses for an open
+                // 3-point line. Floats the angle in-scene at the vertex,
+                // matching how every segment already gets its own label.
+                confirmedLabelNodes.append(addLabel(
+                    text: String(format: "%.1f\u{00B0}", angle),
+                    at: currentPoints[1] + SIMD3<Float>(0, 0.03, 0),
+                    in: arView,
+                    color: .systemYellow
+                ))
+            }
             if measurement.isClosed, currentPoints.count >= 3,
                let first = currentPoints.first, let last = currentPoints.last {
                 confirmedSegmentNodes.append(addLine(from: last, to: first, in: arView, color: .systemTeal, opacity: 1.0))
@@ -374,15 +388,35 @@ struct ARMeasureView: UIViewRepresentable {
             } else {
                 liveLabelNode = addLabel(text: liveText, at: labelPosition(from: from, to: to), in: arView, color: .yellow)
             }
+
+            // Angle tool: while aiming the second ray (vertex already
+            // confirmed), float the live angle at the vertex itself --
+            // same idea as the live segment label above, just for the
+            // angle instead of a length.
+            if parent.toolMode == .angle, let liveAngle = measurement.liveAngleAtLastPoint(with: position),
+               let vertex = measurement.lastPoint {
+                let angleText = String(format: "%.1f\u{00B0}", liveAngle)
+                let vertexLabelPosition = vertex + SIMD3<Float>(0, 0.03, 0)
+                if let liveAngleLabelNode {
+                    updateLabel(liveAngleLabelNode, text: angleText, at: vertexLabelPosition)
+                } else {
+                    liveAngleLabelNode = addLabel(text: angleText, at: vertexLabelPosition, in: arView, color: .systemYellow)
+                }
+            } else {
+                liveAngleLabelNode?.removeFromParentNode()
+                liveAngleLabelNode = nil
+            }
         }
 
         func hideLiveVisuals() {
             liveMarkerNode?.removeFromParentNode()
             liveSegmentNode?.removeFromParentNode()
             liveLabelNode?.removeFromParentNode()
+            liveAngleLabelNode?.removeFromParentNode()
             liveMarkerNode = nil
             liveSegmentNode = nil
             liveLabelNode = nil
+            liveAngleLabelNode = nil
         }
 
         // MARK: - Node builders

@@ -13,7 +13,10 @@ Two screens, built up one Phase 0 slice at a time
    endpoint) that auto-finishes on the third point and shows the angle
    at the vertex plus both ray lengths, reusing the same
    `PolygonGeometry.angleDegrees`/`interiorAngles` math as the
-   interior-angle display below rather than any new geometry.
+   interior-angle display below rather than any new geometry. The
+   angle also floats in-scene right at the vertex — live while aiming
+   the second ray, then fixed once confirmed — the same in-scene-label
+   treatment every segment's length already gets, per user request.
 
    **Length** mode is the continuous multi-point AR measurement
    (`MultiPointMeasurement.swift`, `PolygonGeometry.swift`,

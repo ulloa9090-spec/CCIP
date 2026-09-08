@@ -905,12 +905,50 @@ actual reason for the CGPoint bug) still has zero real-device
 confirmation that the fix compiles or that detection/raycast/double-tap
 actually work end-to-end.
 
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` to the Xcode project, confirm it compiles, and
+test the rectangle-suggestion flow on a real object. Separately, more
+angle measurements against more known angles (a carpenter's square, a
+book's corner, etc.) would turn this one data point into a real
+baseline the way the distance one already is. Also still open: the
+reticle-smoothness clarification, Cube wireframe and 1-foot threshold
+real-device confirmation, Cylinder/Distance Meter/dedicated Height
+tools, and the Android capability-detection real-device run.
+
+## Completion report — in-scene angle label at the vertex
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureView.swift`,
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`, this file.
+
+**Implementation summary**: the user clarified their earlier question
+wasn't about the 88.8° accuracy itself, but that the Angle tool didn't
+get the same in-scene label treatment as segment lengths — every
+segment already floats its length right on the line in the AR scene
+(not just in the bottom result cards), but the angle only showed up in
+a card, with nothing floating at the vertex. Added that: while aiming
+the second ray (vertex already confirmed), a live yellow "88.8°"-style
+label now floats at the vertex, updated every frame via the same
+`measurement.liveAngleAtLastPoint(with:)` already used for the bottom
+card's live preview; once the third point lands, a fixed version of
+the same label stays at the vertex, computed via
+`measurement.interiorAngles.first` — no new geometry, both already
+existed and were only used for the card display before.
+
+**Tests/results**: no new pure-math geometry (reuses existing,
+already-tested `interiorAngles`/`liveAngleAtLastPoint`); this is
+SceneKit label placement, outside the XCTest suite's scope by design.
+Not run in this environment or the user's Xcode yet.
+
+**Limitations**: not run on real hardware. Label placement (a fixed
+0.03m offset above the vertex) hasn't been checked for overlap with
+the two ray segments' own labels, which sit at their midpoints — for a
+very acute angle the vertex and segment labels could end up visually
+close together; a real-device look will tell if that needs adjusting.
+
 **Next recommended task**: sync `ARMeasureView.swift` to the Xcode
-project, confirm it compiles, and test the rectangle-suggestion flow on
-a real object. Separately, more angle measurements against more known
-angles (a carpenter's square, a book's corner, etc.) would turn this
-one data point into a real baseline the way the distance one already
-is. Also still open: the reticle-smoothness clarification, Cube
-wireframe and 1-foot threshold real-device confirmation,
-Cylinder/Distance Meter/dedicated Height tools, and the Android
-capability-detection real-device run.
+project and confirm the angle label renders correctly at the vertex,
+live and after finishing, without overlapping the ray labels. Also
+still open: the reticle-smoothness clarification, the
+rectangle-suggestion feature's first real-device test, Cube wireframe
+and 1-foot threshold confirmation, Cylinder/Distance Meter/dedicated
+Height tools, and the Android capability-detection real-device run.
