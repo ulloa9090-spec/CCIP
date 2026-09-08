@@ -176,12 +176,16 @@ generalized version needs its first real-device run):
    app** — see that document's section 8 before touching the measurement
    code over accuracy concerns. Area/volume have no benchmark yet — that's
    a good next real-device task once basic length is reconfirmed.
-10. A small **camera button** sits in the top-right corner any time you're
-    past the start screen (Measuring or Finished, either tool mode). Tap
-    it to capture the AR scene together with whatever's currently on
-    screen (readout cards, labels) as one image, then use the system
-    share sheet that appears to save it to Photos or send it anywhere
-    else — nothing is saved automatically.
+10. While Measuring, the bottom control row now has three big buttons,
+    camera-app style, per user reference: **Undo** (circular arrow, left),
+    the primary action (a large circle with a **+** — or an up-arrow once
+    a shape is closed and waiting for its height point — center), and a
+    white **shutter-style camera button** (right). Tap the white button to
+    capture the AR scene together with whatever's currently on screen
+    (readout cards, labels) as one image, then use the system share sheet
+    that appears to save it to Photos or send it anywhere else — nothing
+    is saved automatically. Once **Finished**, the same white camera
+    button sits below the New Measurement/Clear buttons.
 
 ## Troubleshooting
 
@@ -229,6 +233,18 @@ generalized version needs its first real-device run):
   exactly what the warning is for, not a bug to "fix" by hiding it.
 - **"Set Height Point" is disabled** → same cause as "Add Point" being
   disabled: the reticle needs to be resting on a valid surface first.
+- **A feature that was working before (e.g. the Angle tool's in-scene
+  label) seems to have disappeared, or a change described in this repo
+  doesn't show up when you run the app** → almost always a sync issue,
+  not a regression: confirm `git pull` actually brought in the latest
+  commit (`git log -1` should show a message matching the most recent
+  entry in `phase0/README.md`'s Completion report), re-drag **both**
+  `ARMeasureScreen.swift` and `ARMeasureView.swift` from
+  `phase0/ios/BoxOpPhase0/` into Xcode choosing **Replace** (dragging
+  only one of the two when both changed can leave the project in a mixed
+  state), then do a clean rebuild (**Product → Clean Build Folder**,
+  `Cmd+Shift+K`, before `Cmd+R`) since Xcode can otherwise reuse stale
+  cached build products.
 - **Tapped the camera button and the share sheet shows a black or
   half-blank image** → this would mean the AR content didn't get captured
   correctly (a known risk with Metal-rendered views); the code works

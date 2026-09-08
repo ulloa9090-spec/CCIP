@@ -75,10 +75,16 @@ Two screens, built up one Phase 0 slice at a time
    see `docs/25_MEASUREMENT_TOOLS_CATALOG.md` and
    `phase0/TOOL_REGISTRY_STATUS.md` for exactly what's real vs. `SPECIFIED`.
 
-**New**: a camera button in the top-right corner (visible any time you're
-past the start screen, either tool mode) captures the AR scene together
-with the current SwiftUI overlay (readout cards, labels) as one image and
-opens the system share sheet, per explicit user request. `ARSCNView`
+**New**: the bottom control row, while Measuring, now mirrors a
+camera-app shutter row per user reference — a circular **Undo** button on
+the left, the primary action (add point / set height point) as a large
+centered circle, and a white **shutter-style camera button** on the
+right (the same button, smaller, sits below the buttons once Finished).
+Tapping it captures the AR scene together with the current SwiftUI
+overlay (readout cards, labels) as one image and opens the system share
+sheet, per explicit user request — replacing an earlier, much smaller
+top-corner icon the user flagged as too small to use comfortably.
+`ARSCNView`
 renders via Metal, and the classic `CALayer.render(in:)`/
 `UIView.drawHierarchy` screenshot techniques don't reliably capture
 Metal-backed content on their own (it can come back black); this instead

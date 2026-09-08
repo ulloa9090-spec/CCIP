@@ -1105,12 +1105,85 @@ stand-in causes a visible flash), the fallback path documented in
 `SETUP.md`'s Troubleshooting section is to report it as a real result
 rather than assume it's already handled.
 
-**Next recommended task**: sync `ARMeasureView.swift` and
-`ARMeasureScreen.swift` to the Xcode project and test the new camera
-button — confirm the shared image shows both the AR scene and the
-overlay correctly with no black/blank regions and no visible flash
-during capture. Also still open: re-confirming the rectangle-
-suggestion orientation fix and Scan button on real hardware, the
-reticle-smoothness clarification, Cube wireframe and 1-foot threshold
-confirmation, Cylinder/Distance Meter/dedicated Height tools, and the
-Android capability-detection real-device run.
+**Next recommended task (superseded, see below)**: sync
+`ARMeasureView.swift` and `ARMeasureScreen.swift` to the Xcode project
+and test the new camera button — confirm the shared image shows both
+the AR scene and the overlay correctly with no black/blank regions and
+no visible flash during capture. Also still open: re-confirming the
+rectangle-suggestion orientation fix and Scan button on real hardware,
+the reticle-smoothness clarification, Cube wireframe and 1-foot
+threshold confirmation, Cylinder/Distance Meter/dedicated Height
+tools, and the Android capability-detection real-device run.
+
+## Completion report — shutter-row control redesign; investigated reported angle regression
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureScreen.swift`,
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`, this file.
+
+**Implementation summary**: the user reported two problems after
+testing the previous increment: (1) the screenshot button was "muy
+pequeño" (too small), and (2) the app "ya no muestra los angulos" (no
+longer shows the angles), sending a screenshot of Apple's own native
+Measure app as a reference for the interface they want — a bottom
+control row with a big circular **Undo** on the left, a large centered
+**+** button, and a white **shutter-style** capture button on the
+right, rather than small text buttons and a tiny corner icon.
+
+Redesigned the Measuring/Finished control rows to match: replaced the
+text-labeled primary button ("Add Point"/"Set Height Point") and the
+small top-corner camera icon with a `shutterRow` of three large
+(52-72pt) circular icon buttons — undo (dark circle, back-arrow icon),
+primary action (accent-colored circle, `+`/up-arrow/checkmark icon
+depending on state), and screenshot (white circle, camera icon) — with
+manual opacity dimming for the disabled states, since the custom
+`Circle()`-backed buttons don't get SwiftUI's automatic disabled-dim
+the way a `.buttonStyle(.borderedProminent)` text button did. Close
+Shape/Finish/Clear All remain as a smaller secondary row above it
+(still needed — this app does more than the reference app's simple
+point-and-measure flow). The Finished state keeps its existing
+New Measurement/Clear row and gained the same white shutter-style
+button beneath it.
+
+On the reported angle regression: audited the current
+`ARMeasureScreen.swift`/`ARMeasureView.swift` against `git log` for
+every commit touching them, specifically the angle-related ones
+(`a6c5226` dedicated Angle tool, `d2ce108` in-scene angle label,
+`4576891` the 88.8°/90° real-hardware data point) — none of that code
+was touched by this session's screenshot-button work, and it's still
+present and unchanged in the current files (the `MeasureToolMode.angle`
+picker, the 3-tap flow, `angleResultCards`, and the in-scene vertex
+label in `syncConfirmedNodes`/`showLiveVisuals`). No revert or history
+rewrite shows up in `git log`. This means the missing-angles symptom is
+very likely a **local sync/build issue** rather than a code regression
+— e.g. only one of the two changed files got re-dragged into Xcode, or
+a stale cached build ran instead of a fresh one. Documented this
+explicitly in `SETUP.md`'s Troubleshooting section (confirm `git log -1`
+matches the latest commit, re-drag **both** changed files, clean build
+folder before rebuilding) rather than guessing at a code change to make
+without being able to reproduce an actual regression.
+
+**Tests/results**: no new pure-math geometry; this is UI-only, outside
+the XCTest suite's scope. Not run in this environment (no macOS/Xcode
+access) or the user's Xcode yet.
+
+**Limitations**: the angle-regression diagnosis is based on git history
+and static code review only, since real-device testing isn't available
+in this environment — if a clean sync + rebuild doesn't resolve it,
+that's real, new evidence of an actual bug and needs a fresh
+description of exactly what's missing (the card in the bottom readout,
+the in-scene label, or both) to keep investigating. The new shutter-row
+layout hasn't been visually confirmed on a real device/screen size yet
+either.
+
+**Next recommended task**: sync the latest `ARMeasureScreen.swift` to
+the Xcode project (clean build first, per the Troubleshooting note
+above) and confirm both (a) the angle display is back — in-scene label
+and result card — and (b) the new shutter-row buttons look and feel
+right at the reference's scale on a real device. If angles are still
+missing after a confirmed clean sync, report exactly which part is
+missing so the actual cause (not a guessed one) can be found. Also
+still open: the screenshot button's own first real-hardware test, the
+rectangle-suggestion orientation fix and Scan button re-confirmation,
+the reticle-smoothness clarification, Cube wireframe and 1-foot
+threshold confirmation, Cylinder/Distance Meter/dedicated Height
+tools, and the Android capability-detection real-device run.

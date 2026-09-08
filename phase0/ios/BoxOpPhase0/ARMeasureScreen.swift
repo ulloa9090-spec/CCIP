@@ -66,11 +66,6 @@ struct ARMeasureScreen: View {
             }
             .padding(.bottom, 24)
         }
-        .overlay(alignment: .topTrailing) {
-            if state != .idle {
-                screenshotButton
-            }
-        }
         .navigationTitle("AR Measure")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: Binding(
@@ -81,25 +76,6 @@ struct ARMeasureScreen: View {
                 ShareSheet(activityItems: [capturedScreenshot])
             }
         }
-    }
-
-    /// Captures the AR scene plus the SwiftUI overlay (readout cards,
-    /// buttons) as one image the user can save or share, per explicit user
-    /// request. See `ARMeasureView.Coordinator.captureFullScreenshot(of:)`
-    /// for why this needs a swap-to-snapshot trick rather than a plain
-    /// window screenshot (Metal-backed `ARSCNView` content doesn't reliably
-    /// capture otherwise).
-    private var screenshotButton: some View {
-        Button {
-            screenshotRequestID += 1
-        } label: {
-            Image(systemName: "camera.fill")
-                .font(.body)
-                .padding(10)
-                .background(.ultraThinMaterial, in: Circle())
-        }
-        .padding(.top, 8)
-        .padding(.trailing, 16)
     }
 
     // MARK: - Reticle
@@ -308,7 +284,7 @@ struct ARMeasureScreen: View {
             }
 
         case .measuring:
-            VStack(spacing: 10) {
+            VStack(spacing: 14) {
                 if toolMode == .length, measurement.isEmpty {
                     Button("Scan for Rectangle") {
                         scanRequestID += 1
@@ -318,19 +294,7 @@ struct ARMeasureScreen: View {
                     .tint(.yellow)
                 }
 
-                Button(primaryButtonTitle) {
-                    primaryButtonAction()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(primaryButtonDisabled)
-
                 HStack(spacing: 10) {
-                    Button("Undo Last Point") {
-                        measurement.undoLast()
-                    }
-                    .disabled(measurement.isEmpty)
-
                     if toolMode == .length {
                         if measurement.canClose {
                             Button("Close Shape") {
@@ -351,30 +315,90 @@ struct ARMeasureScreen: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.regular)
+
+                shutterRow
             }
 
         case .finished:
-            HStack(spacing: 12) {
-                Button(toolMode == .angle ? "New Angle" : "New Measurement") {
-                    measurement.clear()
-                    state = .measuring
-                }
-                .buttonStyle(.borderedProminent)
+            VStack(spacing: 14) {
+                HStack(spacing: 12) {
+                    Button(toolMode == .angle ? "New Angle" : "New Measurement") {
+                        measurement.clear()
+                        state = .measuring
+                    }
+                    .buttonStyle(.borderedProminent)
 
-                Button("Clear", role: .destructive) {
-                    measurement.clear()
-                    state = .idle
+                    Button("Clear", role: .destructive) {
+                        measurement.clear()
+                        state = .idle
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
+
+                circleIconButton(systemName: "camera.fill", diameter: 56, filled: true) {
+                    screenshotRequestID += 1
+                }
             }
         }
     }
 
-    private var primaryButtonTitle: String {
-        if measurement.isClosed {
-            return measurement.heightPoint == nil ? "Set Height Point" : "Height Set"
+    /// The three big always-reachable actions, styled after a
+    /// camera-app shutter row (per user reference: an undo circle on the
+    /// left, the primary action centered and large, a white shutter-style
+    /// circle on the right) instead of small text buttons -- the user
+    /// flagged the previous text-button layout as not matching this and
+    /// the camera/screenshot button specifically as too small to use
+    /// comfortably.
+    private var shutterRow: some View {
+        HStack {
+            circleIconButton(systemName: "arrow.uturn.backward", diameter: 52) {
+                measurement.undoLast()
+            }
+            .disabled(measurement.isEmpty)
+            .opacity(measurement.isEmpty ? 0.35 : 1)
+
+            Spacer()
+
+            Button(action: primaryButtonAction) {
+                Image(systemName: primaryIcon)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 72, height: 72)
+                    .background(Circle().fill(Color.accentColor))
+            }
+            .disabled(primaryButtonDisabled)
+            .opacity(primaryButtonDisabled ? 0.35 : 1)
+
+            Spacer()
+
+            circleIconButton(systemName: "camera.fill", diameter: 64, filled: true) {
+                screenshotRequestID += 1
+            }
         }
-        return "Add Point"
+        .padding(.horizontal, 36)
+    }
+
+    /// A large circular icon button -- `filled` gives the white
+    /// "shutter button" look from the reference; otherwise it's a dark
+    /// translucent circle matching the undo control next to it.
+    private func circleIconButton(systemName: String, diameter: CGFloat, filled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: diameter * 0.38, weight: .semibold))
+                .foregroundStyle(filled ? Color.black : Color.white)
+                .frame(width: diameter, height: diameter)
+                .background(Circle().fill(filled ? Color.white : Color.black.opacity(0.55)))
+        }
+    }
+
+    /// Icon shown on the primary (center) shutter-row button -- mirrors
+    /// what `primaryButtonAction` below will actually do, since that
+    /// button no longer carries a text label.
+    private var primaryIcon: String {
+        if measurement.isClosed {
+            return measurement.heightPoint == nil ? "arrow.up" : "checkmark"
+        }
+        return "plus"
     }
 
     private var primaryButtonDisabled: Bool {
