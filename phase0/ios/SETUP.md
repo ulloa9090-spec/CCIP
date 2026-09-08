@@ -109,6 +109,13 @@ The app now has two tabs:
 benchmark, see `phase0/evidence/ios/POINT_TO_POINT_BENCHMARK.md`; this
 generalized version needs its first real-device run):
 
+0. Before tapping **Start Measure**, use the **Length / Angle** switch
+   to pick the tool. **Length** is the flow below. **Angle** is a
+   dedicated 3-tap tool: tap **Add Point** to place the first ray's
+   endpoint, again for the vertex, again for the second ray's endpoint
+   — it finishes automatically on that third point and shows the angle
+   at the vertex plus both ray lengths. Use **Undo Last Point**/**Clear
+   All** the same way; **New Angle** starts another one right away.
 1. A small circle **reticle** sits in the center of the screen at all
    times — this is where the next point will land, not something you
    tap. Point the phone at a real surface and move it slowly for a

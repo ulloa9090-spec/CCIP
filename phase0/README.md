@@ -749,10 +749,57 @@ as a mismatch from the user's own on-device observation before the
 threshold fix, so the fix itself still needs the same on-device
 confirmation the original claim lacked.
 
-**Next recommended task**: sync the corrected `UnitFormatting.swift` to
-the Xcode project (this is the only file that changed), re-run the
-XCTest suite, and re-check the Measure tab on the iPhone to confirm
-inches-only below 12in and feet-and-inches at 12in and above. Also
-still open: Close Shape + Cube wireframe real-device confirmation,
-Cylinder/Distance Meter/dedicated Height-Angle tools, and the Android
-capability-detection real-device run.
+**Next recommended task (superseded, see below)**: sync the corrected
+`UnitFormatting.swift` to the Xcode project (this is the only file that
+changed), re-run the XCTest suite, and re-check the Measure tab on the
+iPhone to confirm inches-only below 12in and feet-and-inches at 12in
+and above. Also still open: Close Shape + Cube wireframe real-device
+confirmation, Cylinder/Distance Meter/dedicated Height-Angle tools, and
+the Android capability-detection real-device run.
+
+## Completion report — target-style reticle + dedicated Angle tool
+
+**Files changed**: `phase0/ios/BoxOpPhase0/ARMeasureScreen.swift`
+(reticle restyle, new `MeasureToolMode`, Angle mode flow),
+`phase0/ios/README.md`, `phase0/ios/SETUP.md`,
+`phase0/TOOL_REGISTRY_STATUS.md`, this file.
+
+**Implementation summary**: two separate user requests. (1) Per a
+reference screenshot, replaced the plain circle reticle with a
+target/crosshair look — a dashed/segmented ring plus a small center dot
+— same meaning as before (translucent while searching, solid white once
+resting on a surface). (2) Per explicit request for a dedicated Angle
+tool with "una función para activarla" (a way to turn it on), added a
+`MeasureToolMode` (`.length`/`.angle`) picked via a segmented control on
+the idle screen before `Start Measure`. In `.angle` mode, the flow is a
+fixed 3 taps — ray endpoint, vertex, ray endpoint — auto-finishing on
+the third point (no Close Shape/Finish needed) and showing the angle at
+the vertex plus both ray lengths. No new geometry was needed: this
+reuses `PolygonGeometry.interiorAngles`/`angleDegrees` exactly as
+already used for a closed shape's interior angles — an open 3-point
+line's single interior angle *is* the vertex angle between two rays.
+
+**Tests/results**: no new geometry to test (reuses already-tested
+`interiorAngles`); this is UI/flow logic in `ARMeasureScreen.swift`,
+which isn't covered by the XCTest suite (that targets the
+ARKit/SceneKit-free math layer only, per design). Not run in this
+environment or the user's Xcode yet.
+
+**Limitations**: not run on real hardware. Two things raised earlier in
+this session by the user remain unresolved and unclarified — an
+`AskUserQuestion` about what exactly "sugerencias cuando detecta
+figuras cuadradas" (automatic shape-suggestion, previously explicitly
+deferred) and "la mirilla no se ve fluida" (reticle not looking smooth)
+meant was dismissed without an answer, so neither is addressed here;
+the reticle restyle above is a distinct, separately-requested change
+using a dashed-line style, not necessarily a fix for the "not smooth"
+complaint if that turns out to mean something else (jagged rendering,
+choppy tracking, or a preference for a solid ring).
+
+**Next recommended task**: sync `ARMeasureScreen.swift` to the Xcode
+project and try both Length and Angle modes on the iPhone. Revisit the
+two dismissed clarifying questions (shape auto-suggestion scope,
+reticle smoothness complaint) when the user is ready to specify what
+they meant. Also still open: Cube wireframe and 1-foot threshold
+real-device confirmation, Cylinder/Distance Meter/dedicated Height
+tools, and the Android capability-detection real-device run.

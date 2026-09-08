@@ -7,7 +7,15 @@ Two screens, built up one Phase 0 slice at a time
    depth/LiDAR support read live from Apple's APIs. **Validated on real
    hardware** — see `../evidence/ios/RESULT.md` (PASS, `iPhone18,2`,
    iOS 26.6.1, Tier C/LiDAR).
-2. **Measure** — continuous multi-point AR measurement
+2. **Measure** — a segmented control on the idle screen picks the tool
+   before you start: **Length** (the default, described below) or
+   **Angle** — a dedicated 3-tap flow (ray endpoint, vertex, ray
+   endpoint) that auto-finishes on the third point and shows the angle
+   at the vertex plus both ray lengths, reusing the same
+   `PolygonGeometry.angleDegrees`/`interiorAngles` math as the
+   interior-angle display below rather than any new geometry.
+
+   **Length** mode is the continuous multi-point AR measurement
    (`MultiPointMeasurement.swift`, `PolygonGeometry.swift`,
    `ARMeasureView.swift`, `ARMeasureScreen.swift`): start, place an
    unlimited number of points one at a time via a continuous

@@ -1,5 +1,19 @@
 import SwiftUI
 
+/// Which of the two tools the Measure tab is currently in. Chosen once,
+/// from the idle screen, before `Start Measure`.
+enum MeasureToolMode: Hashable {
+    /// The default, open-ended flow: continuous multi-point polyline,
+    /// optionally closed into a shape, optionally given a height.
+    case length
+    /// A dedicated 3-tap angle tool: ray endpoint, vertex, ray endpoint --
+    /// auto-finishes on the third point and shows the angle at the
+    /// vertex. Reuses the same `MultiPointMeasurement`/`PolygonGeometry`
+    /// math as the interior-angle display on a closed shape; this mode
+    /// only changes how few points it takes and how the result reads.
+    case angle
+}
+
 /// Continuous multi-point AR measurement: start, add as many base points as
 /// you want, optionally close them into a shape (perimeter, area, interior
 /// angles, rectangle detection), optionally add one height point to derive
@@ -13,6 +27,7 @@ struct ARMeasureScreen: View {
     @State private var measurement = MultiPointMeasurement()
     @State private var livePoint: SIMD3<Float>?
     @State private var raycastSource: RaycastSource?
+    @State private var toolMode: MeasureToolMode = .length
 
     var body: some View {
         ZStack {
@@ -73,13 +88,20 @@ struct ARMeasureScreen: View {
 
         case .finished:
             VStack(spacing: 6) {
-                readoutCapsule("Measurement finished \u{00B7} \(measurement.shapeLabel)")
+                readoutCapsule(toolMode == .angle ? "Angle measured" : "Measurement finished \u{00B7} \(measurement.shapeLabel)")
                 finishedResultCards
             }
         }
     }
 
     private var instructionText: String {
+        if toolMode == .angle {
+            switch measurement.pointCount {
+            case 0: return "Tap Add Point to place the first ray"
+            case 1: return "First ray placed \u{00B7} aim the vertex, then tap Add Point"
+            default: return "Vertex placed \u{00B7} aim the second ray, then tap Add Point"
+            }
+        }
         if measurement.isClosed {
             return measurement.heightPoint == nil
                 ? "Aim above or below the shape, then tap Set Height Point"
@@ -93,7 +115,11 @@ struct ARMeasureScreen: View {
 
     @ViewBuilder
     private var measuringResultCards: some View {
-        if !measurement.isClosed {
+        if toolMode == .angle {
+            if let livePoint, let liveAngle = measurement.liveAngleAtLastPoint(with: livePoint) {
+                resultCard(primary: String(format: "%.1f\u{00B0}", liveAngle), secondary: "live angle")
+            }
+        } else if !measurement.isClosed {
             if let livePoint, let liveSegment = measurement.liveSegmentDistance(to: livePoint) {
                 resultCard(
                     primary: UnitFormatting.feetAndInches(meters: liveSegment),
@@ -126,7 +152,9 @@ struct ARMeasureScreen: View {
 
     @ViewBuilder
     private var finishedResultCards: some View {
-        if measurement.isClosed {
+        if toolMode == .angle {
+            angleResultCards
+        } else if measurement.isClosed {
             closedShapeSummary
             if measurement.heightPoint != nil {
                 if let volume = measurement.volume {
@@ -172,6 +200,22 @@ struct ARMeasureScreen: View {
         }
     }
 
+    /// The dedicated Angle tool's result: the single angle at the vertex
+    /// (`interiorAngles` on an open 3-point line gives exactly this,
+    /// same math as the interior-angle display on a closed shape --
+    /// nothing new to compute), plus the two ray lengths for context.
+    @ViewBuilder
+    private var angleResultCards: some View {
+        if let angle = measurement.interiorAngles.first {
+            resultCard(primary: String(format: "%.1f\u{00B0}", angle), secondary: "angle")
+        }
+        let rayLengths = measurement.segmentDistances
+        if rayLengths.count == 2 {
+            resultCard(primary: UnitFormatting.feetAndInches(meters: rayLengths[0]), secondary: "ray 1")
+            resultCard(primary: UnitFormatting.feetAndInches(meters: rayLengths[1]), secondary: "ray 2")
+        }
+    }
+
     private var sourceSuffix: String {
         raycastSource.map { " \u{00B7} \($0.rawValue)" } ?? ""
     }
@@ -200,11 +244,20 @@ struct ARMeasureScreen: View {
     private var controls: some View {
         switch state {
         case .idle:
-            Button("Start Measure") {
-                state = .measuring
+            VStack(spacing: 14) {
+                Picker("Tool", selection: $toolMode) {
+                    Text("Length").tag(MeasureToolMode.length)
+                    Text("Angle").tag(MeasureToolMode.angle)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 220)
+
+                Button("Start Measure") {
+                    state = .measuring
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
 
         case .measuring:
             VStack(spacing: 10) {
@@ -221,16 +274,18 @@ struct ARMeasureScreen: View {
                     }
                     .disabled(measurement.isEmpty)
 
-                    if measurement.canClose {
-                        Button("Close Shape") {
-                            measurement.closeShape()
+                    if toolMode == .length {
+                        if measurement.canClose {
+                            Button("Close Shape") {
+                                measurement.closeShape()
+                            }
                         }
-                    }
 
-                    Button("Finish") {
-                        state = .finished
+                        Button("Finish") {
+                            state = .finished
+                        }
+                        .disabled(measurement.pointCount < 2)
                     }
-                    .disabled(measurement.pointCount < 2)
 
                     Button("Clear All", role: .destructive) {
                         measurement.clear()
@@ -243,7 +298,7 @@ struct ARMeasureScreen: View {
 
         case .finished:
             HStack(spacing: 12) {
-                Button("New Measurement") {
+                Button(toolMode == .angle ? "New Angle" : "New Measurement") {
                     measurement.clear()
                     state = .measuring
                 }
@@ -275,6 +330,12 @@ struct ARMeasureScreen: View {
             measurement.setHeightPoint(livePoint)
         } else {
             measurement.addPoint(livePoint)
+            // Angle mode is a fixed 3-tap flow (ray endpoint, vertex, ray
+            // endpoint) -- no Close Shape/Finish needed, it's done as
+            // soon as the third point lands.
+            if toolMode == .angle, measurement.pointCount == 3 {
+                state = .finished
+            }
         }
     }
 }
