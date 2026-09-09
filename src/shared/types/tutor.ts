@@ -1,3 +1,5 @@
+import type { AbstentionReason } from './diagnostics'
+
 export interface MessageSource {
   documentId: string
   documentTitle: string
@@ -39,5 +41,16 @@ export type TutorEvent =
       messageId: string
       content: string
       sources: MessageSource[]
+      /** Fase 13: links this answer to its diagnostic trace (Request History / "¿Por qué?"). */
+      requestId: string
+      abstentionReason: AbstentionReason | null
     }
-  | { type: 'error'; conversationId: string; messageId: string; errorMessage: string }
+  | {
+      type: 'error'
+      conversationId: string
+      messageId: string
+      errorMessage: string
+      requestId: string
+    }
+
+export type { AbstentionReason }

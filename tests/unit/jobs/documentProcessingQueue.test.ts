@@ -122,6 +122,14 @@ describe('DocumentProcessingQueue', () => {
     // even though indexing never completed.
     expect(documents.getById(document.id)?.status).toBe('ready')
     expect(chunks.getEmbeddedChunks([document.id])).toEqual([])
+
+    // Fase 13: the soft failure is now persisted on the job (Document
+    // Processing Health), not just a transient IPC event nobody sees after
+    // the fact — while the job itself still reports 'succeeded' (ADR-013).
+    const job = new ProcessingJobRepository(db).getLatestByDocument(document.id)
+    expect(job?.status).toBe('succeeded')
+    expect(job?.errorCode).toBe('INDEXING_FAILED')
+    expect(job?.errorMessage).toContain('Forbidden access to file')
   })
 
   it('reconcileOrphanedJobs marks interrupted jobs and their documents as failed', async () => {

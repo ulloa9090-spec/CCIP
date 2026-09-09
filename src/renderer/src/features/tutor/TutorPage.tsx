@@ -1,11 +1,49 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Card, EmptyState, LoadingState } from '../../design-system'
-import type { ConversationMessage, TutorEvent } from '@shared/types/tutor'
+import { ABSTENTION_REASON_LABELS } from '../settings/developer/abstentionReasons'
+import type { AbstentionReason, ConversationMessage, TutorEvent } from '@shared/types/tutor'
 
 interface DisplayMessage extends ConversationMessage {
   /** True while an assistant message is still streaming in. */
   streaming?: boolean
+  /** Fase 13: set only on a "done" answer that abstained — powers "¿Por qué?". */
+  abstentionReason?: AbstentionReason | null
+  requestId?: string
+}
+
+function WhyExplanation({
+  reason,
+  requestId
+}: {
+  reason: AbstentionReason
+  requestId: string
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false)
+  const labels = ABSTENTION_REASON_LABELS[reason]
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="text-xs text-primary hover:underline"
+      >
+        ¿Por qué?
+      </button>
+      {expanded && (
+        <div className="mt-1 flex flex-col gap-1 rounded-md border border-border bg-background p-2 text-xs">
+          <p className="text-text-secondary">{labels.user}</p>
+          <Link
+            to={`/settings/developer?tab=requests&requestId=${requestId}`}
+            className="text-primary hover:underline"
+          >
+            Ver detalles técnicos
+          </Link>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function TutorPage(): React.JSX.Element {
@@ -63,7 +101,9 @@ export function TutorPage(): React.JSX.Element {
               role: 'assistant',
               content: event.content,
               sources: event.sources,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              abstentionReason: event.abstentionReason,
+              requestId: event.requestId
             }
           ]
         })
@@ -168,6 +208,12 @@ export function TutorPage(): React.JSX.Element {
                         </Link>
                       ))}
                     </div>
+                  )}
+                  {message.abstentionReason && message.requestId && (
+                    <WhyExplanation
+                      reason={message.abstentionReason}
+                      requestId={message.requestId}
+                    />
                   )}
                 </div>
               ))}

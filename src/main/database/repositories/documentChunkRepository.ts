@@ -76,6 +76,14 @@ export class DocumentChunkRepository {
     return row.count
   }
 
+  /** Total chunks indexed across the whole library — Fase 13's System Health card. */
+  countAll(): number {
+    const row = this.db.prepare('SELECT COUNT(*) as count FROM document_chunks').get() as {
+      count: number
+    }
+    return row.count
+  }
+
   /** Scoped to `documentIds` when given, otherwise every ready document's chunks. */
   getEmbeddedChunks(documentIds?: string[]): EmbeddedChunk[] {
     const baseQuery = `

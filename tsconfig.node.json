@@ -12,7 +12,10 @@
     "tests/unit/jobs/**/*",
     "tests/unit/retrieval/**/*",
     "tests/unit/ai/**/*",
-    "tests/unit/tutor/**/*"
+    "tests/unit/tutor/**/*",
+    "tests/eval/**/*",
+    "tests/ai-smoke/**/*",
+    "tests/unit/diagnostics/**/*"
   ],
   "compilerOptions": {
     "composite": true,

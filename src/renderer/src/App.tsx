@@ -23,6 +23,7 @@ import { FlashcardDeckPage } from './features/flashcards/FlashcardDeckPage'
 import { FlashcardReviewPage } from './features/flashcards/FlashcardReviewPage'
 import { ProgressPage } from './features/progress/ProgressPage'
 import { KnowledgeMapPage } from './features/knowledge-map/KnowledgeMapPage'
+import { DeveloperDiagnosticsPage } from './features/settings/developer/DeveloperDiagnosticsPage'
 
 const IMPLEMENTED_PATHS: Record<string, React.JSX.Element> = {
   '/library': <LibraryPage />,
@@ -62,6 +63,7 @@ function App(): React.JSX.Element {
           <Route path="/flashcards/:courseId/review" element={<FlashcardReviewPage />} />
           <Route path="/flashcards/:courseId" element={<FlashcardDeckPage />} />
           <Route path={SETTINGS_NAV_ITEM.path} element={<SettingsPage />} />
+          <Route path="/settings/developer" element={<DeveloperDiagnosticsPage />} />
         </Route>
       </Routes>
     </HashRouter>

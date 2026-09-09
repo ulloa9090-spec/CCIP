@@ -1,10 +1,15 @@
 import { BrowserWindow, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import type { Database } from 'better-sqlite3'
 import { ConversationRepository } from '../database/repositories/conversationRepository'
+import { DocumentRepository } from '../database/repositories/documentRepository'
 import { DocumentChunkRepository } from '../database/repositories/documentChunkRepository'
+import { ProcessingJobRepository } from '../database/repositories/processingJobRepository'
+import { DiagnosticsRepository } from '../database/repositories/diagnosticsRepository'
+import { SettingsRepository } from '../database/repositories/settingsRepository'
 import { RetrievalService } from '../retrieval/retrievalService'
 import { TutorService } from '../tutor/tutorService'
 import { OpenAIProvider } from '../ai/openAIProvider'
+import { InstrumentedAIProvider } from '../diagnostics/instrumentedAIProvider'
 import { AppError } from '../../shared/types/errors'
 import { logger } from '../logging/logger'
 import type { AIProvider, EmbeddingProvider } from '../../shared/types/ai'
@@ -48,8 +53,23 @@ export function registerTutorIpc(
   ai: AIProvider = new OpenAIProvider()
 ): void {
   const conversations = new ConversationRepository(db)
-  const retrieval = new RetrievalService(new DocumentChunkRepository(db), embeddings)
-  const tutor = new TutorService(conversations, retrieval, ai)
+  const documents = new DocumentRepository(db)
+  const chunks = new DocumentChunkRepository(db)
+  const jobs = new ProcessingJobRepository(db)
+  const diagnostics = new DiagnosticsRepository(db)
+  const settings = new SettingsRepository(db)
+  const retrieval = new RetrievalService(chunks, embeddings)
+  const instrumentedAi = new InstrumentedAIProvider(ai, diagnostics, 'tutor')
+  const tutor = new TutorService(
+    conversations,
+    retrieval,
+    instrumentedAi,
+    diagnostics,
+    documents,
+    chunks,
+    jobs,
+    settings
+  )
 
   handle('tutor:getLatestConversation', (): ConversationDetail | null => {
     const conversation = conversations.getLatest()

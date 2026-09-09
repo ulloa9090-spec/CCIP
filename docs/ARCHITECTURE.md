@@ -746,12 +746,61 @@ No requerido en primer prototipo personal.
   pedir carpeta destino por diálogo para el backup, exportar algo más
   que notas (cursos, exámenes), firma/notarización real de macOS/Windows.
 
+### Fase 13 (completada) — Developer Diagnostics (addendum, no forma parte del roadmap principal)
+
+Observabilidad local del pipeline documento→respuesta, pedida fuera de
+`ROADMAP_IMPLEMENTATION.md` tras discutir un resumen técnico del proyecto.
+Ver ADR-024 para el conflicto arquitectónico documentado (no existía, y
+sigue sin existir, un umbral numérico de similitud) y el resto de las
+decisiones de alcance.
+
+- `src/main/database/migrations/0011_diagnostics.ts`: tres tablas nuevas
+  (`diagnostic_requests`, `diagnostic_events`, `ai_usage_records`) más una
+  columna aditiva `stage` en `processing_jobs` (Fase 2).
+- `InstrumentedAIProvider` (nuevo, `src/main/diagnostics/`): decorador de
+  `AIProvider` que registra latencia/uso real/costo por llamada en un solo
+  lugar (envuelto en `tutorIpc.ts`), en vez de que cada servicio de IA
+  cuente sus propias llamadas. `AIProvider`/`GenerateTextOptions` se
+  extendieron de forma aditiva (`onUsage`/`requestId`/`feature`/`model?`).
+- `TutorService.ask()` traza cada pregunta de punta a punta
+  (`DiagnosticsRepository`) con códigos de abstención estables derivados
+  de señales reales (`abstentionClassifier.ts`), nunca inventados.
+  `ProcessingJobRepository` gana `setStage`/`recordSoftFailure` — la falla
+  de indexación de ADR-013 ahora es inspeccionable después del hecho, sin
+  cambiar su comportamiento (el job sigue `succeeded`, el documento sigue
+  `ready`).
+- `pricing.ts`: tabla de precios pequeña y explícita; `null` (nunca `$0`)
+  para un modelo sin tarifa conocida.
+- Developer Diagnostics UI (nuevo, `src/renderer/src/features/settings/developer/`):
+  anidada bajo Configuración (`/settings/developer`), cinco pestañas de
+  solo lectura sobre `diagnosticsIpc.ts` (System Health, AI Usage,
+  Retrieval Inspector, Request History, Document Processing Health), más
+  entrada en la paleta de comandos. El Tutor gana un "¿Por qué?" no
+  técnico con enlace a la traza técnica real de esa pregunta.
+- IPC + preload: `window.studyos.diagnostics.{getSystemHealth,
+  getUsageSummary,listRequests,getRequestDetail,inspectRetrieval,
+  listDocumentHealth,getSettings,setSettings}`.
+- Evaluation Lab (`pnpm eval`, `tests/eval/`): Recall@k/MRR, abstención
+  correcta, corrección de citas, groundedness y resistencia a inyección
+  de prompt — 100% offline/determinista (embeddings por palabra clave,
+  mismo patrón que `retrievalService.test.ts`), nunca juzga la calidad de
+  una respuesta real de un modelo.
+- `pnpm test:ai-smoke` (nuevo, `tests/ai-smoke/`): verificación opt-in
+  contra OpenAI real, con su propio `vitest.ai-smoke.config.ts` — nunca
+  se ejecuta como parte de `pnpm test`/CI; se salta limpio sin
+  `OPENAI_API_KEY`.
+- Deliberadamente fuera de alcance (ADR-024): ninguna base de datos
+  vectorial, ninguna reescritura de Mastery, ningún trabajo de sync/nube,
+  ninguna implementación de Anthropic, ningún umbral numérico de
+  similitud nuevo.
+
 ### Pendiente de concretar (backlog futuro)
 
-Las Fases 0 a 12 de `ROADMAP_IMPLEMENTATION.md` están completas. Lo que
-sigue es intencionalmente backlog — nada de esto tiene un consumidor
-real todavía, ver `ROADMAP_IMPLEMENTATION.md` §15 y las decisiones ya
-tomadas fase a fase:
+Las Fases 0 a 12 de `ROADMAP_IMPLEMENTATION.md`, más el addendum de Fase
+13 (Developer Diagnostics), están completas. Lo que sigue es
+intencionalmente backlog — nada de esto tiene un consumidor real
+todavía, ver `ROADMAP_IMPLEMENTATION.md` §15 y las decisiones ya tomadas
+fase a fase:
 
 - Verificación de descarga real del modelo de embeddings y calidad de
   búsqueda semántica con red disponible, y de una respuesta real de

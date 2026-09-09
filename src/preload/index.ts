@@ -31,6 +31,18 @@ import type {
   ReviewOutcome
 } from '../shared/types/flashcards'
 import type { ProgressSummary } from '../shared/types/progress'
+import type {
+  AIUsageSummary,
+  DiagnosticRequestDetail,
+  DiagnosticRequestSummary,
+  DiagnosticFeature,
+  DiagnosticsSettings,
+  DocumentHealth,
+  RetrievalInspectionRequest,
+  RetrievalInspectionResult,
+  SystemHealth,
+  UsageRange
+} from '../shared/types/diagnostics'
 
 /**
  * Only `electron` itself (contextBridge, ipcRenderer) is available to a
@@ -146,6 +158,25 @@ const studyos = {
   },
   progress: {
     getSummary: (): Promise<ProgressSummary> => ipcRenderer.invoke('progress:getSummary')
+  },
+  diagnostics: {
+    getSystemHealth: (): Promise<SystemHealth> => ipcRenderer.invoke('diagnostics:getSystemHealth'),
+    getUsageSummary: (range: UsageRange): Promise<AIUsageSummary> =>
+      ipcRenderer.invoke('diagnostics:getUsageSummary', range),
+    listRequests: (
+      feature?: DiagnosticFeature,
+      limit?: number
+    ): Promise<DiagnosticRequestSummary[]> =>
+      ipcRenderer.invoke('diagnostics:listRequests', feature, limit),
+    getRequestDetail: (id: string): Promise<DiagnosticRequestDetail | null> =>
+      ipcRenderer.invoke('diagnostics:getRequestDetail', id),
+    inspectRetrieval: (request: RetrievalInspectionRequest): Promise<RetrievalInspectionResult> =>
+      ipcRenderer.invoke('diagnostics:inspectRetrieval', request),
+    listDocumentHealth: (): Promise<DocumentHealth[]> =>
+      ipcRenderer.invoke('diagnostics:listDocumentHealth'),
+    getSettings: (): Promise<DiagnosticsSettings> => ipcRenderer.invoke('diagnostics:getSettings'),
+    setSettings: (settings: DiagnosticsSettings): Promise<DiagnosticsSettings> =>
+      ipcRenderer.invoke('diagnostics:setSettings', settings)
   }
 }
 

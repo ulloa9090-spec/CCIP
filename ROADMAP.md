@@ -72,3 +72,14 @@ Regla: no se avanza a la fase siguiente hasta que la actual esté aprobada.
       accesibilidad (aria-labels, navegación por teclado) y de empty
       states, packaging verificado. _(completada — ver DECISIONS.md
       ADR-023; completamente determinista, sin llamadas a IA)_
+- [x] **Fase 13 — Developer Diagnostics** _(addendum, fuera de la
+      secuencia principal — ver `ROADMAP_IMPLEMENTATION.md` §14a)_:
+      observabilidad local del pipeline documento→respuesta —
+      System Health, uso/costo real de IA, inspector de recuperación,
+      historial trazado de cada pregunta al Tutor con códigos de
+      abstención estables, salud de procesamiento por documento, "¿Por
+      qué?" en el Tutor, Evaluation Lab (`pnpm eval`, offline) y
+      `pnpm test:ai-smoke` (opt-in, nunca en CI). _(completada — ver
+      DECISIONS.md ADR-024, incluyendo el conflicto arquitectónico
+      documentado: no existe ni se agregó un umbral numérico de
+      similitud)_

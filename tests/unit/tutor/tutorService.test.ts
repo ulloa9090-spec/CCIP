@@ -4,6 +4,9 @@ import { runMigrations } from '../../../src/main/database/migrations'
 import { ConversationRepository } from '../../../src/main/database/repositories/conversationRepository'
 import { DocumentRepository } from '../../../src/main/database/repositories/documentRepository'
 import { DocumentChunkRepository } from '../../../src/main/database/repositories/documentChunkRepository'
+import { ProcessingJobRepository } from '../../../src/main/database/repositories/processingJobRepository'
+import { DiagnosticsRepository } from '../../../src/main/database/repositories/diagnosticsRepository'
+import { SettingsRepository } from '../../../src/main/database/repositories/settingsRepository'
 import { RetrievalService } from '../../../src/main/retrieval/retrievalService'
 import { TutorService, INSUFFICIENT_EVIDENCE_MESSAGE } from '../../../src/main/tutor/tutorService'
 import type { AIProvider, EmbeddingProvider, StreamTextChunk } from '../../../src/shared/types/ai'
@@ -40,6 +43,9 @@ let db: Database.Database
 let conversations: ConversationRepository
 let documents: DocumentRepository
 let chunks: DocumentChunkRepository
+let jobs: ProcessingJobRepository
+let diagnostics: DiagnosticsRepository
+let settings: SettingsRepository
 
 beforeEach(() => {
   db = new Database(':memory:')
@@ -47,6 +53,9 @@ beforeEach(() => {
   conversations = new ConversationRepository(db)
   documents = new DocumentRepository(db)
   chunks = new DocumentChunkRepository(db)
+  jobs = new ProcessingJobRepository(db)
+  diagnostics = new DiagnosticsRepository(db)
+  settings = new SettingsRepository(db)
 })
 
 describe('TutorService', () => {
@@ -61,7 +70,16 @@ describe('TutorService', () => {
         yield { delta: 'x', done: true }
       }
     }
-    const tutor = new TutorService(conversations, retrieval, ai)
+    const tutor = new TutorService(
+      conversations,
+      retrieval,
+      ai,
+      diagnostics,
+      documents,
+      chunks,
+      jobs,
+      settings
+    )
 
     const events = await collect(tutor.ask(conversation.id, '¿Qué es un change order?'))
 
@@ -72,7 +90,9 @@ describe('TutorService', () => {
         conversationId: conversation.id,
         messageId: expect.any(String),
         content: INSUFFICIENT_EVIDENCE_MESSAGE,
-        sources: []
+        sources: [],
+        requestId: expect.any(String),
+        abstentionReason: 'NO_INDEXED_DOCUMENTS'
       }
     ])
 
@@ -109,7 +129,16 @@ describe('TutorService', () => {
     const conversation = conversations.create()
     const retrieval = new RetrievalService(chunks, fakeEmbeddings())
     const ai = scriptedAIProvider(['A change ', 'order is a written modification.'])
-    const tutor = new TutorService(conversations, retrieval, ai)
+    const tutor = new TutorService(
+      conversations,
+      retrieval,
+      ai,
+      diagnostics,
+      documents,
+      chunks,
+      jobs,
+      settings
+    )
 
     const events = await collect(tutor.ask(conversation.id, '¿Qué es un change order?'))
 
@@ -134,6 +163,25 @@ describe('TutorService', () => {
           pageEnd: 82,
           heading: 'Contracts'
         }
+      ])
+
+      // Fase 13: the same requestId the renderer got back is a real,
+      // fully-traced diagnostic_requests row with a sensible event timeline.
+      const detail = diagnostics.getRequestDetail(doneEvent.requestId)
+      expect(detail).toMatchObject({
+        feature: 'tutor',
+        status: 'success',
+        abstentionReason: null,
+        question: '¿Qué es un change order?'
+      })
+      expect(detail?.events.map((e) => e.eventType)).toEqual([
+        'QUESTION_RECEIVED',
+        'RETRIEVAL_STARTED',
+        'RETRIEVAL_COMPLETED',
+        'AI_REQUEST_STARTED',
+        'AI_FIRST_TOKEN',
+        'AI_REQUEST_COMPLETED',
+        'RESPONSE_RENDERED'
       ])
     }
 
@@ -162,7 +210,16 @@ describe('TutorService', () => {
     const conversation = conversations.create()
     const retrieval = new RetrievalService(chunks, fakeEmbeddings())
     const ai = scriptedAIProvider([INSUFFICIENT_EVIDENCE_MESSAGE])
-    const tutor = new TutorService(conversations, retrieval, ai)
+    const tutor = new TutorService(
+      conversations,
+      retrieval,
+      ai,
+      diagnostics,
+      documents,
+      chunks,
+      jobs,
+      settings
+    )
 
     const events = await collect(tutor.ask(conversation.id, 'pregunta rara'))
     const doneEvent = events.at(-1)
@@ -183,11 +240,27 @@ describe('TutorService', () => {
     const conversation = conversations.create()
     const retrieval = new RetrievalService(chunks, fakeEmbeddings())
     const ai = scriptedAIProvider(['parcial'], { throwAfter: 0 })
-    const tutor = new TutorService(conversations, retrieval, ai)
+    const tutor = new TutorService(
+      conversations,
+      retrieval,
+      ai,
+      diagnostics,
+      documents,
+      chunks,
+      jobs,
+      settings
+    )
 
     const events = await collect(tutor.ask(conversation.id, 'pregunta'))
 
-    expect(events.at(-1)).toMatchObject({ type: 'error' })
+    const errorEvent = events.at(-1)
+    expect(errorEvent).toMatchObject({ type: 'error' })
     expect(conversations.getMessages(conversation.id).map((m) => m.role)).toEqual(['user'])
+
+    if (errorEvent?.type === 'error') {
+      const detail = diagnostics.getRequestDetail(errorEvent.requestId)
+      expect(detail).toMatchObject({ status: 'error', abstentionReason: 'AI_PROVIDER_ERROR' })
+      expect(detail?.events.map((e) => e.eventType)).toContain('REQUEST_ABORTED')
+    }
   })
 })

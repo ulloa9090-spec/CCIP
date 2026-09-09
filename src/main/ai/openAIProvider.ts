@@ -3,6 +3,7 @@ import { AppError } from '../../shared/types/errors'
 import { getOpenAIKeyForUse } from '../security/secretStore'
 import type {
   AIProvider,
+  AIUsage,
   GenerateStructuredOptions,
   GenerateTextOptions,
   StreamTextChunk
@@ -36,6 +37,18 @@ function mapError(error: unknown): AppError {
   })
 }
 
+function reportUsage(
+  onUsage: ((usage: AIUsage) => void) | undefined,
+  usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined
+): void {
+  if (!onUsage || !usage) return
+  onUsage({
+    inputTokens: usage.prompt_tokens ?? 0,
+    outputTokens: usage.completion_tokens ?? 0,
+    totalTokens: usage.total_tokens ?? 0
+  })
+}
+
 function getClient(): OpenAI {
   const apiKey = getOpenAIKeyForUse()
   if (!apiKey) {
@@ -53,6 +66,7 @@ function getClient(): OpenAI {
  */
 export class OpenAIProvider implements AIProvider {
   readonly id = 'openai'
+  readonly model = DEFAULT_MODEL
 
   async testConnection(): Promise<boolean> {
     try {
@@ -71,6 +85,7 @@ export class OpenAIProvider implements AIProvider {
         temperature: options.temperature,
         max_completion_tokens: options.maxOutputTokens
       })
+      reportUsage(options.onUsage, completion.usage)
       return completion.choices[0]?.message?.content ?? ''
     } catch (error) {
       throw mapError(error)
@@ -94,6 +109,7 @@ export class OpenAIProvider implements AIProvider {
           }
         }
       })
+      reportUsage(options.onUsage, completion.usage)
       const content = completion.choices[0]?.message?.content
       if (!content) {
         throw new AppError({
@@ -119,7 +135,10 @@ export class OpenAIProvider implements AIProvider {
         messages: options.messages,
         temperature: options.temperature,
         max_completion_tokens: options.maxOutputTokens,
-        stream: true
+        stream: true,
+        // Only way to get real token usage on a streamed response — the
+        // final chunk carries `usage` and an empty `choices` array.
+        stream_options: { include_usage: true }
       })
     } catch (error) {
       throw mapError(error)
@@ -127,6 +146,7 @@ export class OpenAIProvider implements AIProvider {
 
     try {
       for await (const chunk of stream) {
+        reportUsage(options.onUsage, chunk.usage ?? undefined)
         const delta = chunk.choices[0]?.delta?.content ?? ''
         const done = chunk.choices[0]?.finish_reason != null
         if (delta || done) yield { delta, done }

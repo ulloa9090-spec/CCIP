@@ -18,10 +18,27 @@ export interface AIProviderMessage {
   content: string
 }
 
+export interface AIUsage {
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}
+
 export interface GenerateTextOptions {
   messages: AIProviderMessage[]
   temperature?: number
   maxOutputTokens?: number
+  /**
+   * Fase 13 (Developer Diagnostics) instrumentation hooks — both optional
+   * and additive, every existing call site is unaffected. `onUsage` lets a
+   * wrapper capture real token counts straight from the provider's own
+   * response instead of estimating them (see ADR-024); `requestId`/
+   * `feature` let that usage be attributed to a diagnostic trace without
+   * the provider needing to know what a "trace" is.
+   */
+  onUsage?: (usage: AIUsage) => void
+  requestId?: string
+  feature?: string
 }
 
 export interface GenerateStructuredOptions<T> extends GenerateTextOptions {
@@ -42,6 +59,8 @@ export interface StreamTextChunk {
  */
 export interface AIProvider {
   readonly id: string
+  /** Fixed model identifier this provider instance talks to, if it has one — used for usage/cost attribution (Fase 13). */
+  readonly model?: string
   testConnection(): Promise<boolean>
   generateText(options: GenerateTextOptions): Promise<string>
   generateStructured<T>(options: GenerateStructuredOptions<T>): Promise<T>

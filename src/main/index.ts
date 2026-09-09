@@ -17,6 +17,7 @@ import { registerMasteryIpc } from './ipc/masteryIpc'
 import { registerPlanIpc } from './ipc/planIpc'
 import { registerFlashcardsIpc } from './ipc/flashcardsIpc'
 import { registerProgressIpc } from './ipc/progressIpc'
+import { registerDiagnosticsIpc } from './ipc/diagnosticsIpc'
 import { LocalEmbeddingProvider } from './ai/localEmbeddingProvider'
 import { logger } from './logging/logger'
 
@@ -77,6 +78,7 @@ app.whenReady().then(() => {
   registerPlanIpc(db)
   registerFlashcardsIpc(db, embeddings)
   registerProgressIpc(db)
+  registerDiagnosticsIpc(db, embeddings)
   documentQueue.reconcileOrphanedJobs()
   logger.info('StudyOS main process ready')
 

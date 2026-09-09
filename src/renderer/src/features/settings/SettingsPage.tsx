@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button, Card, StatusBadge } from '../../design-system'
 import { parseSerializedAppError } from '@shared/types/errors'
 import { applyTheme } from '../../app/theme'
@@ -225,6 +226,19 @@ export function SettingsPage(): React.JSX.Element {
           {exportMessage && <p className="text-xs text-text-muted">{exportMessage}</p>}
           {exportError && <p className="text-xs text-danger">{exportError}</p>}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-sm font-semibold text-text-primary">Desarrollador</h2>
+        <p className="mt-1 text-xs text-text-secondary">
+          Observabilidad local del Tutor: estado del sistema, uso de IA, inspector de recuperación e
+          historial de solicitudes.
+        </p>
+        <Link to="/settings/developer" className="mt-3 inline-block">
+          <Button size="sm" variant="ghost">
+            Abrir Diagnóstico de Desarrollador
+          </Button>
+        </Link>
       </Card>
     </div>
   )

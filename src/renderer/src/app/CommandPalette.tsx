@@ -49,6 +49,11 @@ export function CommandPalette({ onClose }: CommandPaletteProps): React.JSX.Elem
           window.studyos.documents.import()
           navigate('/library')
         }
+      },
+      {
+        id: 'action:developer-diagnostics',
+        label: 'Diagnóstico de Desarrollador',
+        run: () => navigate('/settings/developer')
       }
     ]
   }, [navigate])

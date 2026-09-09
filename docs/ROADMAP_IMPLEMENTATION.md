@@ -162,6 +162,27 @@ Implementar:
 - export
 - packaging
 
+## 14a. Fase 13 — Developer Diagnostics (addendum, fuera de la secuencia principal)
+
+Pedida fuera de este roadmap, tras discutir un resumen técnico del
+proyecto — no reemplaza ni reordena las Fases 0-12 de arriba. Observa el
+pipeline documento→respuesta existente sin cambiar su comportamiento:
+
+- System Health, AI Usage, Retrieval Inspector, Request History, Document
+  Processing Health (nuevas pantallas, ancladas bajo Configuración).
+- Instrumentación centralizada de `AIProvider` (uso/costo real, nunca
+  estimado) y trazado de cada pregunta del Tutor con códigos de
+  abstención estables.
+- Evaluation Lab (`pnpm eval`, offline/determinista) y `pnpm test:ai-smoke`
+  (opt-in, real, nunca en CI).
+- Explícitamente fuera de alcance: base de datos vectorial, reescritura
+  de Mastery, sync/nube, implementación de Anthropic, y ningún umbral
+  numérico de similitud nuevo (Closed Library Mode sigue decidiendo por
+  el juicio del propio modelo, no por un corte de puntaje).
+
+Ver ADR-024 (`docs/DECISIONS.md`) para el detalle completo, incluyendo el
+conflicto arquitectónico documentado antes de implementar.
+
 ## 15. Backlog futuro
 
 - local models

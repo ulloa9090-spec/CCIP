@@ -260,6 +260,46 @@ state:
 - error_message
 - created_at
 - updated_at
+- stage nullable — Fase 13 (Developer Diagnostics), aditiva: etapa
+  informativa del pipeline ('extracting'/'chunking'/'embedding'/'ready'),
+  nunca sustituye a `status`/`progress`. Ver ADR-024.
+
+## 27a. diagnostic_requests — Fase 13 (Developer Diagnostics), ver ADR-024
+- id
+- feature
+- conversation_id nullable
+- question nullable — `null` cuando el toggle de privacidad está
+  desactivado; las métricas agregadas se siguen registrando igual
+- status (`in_progress`/`success`/`aborted`/`error`)
+- abstention_reason nullable
+- best_similarity_score nullable — informativo únicamente, no un umbral
+- started_at
+- completed_at nullable
+- duration_ms nullable
+
+## 27b. diagnostic_events — Fase 13, ver ADR-024
+- id
+- request_id → diagnostic_requests, ON DELETE CASCADE
+- event_type
+- occurred_at
+- offset_ms — milisegundos desde el inicio de la solicitud
+- duration_ms nullable
+- metadata_json nullable
+
+## 27c. ai_usage_records — Fase 13, ver ADR-024
+- id
+- request_id nullable → diagnostic_requests, ON DELETE SET NULL
+- feature
+- provider
+- model
+- input_tokens / output_tokens / total_tokens nullable — siempre del
+  propio SDK del proveedor, nunca estimados
+- estimated_cost nullable — `null` (nunca `$0`) cuando el modelo no tiene
+  tarifa conocida en `pricing.ts`
+- status (`success`/`error`)
+- error_code nullable
+- latency_ms / first_token_ms nullable
+- created_at
 
 ## 28. achievements
 - id

@@ -88,7 +88,13 @@ paleta de comandos para saltar a cualquier pantalla o disparar acciones
 rápidas sin soltar el teclado; `/settings` deja elegir entre modo oscuro
 (el predeterminado) y modo claro, crear una copia de seguridad real de tu
 base de datos y tus PDFs con un clic, y exportar todas tus notas a un
-archivo Markdown.
+archivo Markdown. Fase 13 (addendum, Developer Diagnostics) agrega
+`/settings/developer`: estado del sistema, uso y costo real de IA, un
+inspector de recuperación, el historial trazado de cada pregunta al
+Tutor y la salud de procesamiento de cada documento — nada de esto sale
+de tu equipo. Cualquier respuesta abstenida del Tutor ahora tiene un
+enlace "¿Por qué?" con la explicación en lenguaje simple y un enlace a
+la traza técnica completa. Ver ADR-024 en `docs/DECISIONS.md`.
 
 ## Desarrollo
 
@@ -116,6 +122,8 @@ pnpm typecheck   # TypeScript strict, main + renderer
 pnpm lint        # ESLint
 pnpm test        # Vitest (unit + component)
 pnpm test:e2e    # Playwright (requiere `pnpm build` previo)
+pnpm eval        # Evaluation Lab: Recall@k/MRR, abstención, citas, injection — offline, CI-seguro
+pnpm test:ai-smoke  # Verificación real contra OpenAI — opt-in, requiere OPENAI_API_KEY, nunca en CI
 pnpm build       # typecheck + build de producción
 ```
 

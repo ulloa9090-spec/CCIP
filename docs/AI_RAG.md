@@ -271,3 +271,37 @@ Medir:
 - retrieval quality
 - hallucination rate
 - answer relevance
+
+### Estado real (Fase 13 — Developer Diagnostics, ver DECISIONS.md ADR-024)
+
+Las secciones de arriba son la especificación original, previa a
+implementación. Lo que Fase 13 construyó realmente, y cómo se relaciona:
+
+- **§19 (Prompt injection defense)** ya estaba implementado desde Fase 4
+  (regla 3 del `SYSTEM_PROMPT` del Tutor). Fase 13 lo verifica de forma
+  automatizada (`pnpm eval`, `tests/eval/tutorPipeline.eval.ts`): un chunk
+  con un intento de inyección llega al modelo como texto citado dentro
+  del mensaje `user`, nunca como su propio mensaje `system`.
+- **§21 (Cost controls — "estimated usage")** ahora es real: cada llamada
+  a `AIProvider` registra su uso real (nunca estimado, tomado del propio
+  SDK) y, cuando el modelo tiene tarifa conocida, un costo estimado —
+  visible en Configuración > Diagnóstico de Desarrollador > Uso de IA.
+  "Cache embeddings"/"cache document summaries" siguen sin implementar.
+- **§22 (Confidence — "Supported/Partially supported/Insufficient
+  evidence")** sigue **sin implementar**: el Tutor sigue siendo binario
+  (respuesta con citas, o el mensaje fijo de evidencia insuficiente).
+  Fase 13 no agregó una escala de confianza — deliberado, ver el
+  conflicto arquitectónico documentado en ADR-024 (no existe un umbral
+  numérico del que derivar "parcialmente soportado").
+- **§23 (Citation validation)** ya era real desde Fase 4: las citas
+  siempre vienen de `toSources()` sobre los resultados reales de
+  `RetrievalService`, la IA nunca las genera. Fase 13 lo cubre con un
+  test de "corrección de citas" en `pnpm eval` (nunca fabrica ni omite
+  una fuente).
+- **§24 (Evaluation) misma** ahora existe como `pnpm eval` — Recall@k/MRR,
+  abstención correcta, corrección de citas y resistencia a inyección,
+  100% offline/determinista (nunca mide sobre una respuesta real de un
+  modelo — eso es `pnpm test:ai-smoke`, opt-in y nunca en CI). No incluye
+  "conflicting sources" como categoría separada — no hay hoy un
+  mecanismo para detectar fuentes en conflicto entre sí, solo evidencia
+  presente o ausente.

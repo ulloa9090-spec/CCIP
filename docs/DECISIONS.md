@@ -1397,3 +1397,181 @@ depende de una llamada a IA:
   y corrigió una condición de carrera real en la suite (Ctrl+K enviado
   antes de que `AppShell` montara su listener) esperando explícitamente
   el botón de la paleta antes de cada prueba.
+
+### ADR-024 — Alcance y decisiones de Developer Diagnostics (Fase 13)
+
+**Contexto.** El pedido original ("Developer Diagnostics, Observability &
+Quality Validation") es una especificación externa de 48 secciones, no un
+ítem de `ROADMAP_IMPLEMENTATION.md` — esta fase es un addendum, escrito
+tras discutir el resumen técnico del proyecto fuera de la app. Su objetivo
+declarado: "A failed or weak Tutor response should be diagnosable in under
+one minute." La especificación asume explícitamente varias piezas de
+arquitectura que, al implementar, resultaron no existir — la instrucción
+de la propia especificación ante eso es "stop and document the conflict
+before changing architecture", no inventarlas. Esta ADR documenta esos
+conflictos junto con el resto de las decisiones de alcance.
+
+**Conflicto arquitectónico descubierto (documentado, no parcheado).**
+`RetrievalService`/`TutorService` no tienen ningún umbral numérico de
+similitud hoy — Closed Library Mode (ADR-014) reparte la decisión "no hay
+evidencia suficiente" enteramente al juicio del propio modelo (la frase
+fija `INSUFFICIENT_EVIDENCE_MESSAGE` que el system prompt le exige emitir
+cuando el CONTEXTO no alcanza), no a un corte de puntaje. Esta fase
+**no agrega uno**: solo expone el mejor puntaje de similitud recuperado
+(`bestSimilarityScore`) como dato informativo en cada traza, y usa
+`INSUFFICIENT_RETRIEVAL_SCORE` como el código de abstención para ese caso
+real (el nombre viene de la especificación original, que sí asumía un
+umbral; se conserva el nombre por compatibilidad con esa nomenclatura,
+pero su significado real y documentado aquí es "el modelo juzgó
+insuficiente la evidencia", no "el puntaje cayó bajo un corte"). Si
+StudyOS agrega alguna vez un umbral real, es una decisión de producto
+aparte con su propia ADR — no una consecuencia de instrumentar el sistema
+para observarlo.
+
+**Decisiones:**
+
+1. **Un solo mecanismo central de instrumentación de `AIProvider`, nunca
+   conteo manual por servicio.** `InstrumentedAIProvider`
+   (`src/main/diagnostics/instrumentedAIProvider.ts`) es un decorador que
+   envuelve cualquier `AIProvider` real y registra una fila en
+   `ai_usage_records` por cada llamada (éxito o error), midiendo latencia,
+   tiempo al primer token y — crítico — el uso real que reporta el propio
+   SDK de OpenAI (`completion.usage` en llamadas no-streaming;
+   `stream_options: { include_usage: true }` más el `usage` del último
+   chunk en streaming), nunca una estimación local de tokens. `AIProvider`
+   se extendió de forma aditiva (`onUsage`/`requestId`/`feature` opcionales
+   en `GenerateTextOptions`, `model?` opcional en la interfaz) — todo
+   punto de llamada existente sigue compilando sin cambios. El
+   envolvimiento ocurre en la capa de construcción de IPC
+   (`tutorIpc.ts`'s `registerTutorIpc`), no dentro de `TutorService`, que
+   solo necesita pasar `requestId`/`feature` para que la atribución
+   funcione — el servicio de negocio no sabe que existen diagnósticos.
+2. **Precio nunca inventado: `null` es una respuesta real, `$0` no lo
+   es.** `pricing.ts` mantiene una tabla explícita, pequeña y
+   hardcodeada (hoy: `gpt-4o-mini`, `gpt-4o`) y devuelve `null` — nunca
+   `0` — para cualquier par proveedor/modelo sin tarifa conocida.
+   `AIUsageSummary` separa `estimatedCost` (suma solo de registros con
+   tarifa conocida) de `costUnavailableCount` (cuántos no la tenían), así
+   el total nunca se confunde con "completo" cuando en realidad hay
+   gastos no contabilizados.
+3. **Códigos de abstención derivados de señales reales, nunca de una
+   heurística inventada.** `classifyEmptyRetrievalReason`
+   (`abstentionClassifier.ts`) distingue `NO_INDEXED_DOCUMENTS`
+   (`DocumentRepository.list()` vacío), `NO_EMBEDDINGS` (hay documentos
+   pero `document_chunks` está vacío y no hay trabajos activos) y
+   `DOCUMENT_PROCESSING_INCOMPLETE` (hay documentos, cero chunks, y
+   `ProcessingJobRepository.countActive() > 0` — sigue en proceso ahora
+   mismo) usando exclusivamente repositorios ya existentes, sin agregar
+   estado nuevo. Cuando la IA sí respondió, `INSUFFICIENT_RETRIEVAL_SCORE`
+   se asigna solo si la respuesta es exactamente el mensaje fijo (ver
+   arriba); `AI_STREAM_ERROR` vs. `AI_PROVIDER_ERROR`/
+   `AI_PROVIDER_NOT_CONFIGURED` se distinguen por una señal real y barata:
+   si ya se había entregado contenido (`full.length > 0`) cuando el
+   `streamText` lanzó, la conexión se rompió a mitad de camino; si no,
+   nunca llegó a responder. `STRUCTURED_OUTPUT_VALIDATION_FAILED` y
+   `CITATION_RECONSTRUCTION_FAILED` quedan en el tipo compartido pero
+   **sin ningún emisor hoy** — el Tutor no genera salida estructurada ni
+   tiene un paso de reconstrucción de citas separado de
+   `toSources()` — documentados como reservados, no simulados.
+4. **ADR-013 (el documento sigue `ready` aunque falle la indexación) se
+   preserva exactamente; la falla ahora es inspeccionable después del
+   hecho, no solo un evento IPC transitorio que si nadie lo vio se
+   pierde.** `processing_jobs` gana una columna aditiva `stage` y
+   `ProcessingJobRepository` dos métodos nuevos: `setStage()` (nunca toca
+   `status`/`progress`) y `recordSoftFailure()` (escribe
+   `error_code`/`error_message` sin flipear un job `succeeded` a
+   `failed`). `documentProcessingQueue.ts`'s catch de indexación —que ya
+   existía y ya mantenía el job en `succeeded`— ahora además llama
+   `recordSoftFailure()` antes de emitir el mismo evento de siempre. Cero
+   cambios de comportamiento visible para el usuario, solo persistencia
+   de lo que antes solo vivía en un evento.
+5. **`DocumentHealth.embeddingsComplete`/`embeddingsTotal` son siempre
+   iguales — no un descuido, sino un hecho real del pipeline actual.**
+   `embedInBatches()` solo entrega chunks a `replaceChunks()` (una sola
+   escritura, todo o nada) después de que **todos** los lotes se
+   embebieron con éxito; no existe hoy un estado intermedio persistido de
+   "N de M embebidos" que reportar. Documentado explícitamente en
+   `documentHealth.ts` en vez de inventar una fracción falsa.
+6. **El toggle de privacidad (`DiagnosticsSettings.storeDetails`) gatea
+   solo el texto de la pregunta, nunca las métricas agregadas — igual que
+   pide la especificación §16.** `TutorService.ask()` consulta el ajuste
+   (`diagnosticsSettings.ts`, guardado vía `SettingsRepository` con el
+   mismo patrón que `'theme'` desde Fase 12) y pasa `null` como pregunta a
+   `createRequest()` cuando está desactivado — pero la traza de eventos,
+   el uso de IA y el costo se siguen registrando siempre, porque no
+   contienen contenido del usuario. Activado por defecto (`true`): una
+   instalación nueva debe ser diagnosticable sin un paso de configuración
+   extra.
+7. **Developer Diagnostics vive anidado bajo Configuración
+   (`/settings/developer`), no en la navegación principal**, más una
+   entrada en la paleta de comandos — nunca compite con la navegación de
+   estudio. Cinco pestañas (`System Health`, `AI Usage`, `Retrieval
+   Inspector`, `Request History`, `Document Processing Health`), todas
+   lectura pura sobre los handlers de `diagnosticsIpc.ts`, sin lógica de
+   negocio propia en la UI. El Tutor gana un "¿Por qué?" no técnico junto
+   a cualquier respuesta abstenida (`abstentionReasons.ts`, mapeo
+   1-a-1 con cada `AbstentionReason`) con un enlace "Ver detalles
+   técnicos" que navega directo a la traza real de esa pregunta en
+   Request History — la explicación técnica nunca duplica texto, siempre
+   apunta a datos reales.
+8. **La Evaluation Lab (`pnpm eval`) es 100% offline y determinista — a
+   propósito, no por limitación.** Usa un `EmbeddingProvider` de vectores
+   por palabra clave (`tests/eval/fixtures.ts`), el mismo patrón ya
+   establecido en `retrievalService.test.ts`, en vez del modelo local real
+   (~90MB, requiere red la primera vez). Esto mantiene rápido y
+   CI-seguro el cálculo de Recall@k/MRR reales sobre el código de ranking
+   real (`rankBySimilarity`), corrección de citas (sin fabricar ni omitir
+   fuentes), abstención correcta (contra los mismos códigos reales de la
+   decisión 3) y resistencia a inyección de prompt (un chunk con un
+   intento de inyección llega al modelo como texto citado dentro del
+   mensaje `user`, nunca como su propio mensaje `system` — verificado
+   contra el `SYSTEM_PROMPT` real exportado, no una copia). Lo que
+   **no** hace `pnpm eval`: juzgar la calidad de una respuesta real de un
+   modelo — eso requiere un proveedor real, y es exactamente para lo que
+   existe `pnpm test:ai-smoke` por separado.
+9. **`pnpm test:ai-smoke` nunca corre en CI, por diseño en tres capas.**
+   (a) Vive en `tests/ai-smoke/*.smoke.ts`, fuera del glob
+   `tests/unit/**/*.test.ts` de `vitest.config.ts`. (b) Tiene su propio
+   `vitest.ai-smoke.config.ts` con su propio `include`, invocado por un
+   script de `package.json` separado. (c) Lee `OPENAI_API_KEY`
+   directamente de `process.env`, nunca a través de
+   `secretStore.ts` — ese módulo depende de `safeStorage`/`app` de
+   Electron, inexistentes en un proceso Node/vitest normal, así que este
+   smoke test deliberadamente no reutiliza `OpenAIProvider`. Sin la
+   variable de entorno, la suite se salta entera (`describe.skipIf`) con
+   salida 0 — "no configurado" nunca es una falla. `pnpm eval` usa el
+   mismo esquema de archivo/config separados por la misma razón.
+10. **Explícitamente fuera de alcance de esta fase** (tal como pedía la
+    especificación original): ninguna base de datos vectorial, ninguna
+    reescritura de Mastery, ningún trabajo de sync/nube, ninguna
+    implementación de Anthropic. Nada de esto se tocó.
+
+**Verificación.**
+- Unit tests nuevos (`tests/unit/diagnostics/`, más extensiones a
+  `tests/unit/database/processingJobRepository.test.ts`,
+  `tests/unit/jobs/documentProcessingQueue.test.ts` y
+  `tests/unit/tutor/tutorService.test.ts`): `pricing.ts`,
+  `DiagnosticsRepository`, `InstrumentedAIProvider` (uso real, costo
+  desconocido nunca fabricado, fallo registrado y re-lanzado,
+  atribución por `requestId`/`feature`), `SystemHealthService` (cada
+  señal con Electron/`paths` mockeados igual que
+  `secretStore.test.ts`), `documentHealth.ts`,
+  `classifyEmptyRetrievalReason`, `diagnosticsSettings.ts`, y la
+  traza completa de eventos que `TutorService.ask()` escribe en los
+  casos de éxito y de error.
+- Evaluation Lab (`pnpm eval`, `tests/eval/`): 9 pruebas — Recall@1=0.80,
+  Recall@3=1.00, MRR=0.90 sobre un set dorado de 5 consultas con un caso
+  deliberadamente ambiguo (para que la métrica no reporte un 100% trivial);
+  3 casos de abstención correcta; corrección de citas; groundedness;
+  resistencia a inyección (2 pruebas).
+- E2E real (`tests/e2e/diagnostics.spec.ts`): las cinco pestañas
+  renderizan sin errores de consola; el toggle de privacidad persiste
+  tras cerrar y reabrir la app; una abstención del Tutor muestra "¿Por
+  qué?" y su enlace lleva a una traza real con `QUESTION_RECEIVED` y el
+  código de abstención correcto en Request History; la paleta de
+  comandos llega directo a Developer Diagnostics.
+- Suite completa verificada junta tras cada tarea (no solo al final):
+  `pnpm typecheck`, `pnpm lint`, `pnpm test` (283 tests, 238 antes de
+  esta fase), `pnpm eval` (9/9), `pnpm test:ai-smoke` sin
+  `OPENAI_API_KEY` (se salta limpio, código 0), y la suite e2e completa
+  bajo `xvfb-run` (32 tests, 28 antes de esta fase).

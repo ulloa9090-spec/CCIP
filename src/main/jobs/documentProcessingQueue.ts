@@ -101,6 +101,7 @@ export class DocumentProcessingQueue {
     let extractedPages
     try {
       this.documents.updateStatus(documentId, 'extracting')
+      this.jobs.setStage(jobId, 'extracting')
       this.emit({ documentId, stage: 'extracting', progress: 0 })
 
       const extracted = await extractPdf(originalPdfPath(documentId), (pageNumber, totalPages) => {
@@ -125,14 +126,17 @@ export class DocumentProcessingQueue {
     }
 
     try {
+      this.jobs.setStage(jobId, 'chunking')
       this.emit({ documentId, stage: 'chunking', progress: 0 })
       const drafts = chunkPages(extractedPages)
       this.emit({ documentId, stage: 'chunking', progress: 100 })
 
+      this.jobs.setStage(jobId, 'embedding')
       this.emit({ documentId, stage: 'embedding', progress: 0 })
       const withEmbeddings = await this.embedInBatches(documentId, drafts)
       this.chunks.replaceChunks(documentId, withEmbeddings)
 
+      this.jobs.setStage(jobId, 'ready')
       this.jobs.updateProgress(jobId, 'succeeded', 100)
       this.emit({ documentId, stage: 'ready', progress: 100 })
     } catch (error) {
@@ -143,7 +147,9 @@ export class DocumentProcessingQueue {
         message
       })
       // The extraction job itself still succeeded — indexing is tracked as
-      // a soft failure via the event, not a document- or job-level failure.
+      // a soft failure (Fase 13: now persisted, not just a transient event),
+      // never a document- or job-level failure. See ADR-013 / ADR-024.
+      this.jobs.recordSoftFailure(jobId, 'INDEXING_FAILED', message)
       this.jobs.updateProgress(jobId, 'succeeded', 100)
       this.emit({ documentId, stage: 'ready', progress: 100, errorMessage: message })
     }
